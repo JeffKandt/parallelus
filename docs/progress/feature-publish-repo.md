@@ -35,3 +35,13 @@
 **Next Actions**
 - Verify the GitHub repo lists expected branches and files.
 - Coordinate next feature work or documentation updates as requested.
+
+## 2025-10-12 19:32:51 UTC
+**Summary**
+- Removed execution setup reminder blocks; reasoning effort now in front matter.
+
+**Artifacts**
+- TODO: list touched files.
+
+**Next Actions**
+- [ ] TODO: follow-up

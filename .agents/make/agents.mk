@@ -29,6 +29,7 @@ start_session:
 	@eval "$$($(AGENTS_BIN)/agents-session-start)"
 
 turn_end:
+	@$(AGENTS_BIN)/verify-retrospective
 	@$(AGENTS_BIN)/agents-turn-end "${m}"
 
 archive:
