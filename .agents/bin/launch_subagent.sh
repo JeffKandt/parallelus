@@ -46,6 +46,10 @@ export PARALLELUS_PROMPT_FILE
 export PARALLELUS_LOG_PATH
 export PARALLELUS_ORIG_TERM="\${TERM:-xterm-256color}"
 export PARALLELUS_SUPPRESS_TMUX_EXPORT=1
+export SUBAGENT=1
+if [[ -z "\${CI:-}" ]]; then
+  export CI=true
+fi
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -67,6 +71,10 @@ WORKDIR="${PARALLELUS_WORKDIR:?}"
 prompt_content="$(<"$PROMPT_FILE")"
 
 export TERM="${PARALLELUS_ORIG_TERM:-xterm-256color}"
+export SUBAGENT=1
+if [[ -z "${CI:-}" ]]; then
+  export CI=true
+fi
 
 exec codex \
   --dangerously-bypass-approvals-and-sandbox \

@@ -11,3 +11,5 @@ PY_TEST_CMD='pytest -m "not slow" -q'
 PY_LINT_CMD='ruff check src tests && black --check src tests'
 PY_FORMAT_CMD='black src tests && ruff format src tests'
 ALERT_DEFAULT_MESSAGE="Codex is waiting for your input"
+AUDIBLE_ALERT_REQUIRE_TTY=0
+AUDIBLE_ALERT_VOICE="Alex"
