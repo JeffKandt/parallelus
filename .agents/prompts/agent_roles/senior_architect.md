@@ -7,6 +7,7 @@ additional_constraints: ""
 allowed_writes:
   - docs/reviews/
 profile: ~
+config_overrides: {}
 ---
 
 # Top‑1% Senior Systems Architect Prompt

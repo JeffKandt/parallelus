@@ -20,6 +20,7 @@
 - Updated materials (README and `docs/agents/subagent-session-orchestration.md`) so humans see the new profile/tmux behaviour without digging into the code.
 - Moved senior architect and auditor role configuration into YAML front matter within their prompts, removed the legacy `.agents/config/*.yaml`, and wired `subagent_manager` to parse/validate overrides (model, sandbox, approval, profile, allowed writes).
 - Added the `--role` launch option plus prompt override summaries so operators know which runtime adjustments are in effect.
+- Plumbed `config_overrides` through front matter so roles can inject Codex `-c key=value` settings (e.g., reasoning effort) without relying on named profiles and ensured dangerous sandbox flags are only skipped when a sandbox override is supplied.
 
 **Artifacts**
 - docs/plans/feature-publish-repo.md

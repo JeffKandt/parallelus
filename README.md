@@ -167,6 +167,9 @@ gate (merge, diagnostics, subagents, etc.) triggers.
   overrides (model, sandbox mode, approval policy, profile, etc.). Leave
   values as `~` (null) or the string `default` to inherit the main-agent
   configuration; set explicit values to override.
+- Use the `config_overrides` map to pass Codex `-c key=value` options (values
+  are JSON encoded automatically) for extra knobs such as
+  `reasoning_effort`.
 - Launch subagents with `--role <prompt-name>` to apply the front-matter
   overrides automatically. Example: `subagent_manager.sh launch --role
   senior_architect --profile gpt-oss ...`.

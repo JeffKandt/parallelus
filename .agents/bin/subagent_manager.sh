@@ -272,7 +272,6 @@ create_prompt_file() {
   local role_text=""
   local role_config=""
   local profile_display="default (danger-full-access)"
-  local apply_profile_from_role=""
 
   if [[ -n "$role_prompt" ]]; then
     local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
@@ -314,6 +313,9 @@ create_prompt_file() {
   fi
   if [[ -n "${SUBAGENT_CODEX_ALLOWED_WRITES:-}" ]]; then
     overrides_list+=("Allowed writes: ${SUBAGENT_CODEX_ALLOWED_WRITES}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+    overrides_list+=("Config overrides: ${SUBAGENT_CODEX_CONFIG_OVERRIDES}")
   fi
 
   if (( ${#overrides_list[@]} )); then
@@ -796,6 +798,7 @@ allowed_keys = {
     "additional_constraints",
     "allowed_writes",
     "profile",
+    "config_overrides",
 }
 
 unexpected = sorted(set(data.keys()) - allowed_keys)
@@ -803,8 +806,8 @@ if unexpected:
     raise SystemExit("subagent_manager: unexpected keys in {}: {}".format(path, ", ".join(unexpected)))
 
 for key in allowed_keys:
-    if key == "allowed_writes":
-        data.setdefault(key, [])
+    if key in {"allowed_writes", "config_overrides"}:
+        data.setdefault(key, {} if key == "config_overrides" else [])
     else:
         data.setdefault(key, None)
 
@@ -828,6 +831,7 @@ mapping = {
     "additional_constraints": "SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS",
     "allowed_writes": "SUBAGENT_CODEX_ALLOWED_WRITES",
     "profile": "SUBAGENT_CODEX_PROFILE",
+    "config_overrides": "SUBAGENT_CODEX_CONFIG_OVERRIDES",
 }
 
 for key, env in mapping.items():
@@ -837,6 +841,11 @@ for key, env in mapping.items():
         continue
     if key == "allowed_writes":
         if isinstance(val, list) and not val:
+            print(f"unset {env} || true")
+            continue
+        print(f"export {env}={json.dumps(val)}")
+    elif key == "config_overrides":
+        if isinstance(val, dict) and not val:
             print(f"unset {env} || true")
             continue
         print(f"export {env}={json.dumps(val)}")

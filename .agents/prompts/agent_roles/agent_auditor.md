@@ -6,6 +6,7 @@ session_mode: ~
 additional_constraints: "Read-only; respond with JSON only."
 allowed_writes: []
 profile: ~
+config_overrides: {}
 ---
 
 # Retrospective Auditor Prompt

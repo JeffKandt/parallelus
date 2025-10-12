@@ -8,23 +8,38 @@ print_manual() {
   local model_arg=""
   local sandbox_arg=""
   local approval_arg=""
+  local config_args=""
   if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     profile_arg=" --profile ${SUBAGENT_CODEX_PROFILE}"
   fi
   if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
     model_arg=" --model ${SUBAGENT_CODEX_MODEL}"
   fi
+  local dangerous_args=""
   if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
     sandbox_arg=" --sandbox ${SUBAGENT_CODEX_SANDBOX_MODE}"
+  else
+    dangerous_args=" --dangerously-bypass-approvals-and-sandbox --sandbox danger-full-access"
   fi
   if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
     approval_arg=" --ask-for-approval ${SUBAGENT_CODEX_APPROVAL_POLICY}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+    config_args=$(python3 - <<'PY' "${SUBAGENT_CODEX_CONFIG_OVERRIDES}"
+import json, shlex, sys
+data=json.loads(sys.argv[1])
+parts=[]
+for key, value in data.items():
+    parts.append(" -c " + shlex.quote(f"{key}={json.dumps(value)}"))
+print("".join(parts))
+PY
+)
   fi
   cat <<EOF >&2
 Unable to auto-launch a terminal for the subagent. Run the following manually:
 
   cd '$path'
-  codex --cd '$path'$profile_arg$model_arg$sandbox_arg$approval_arg "$(cat "$prompt")"
+  codex --cd '$path'$profile_arg$model_arg$sandbox_arg$approval_arg$config_args$dangerous_args "$(cat "$prompt")"
 EOF
 }
 
@@ -41,6 +56,13 @@ create_runner() {
   printf -v log_q "%q" "$log"
   printf -v inner_q "%q" "$inner"
   local profile_export=""
+  local model_export=""
+  local sandbox_export=""
+  local approval_export=""
+  local session_export=""
+  local constraints_export=""
+  local writes_export=""
+  local config_export=""
   local model_export=""
   local sandbox_export=""
   local approval_export=""
@@ -68,6 +90,9 @@ create_runner() {
   if [[ -n "${SUBAGENT_CODEX_ALLOWED_WRITES:-}" ]]; then
     printf -v writes_export 'export SUBAGENT_CODEX_ALLOWED_WRITES=%q\n' "$SUBAGENT_CODEX_ALLOWED_WRITES"
   fi
+  if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+    printf -v config_export 'export SUBAGENT_CODEX_CONFIG_OVERRIDES=%q\n' "$SUBAGENT_CODEX_CONFIG_OVERRIDES"
+  fi
 
   cat <<EOF >"$runner"
 #!/usr/bin/env bash
@@ -94,7 +119,7 @@ export SUBAGENT=1
 if [[ -z "\${CI:-}" ]]; then
   export CI=true
 fi
-${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}
+${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}${config_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -125,7 +150,7 @@ args=()
 
 if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
   args+=("--sandbox" "${SUBAGENT_CODEX_SANDBOX_MODE}")
-elif [[ "${SUBAGENT_CODEX_PROFILE:-}" != "gpt-oss" ]]; then
+else
   args+=(
     "--dangerously-bypass-approvals-and-sandbox"
     "--sandbox" "danger-full-access"
@@ -140,6 +165,18 @@ fi
 
 if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
   args+=("--ask-for-approval" "${SUBAGENT_CODEX_APPROVAL_POLICY}")
+fi
+
+if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+  while IFS= read -r kv; do
+    args+=("-c" "$kv")
+  done < <(python3 - <<'PY' "${SUBAGENT_CODEX_CONFIG_OVERRIDES}"
+import json, sys
+data=json.loads(sys.argv[1])
+for key, value in data.items():
+    print(f"{key}={json.dumps(value)}")
+PY
+)
 fi
 
 if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then

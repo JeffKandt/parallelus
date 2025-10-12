@@ -93,8 +93,8 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
   - Use `--profile gpt-oss` (or another Codex profile) when the hosted
     deployment requires restrictions different from the local
     `--dangerously-bypass-approvals-and-sandbox` mode. Role prompts can also
-    declare `profile`, `model`, `sandbox_mode`, `approval_policy`, and other
-    overrides in their YAML front matter; those values are applied
+    declare `profile`, `model`, `sandbox_mode`, `approval_policy`,
+    `config_overrides`, and other overrides in their YAML front matter; those values are applied
     automatically when you pass `--role ROLE_PROMPT` during launch. The
     manager records the effective profile in the registry and surfaces the
     overrides inside `SUBAGENT_PROMPT.txt` for human review.
