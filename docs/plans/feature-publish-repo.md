@@ -12,9 +12,8 @@
 - [x] Push the initial `main` branch state to GitHub.
 - [x] Record outcomes and next steps in progress notebook.
 - [x] Allow audible alerts to fire even when stdout is not a TTY while keeping subagents quiet.
-- [ ] Document the updated audible alert behaviour for future contributors.
+- [x] Document the updated audible alert behaviour for future contributors.
 
 ## Next Actions
 - Confirm remote repository contents and branch protection needs.
 - Plan follow-up work once additional requests arrive.
-- Capture README/alert changes in documentation or retrospective as needed.

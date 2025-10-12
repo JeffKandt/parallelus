@@ -71,6 +71,15 @@ gate (merge, diagnostics, subagents, etc.) triggers.
   plan to use the Swift adapter).
 - Access to the LLM or automation platform that will run the Codex agent (e.g.,
   OpenAI’s Codex CLI).
+- tmux 3.x or newer. Parallelus relies on tmux to multiplex the main agent and
+  subagents; if tmux is missing you can still launch subagents manually, but the
+  automated panes/windows and status overlays will not be available.
+  - The tmux status layout lives at `.agents/tmux/parallelus-status.tmux`. You
+    can source it from your tmux configuration or pass it via
+    `tmux -f .agents/tmux/parallelus-status.tmux` to match the Parallelus UI.
+  - When tmux truly isn’t an option, launch subagents with
+    `subagent_manager.sh launch --launcher manual …` and follow the printed
+    command in a regular terminal.
 - Optional: GitHub or another Git remote for publishing.
 
 ### New Project Setup
@@ -87,12 +96,18 @@ gate (merge, diagnostics, subagents, etc.) triggers.
 5. **Log your objectives** – Update
    `docs/plans/feature-intro.md` and `docs/progress/feature-intro.md` with the
    goals outlined in AGENTS.md.
+6. **Wire your tmux session** – Source `.agents/tmux/parallelus-status.tmux`
+   from `~/.tmux.conf` (or load it ad hoc with
+   `tmux source-file .agents/tmux/parallelus-status.tmux`) so subagent panes
+   display live status and guardrail prompts.
 
 ### Adopting Parallelus in an Existing Repository
 1. **Bring in the framework** – Copy the `.agents/` directory, `Makefile`
    targets (`read_bootstrap`, `bootstrap`, `turn_end`, `ci`), and top-level docs
    (`AGENTS.md`, `docs/agents/`, `docs/self-improvement/`) into your repo.
-   Committing these scaffolds creates the baseline process.
+   Committing these scaffolds creates the baseline process. The helper
+   `.agents/bin/deploy_agents_process.sh` automates this copy/sync step across
+   multiple repositories if you prefer a scripted workflow.
 2. **Wire command aliases** – Ensure project-specific scripts referenced in
    the manuals exist (e.g., environment diagnostics, CI entry points). Update
    adapter configs whenever your tooling differs.
@@ -112,6 +127,24 @@ gate (merge, diagnostics, subagents, etc.) triggers.
 - Use `make ci` (or adapter-specific equivalents) before requesting review.
 - When work is ready, follow the merge gate: senior architect review,
   retrospective report, plan/progress cleanup, then `make merge slug=<slug>`.
+
+### Codex Launch Helpers
+- Many teams wrap the Codex CLI in shell helpers so every session starts inside
+  tmux with a clean environment. For example:
+  ```sh
+  cx() {
+    local CLEAN_PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
+    TMUX= tmux -f /dev/null \
+      new-session -As codex-$(basename "$PWD") \
+      -e PATH="$CLEAN_PATH" \
+      -- codex --dangerously-bypass-approvals-and-sandbox --search "$@"
+  }
+  ```
+  A companion `cxr()` can call `codex resume` inside the same tmux session.
+  With Parallelus installed, these helpers keep the main agent and subagents
+  in predictable panes, ensure the tmux status overlay is active, and avoid
+  environment drift between runs. Feel free to adapt the example above to your
+  local shell configuration.
 
 ---
 

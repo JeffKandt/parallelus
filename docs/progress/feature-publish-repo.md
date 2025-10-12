@@ -15,6 +15,7 @@
 - Defaulted audible alerts to the macOS `Alex` voice via `AUDIBLE_ALERT_VOICE` so the speech synthesis path works consistently in headless shells.
 - Marked subagent launch scripts with `SUBAGENT=1` (and default `CI=true`) so the alert helper can silence them automatically.
 - Set `AUDIBLE_ALERT_REQUIRE_TTY=0` default in `.agents/agentrc` to align with the new behaviour.
+- Expanded the README prerequisites and workflow notes to cover tmux requirements, status-bar config, Codex shell helpers, and the deploy script for reusable rollouts.
 
 **Artifacts**
 - docs/plans/feature-publish-repo.md
@@ -27,4 +28,3 @@
 **Next Actions**
 - Verify the GitHub repo lists expected branches and files.
 - Coordinate next feature work or documentation updates as requested.
-- Document audible-alert expectations for contributors (plan/docs update).
