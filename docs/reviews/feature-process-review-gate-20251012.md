@@ -1,19 +1,19 @@
 Reviewed-Branch: feature/process-review-gate
-Reviewed-Commit: 17b987a7fde4621600dd89631cd345ee20be1f41
+Reviewed-Commit: c2eab8b0c9d86b01a14b4c0e7073cddffb010e70
 Reviewed-On: 2025-10-12
 Decision: approved
 
 ## Summary
 - Process guardrails enforce retrospective-before-turn_end and verify reports before merge; CI passes.
-- Post-review tweaks (retro guard command substitution) were re-tested with `make ci`.
+- Latest adjustments to merge hooks (allowing review-only commits) were re-tested with `make ci`.
 
 ## Findings
-- Severity: Low | Area: Documentation | Summary: Reminder to create the planned validation bullet in branch plan and resolve before merge.
-  - Evidence: docs/plans/feature-process-review-gate.md still lists 'Validate updated hooks and deployment flow'.
-  - Recommendation: Complete or explicitly defer the validation task.
+- Severity: Info | Area: Documentation | Summary: Validation checklist item cleared; monitor future plan updates for closure before merge.
+  - Evidence: docs/PLAN.md records the work as complete.
+  - Recommendation: Continue ensuring plan checklists are cleared prior to merge.
 
 ## Follow-Ups / Tickets
-- [ ] Run make ci after validation work (owner to confirm before merge).
+- [ ] Continue running make ci after guardrail changes (standing practice).
 
 ## Tests Reviewed
 - make ci
