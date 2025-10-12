@@ -267,8 +267,14 @@ create_prompt_file() {
   local scope=$3
   local type=$4
   local slug=$5
-  local role_prompt=${6:-}
+  local profile=${6:-}
+  local role_prompt=${7:-}
   local role_text=""
+  local profile_display="default (danger-full-access)"
+
+  if [[ -n "$profile" ]]; then
+    profile_display="$profile"
+  fi
 
   if [[ -n "$role_prompt" ]]; then
     local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
@@ -283,6 +289,7 @@ create_prompt_file() {
 You are operating inside sandbox: $sandbox
 Scope file: $scope
 Sandbox type: $type
+Codex profile: $profile_display
 
 1. Read AGENTS.md and all referenced docs.
 2. Review the scope file, then run \`make bootstrap slug=$slug\` to create the
@@ -415,11 +422,12 @@ PY
 }
 
 cmd_launch() {
-  local type slug launcher scope_override
+  local type slug launcher scope_override codex_profile
   type=""
   slug=""
   launcher="auto"
   scope_override=""
+  codex_profile=""
   while [[ $# -gt 0 ]]; do
     case $1 in
       --type)
@@ -430,9 +438,11 @@ cmd_launch() {
         scope_override=$2; shift 2 ;;
       --launcher)
         launcher=$2; shift 2 ;;
+      --profile)
+        codex_profile=$2; shift 2 ;;
       --help)
         cat <<'USAGE'
-Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE]
+Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE]
 USAGE
         return 0 ;;
       *)
@@ -483,14 +493,59 @@ USAGE
   scope_path="$sandbox/SUBAGENT_SCOPE.md"
   create_scope_file "$scope_path" "$scope_override"
   prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug"
+  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile"
   log_path="$sandbox/subagent.log"
   : >"$log_path"
 
-  append_registry "{\"id\": \"$entry_id\", \"type\": \"$type\", \"slug\": \"$slug\", \"path\": \"$sandbox\", \"scope_path\": \"$scope_path\", \"prompt_path\": \"$prompt_path\", \"log_path\": \"$log_path\", \"launcher\": \"$launcher\", \"status\": \"running\", \"launched_at\": \"$timestamp\", \"window_title\": \"\", \"launcher_kind\": \"\", \"launcher_handle\": null}"
+  local entry_json
+  entry_json=$(python3 - <<'PY' "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile") || exit 1
+import json
+import sys
+
+entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile = sys.argv[1:11]
+payload = {
+    "id": entry_id,
+    "type": type_,
+    "slug": slug,
+    "path": path,
+    "scope_path": scope,
+    "prompt_path": prompt,
+    "log_path": log_path,
+    "launcher": launcher,
+    "status": "running",
+    "launched_at": timestamp,
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": None,
+}
+if profile:
+    payload["codex_profile"] = profile
+
+print(json.dumps(payload))
+PY
+  )
+  append_registry "$entry_json"
 
   echo "Launching subagent: id=$entry_id type=$type path=$sandbox" >&2
+  local _prev_profile_set=0
+  local _prev_profile_value=""
+  if [[ "${SUBAGENT_CODEX_PROFILE+x}" == "x" ]]; then
+    _prev_profile_set=1
+    _prev_profile_value=$SUBAGENT_CODEX_PROFILE
+  fi
+
+  if [[ -n "$codex_profile" ]]; then
+    export SUBAGENT_CODEX_PROFILE="$codex_profile"
+  else
+    unset SUBAGENT_CODEX_PROFILE || true
+  fi
+
   run_launch "$launcher" "$sandbox" "$prompt_path" "$type" "$log_path" "$entry_id" || true
+  if (( _prev_profile_set )); then
+    export SUBAGENT_CODEX_PROFILE="$_prev_profile_value"
+  else
+    unset SUBAGENT_CODEX_PROFILE || true
+  fi
   echo "$entry_id"
 }
 

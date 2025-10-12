@@ -62,7 +62,8 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 (to be implemented). Interface summary:
 
 - `launch --type {throwaway|worktree} --slug <branch-slug> --scope <scope-file>
-  [--launcher auto|iterm-window|iterm-tab|terminal-window|terminal-tab|tmux|code]`
+  [--launcher auto|iterm-window|iterm-tab|terminal-window|terminal-tab|tmux|code]
+  [--profile CODEX_PROFILE]`
   - Validates the current branch (must not be `main`).
   - Creates the target repo (temp directory or git worktree).
   - Drops the scope file, registers the subagent in
@@ -88,6 +89,11 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     launched with `env -i` that clear `TMUX`) are handled automatically. The
     resume helper drops a prompt on reconnect asking whether the user wants the
     pending subagent relaunched.
+  - Use `--profile gpt-oss` (or another Codex profile) when the hosted
+    deployment requires restrictions different from the local
+    `--dangerously-bypass-approvals-and-sandbox` mode. The manager exposes the
+    chosen profile inside `SUBAGENT_PROMPT.txt` and the registry so the main
+    agent knows which environment the subagent is running under.
 - `status`
   - Reads the registry and reports the state of each subagent (running, awaiting
     verification, completed, abandoned). It runs `make read_bootstrap`, inspects

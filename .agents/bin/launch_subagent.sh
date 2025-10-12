@@ -4,11 +4,15 @@ set -euo pipefail
 print_manual() {
   local path=$1
   local prompt=$2
+  local profile_arg=""
+  if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    profile_arg=" --profile ${SUBAGENT_CODEX_PROFILE}"
+  fi
   cat <<EOF >&2
 Unable to auto-launch a terminal for the subagent. Run the following manually:
 
   cd '$path'
-  codex --cd '$path' "$(cat "$prompt")"
+  codex --cd '$path'$profile_arg "$(cat "$prompt")"
 EOF
 }
 
@@ -24,6 +28,10 @@ create_runner() {
   printf -v prompt_q "%q" "$prompt"
   printf -v log_q "%q" "$log"
   printf -v inner_q "%q" "$inner"
+  local profile_export=""
+  if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    printf -v profile_export 'export SUBAGENT_CODEX_PROFILE=%q\n' "$SUBAGENT_CODEX_PROFILE"
+  fi
 
   cat <<EOF >"$runner"
 #!/usr/bin/env bash
@@ -50,6 +58,7 @@ export SUBAGENT=1
 if [[ -z "\${CI:-}" ]]; then
   export CI=true
 fi
+${profile_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -76,11 +85,22 @@ if [[ -z "${CI:-}" ]]; then
   export CI=true
 fi
 
-exec codex \
-  --dangerously-bypass-approvals-and-sandbox \
-  --sandbox danger-full-access \
-  --cd "$WORKDIR" \
-  "$prompt_content"
+args=()
+
+if [[ "${SUBAGENT_CODEX_PROFILE:-}" != "gpt-oss" ]]; then
+  args+=(
+    "--dangerously-bypass-approvals-and-sandbox"
+    "--sandbox" "danger-full-access"
+  )
+fi
+
+args+=("--cd" "$WORKDIR")
+
+if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+  args+=("--profile" "$SUBAGENT_CODEX_PROFILE")
+fi
+
+exec codex "${args[@]}" "$prompt_content"
 EOF
   chmod +x "$inner"
   echo "$runner"

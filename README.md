@@ -41,6 +41,10 @@ pairing with an assistant, or delegating to fully automated subagents.
 - **Retrospective Automation** – The Retrospective Auditor prompt produces JSON
   reports stored under `docs/self-improvement/`, closing the loop on process
   improvements.
+- **Profile-aware Subagents** – Launch subagents with alternative Codex
+  profiles (for example, `gpt-oss`) without editing scripts; non-default
+  profiles display in the generated prompt and skip the `--dangerously-bypass`
+  sandbox flags when required.
 
 ---
 

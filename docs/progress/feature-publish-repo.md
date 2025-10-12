@@ -16,6 +16,8 @@
 - Marked subagent launch scripts with `SUBAGENT=1` (and default `CI=true`) so the alert helper can silence them automatically.
 - Set `AUDIBLE_ALERT_REQUIRE_TTY=0` default in `.agents/agentrc` to align with the new behaviour.
 - Expanded the README prerequisites and workflow notes to cover tmux requirements, status-bar config, Codex shell helpers, and the deploy script for reusable rollouts.
+- Added Codex profile support to subagent launches (including the `--profile` flag, registry tracking, and prompt visibility) for hosted models like `gpt-oss`.
+- Updated materials (README and `docs/agents/subagent-session-orchestration.md`) so humans see the new profile/tmux behaviour without digging into the code.
 
 **Artifacts**
 - docs/plans/feature-publish-repo.md
@@ -24,6 +26,8 @@
 - .agents/bin/agents-alert
 - .agents/bin/launch_subagent.sh
 - .agents/agentrc
+- .agents/bin/subagent_manager.sh
+- docs/agents/subagent-session-orchestration.md
 
 **Next Actions**
 - Verify the GitHub repo lists expected branches and files.

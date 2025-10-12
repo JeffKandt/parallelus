@@ -13,6 +13,8 @@
 - [x] Record outcomes and next steps in progress notebook.
 - [x] Allow audible alerts to fire even when stdout is not a TTY while keeping subagents quiet.
 - [x] Document the updated audible alert behaviour for future contributors.
+- [x] Reintroduce subagent Codex profile support and prompt configuration.
+- [x] Update docs with tmux/profile guidance for human operators.
 
 ## Next Actions
 - Confirm remote repository contents and branch protection needs.
