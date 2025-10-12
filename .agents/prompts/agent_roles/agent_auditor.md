@@ -11,13 +11,6 @@ config_overrides: {}
 
 # Retrospective Auditor Prompt
 
-> **Execution Setup**
-> - `Model:` __________________________ (defaults to main-agent model unless overridden above)
-> - `Sandbox Mode:` ____________________ (defaults to main-agent sandbox; ensure read-only)
-> - `Approval Policy:` _________________ (defaults to main-agent policy)
-> - `Session Mode:` ____________________ (defaults to main-agent session mode)
-> - `Additional Constraints:` See front matter.
-
 Operate strictly read-only. Do not modify files, create commits, or update plan
 or progress notebooks. Your single responsibility is to gather evidence based
 on the marker file, analyse the most recent turn, and return a JSON report

@@ -7,17 +7,11 @@ additional_constraints: ""
 allowed_writes:
   - docs/reviews/
 profile: ~
-config_overrides: {}
+config_overrides:
+  reasoning_effort: high
 ---
 
 # Top‑1% Senior Systems Architect Prompt
-
-> **Execution Setup**
-> - `Model:` __________________________ (defaults to main-agent model unless overridden above)
-> - `Sandbox Mode:` ____________________ (defaults to main-agent sandbox)
-> - `Approval Policy:` _________________ (defaults to main-agent policy)
-> - `Session Mode:` ____________________ (defaults to main-agent session mode)
-> - `Additional Constraints:` __________
 
 Operate read-only with respect to branch artifacts: do **not** modify code,
 notebooks, or sessions. You may only write the approved review file under
