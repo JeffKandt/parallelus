@@ -116,7 +116,7 @@ def main() -> None:
     report_path = None
     if marker_path.exists() and not os.environ.get("AGENTS_RETRO_SKIP_VALIDATE"):
         if require_retro.lower() not in {"0", "false", "no"}:
-            report_path = find_report_for_marker(repo, branch, marker_path, role_prompt)
+    report_path = find_report_for_marker(repo, branch, marker_path, role_prompt)
         if report_path is not None:
             rel_report = report_path.relative_to(repo)
             print(

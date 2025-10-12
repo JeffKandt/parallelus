@@ -39,20 +39,22 @@
 
 ## 2025-10-12 19:32:51 UTC
 **Summary**
-- Removed execution setup reminder blocks; reasoning effort now in front matter.
+- Removed execution setup reminder blocks from the role prompts and captured reasoning-effort overrides directly in YAML front matter.
 
 **Artifacts**
-- TODO: list touched files.
+- .agents/prompts/agent_roles/senior_architect.md
+- .agents/prompts/agent_roles/continuous_improvement_auditor.md
 
 **Next Actions**
-- [ ] TODO: follow-up
+- None (informational cleanup only).
 
 ## 2025-10-12 19:50:02 UTC
 **Summary**
-- Testing guardrail
+- Exercised the new retrospective guardrail to confirm `make turn_end` fails without a report.
 
 **Artifacts**
-- TODO: list touched files.
+- docs/self-improvement/markers/feature-publish-repo.json
+- docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json
 
 **Next Actions**
-- [ ] TODO: follow-up
+- None pending; guardrail validated.

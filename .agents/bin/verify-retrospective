@@ -76,7 +76,7 @@ def main() -> None:
             f"{role_prompt} prompt before make turn_end."
         )
 
-    expected = f"{branch}--{marker_ts}.json"
+    expected = f"{slugged}--{marker_ts}.json"
     target = reports_dir / expected
     if not target.exists():
         raise SystemExit(

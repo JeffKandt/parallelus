@@ -566,9 +566,11 @@ USAGE
   fi
 
   local entry_json
-entry_json=$(python3 - <<'PY' "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$role_prompt") || exit 1
+  entry_json=$(
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$role_prompt" <<'PY'
 import json
 import sys
+import shlex
 
 entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt = sys.argv[1:12]
 payload = {
@@ -593,7 +595,7 @@ if role_prompt:
 
 print(json.dumps(payload))
 PY
-  )
+  ) || exit 1
   append_registry "$entry_json"
 
   echo "Launching subagent: id=$entry_id type=$type path=$sandbox" >&2
@@ -817,7 +819,7 @@ PY
 
 role_config_to_env() {
   local json=$1
-  python3 - <<'PY' "$json"
+  python3 - "$json" <<'PY'
 import json
 import sys
 
@@ -843,13 +845,13 @@ for key, env in mapping.items():
         if isinstance(val, list) and not val:
             print(f"unset {env} || true")
             continue
-        print(f"export {env}={json.dumps(val)}")
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
     elif key == "config_overrides":
         if isinstance(val, dict) and not val:
             print(f"unset {env} || true")
             continue
-        print(f"export {env}={json.dumps(val)}")
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
     else:
-        print(f"export {env}={json.dumps(val)}")
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
 PY
 }

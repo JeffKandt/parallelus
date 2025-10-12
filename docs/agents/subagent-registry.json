@@ -1113,5 +1113,26 @@
       "window_id": "@0",
       "pane_id": "%6"
     }
+  },
+  {
+    "id": "20251012-201445-ci-audit-full",
+    "type": "throwaway",
+    "slug": "ci-audit-full",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-full-BurVS9",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-full-BurVS9/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-full-BurVS9/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-full-BurVS9/subagent.log",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20251012-201445",
+    "window_title": "20251012-201445-ci-audit-full",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251012-201445-ci-audit-full",
+      "window_id": "@4",
+      "pane_id": "%5"
+    },
+    "role_prompt": "continuous_improvement_auditor"
   }
 ]
