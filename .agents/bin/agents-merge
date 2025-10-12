@@ -54,6 +54,7 @@ if [[ -z "$slug" ]]; then
 fi
 
 feature_branch="feature/$slug"
+slugged_branch="${feature_branch//\//-}"
 
 if ! git show-ref --verify --quiet "refs/heads/$feature_branch"; then
   echo "agents-merge: branch '$feature_branch' not found" >&2
@@ -175,6 +176,65 @@ check_review() {
   fi
 }
 
+check_retrospective() {
+  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
+  local reports_dir="$repo_root/docs/self-improvement/reports"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a retrospective marker before merging." >&2
+    exit 1
+  fi
+  if [[ ! -d "$reports_dir" ]]; then
+    echo "agents-merge: retrospective reports directory missing; commit auditor output before merging." >&2
+    exit 1
+  fi
+  local report_path
+  local status=0
+  report_path=$(python3 - <<'PY' "$marker_file" "$reports_dir" "$feature_branch") || status=$?
+PY
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+reports_dir = Path(sys.argv[2])
+branch = sys.argv[3]
+
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+match = None
+for path in sorted(reports_dir.glob('*.json')):
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        continue
+    if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+        match = path
+        break
+
+if match is None:
+    print(f"agents-merge: no retrospective report found for marker {marker_ts}", file=sys.stderr)
+    sys.exit(4)
+
+print(match)
+PY
+  )
+  if [[ ${status:-0} -ne 0 || -z "$report_path" ]]; then
+    exit 1
+  fi
+  echo "agents-merge: using retrospective report ${report_path#$repo_root/}" >&2
+  export AGENTS_RETRO_MARKER="$marker_file"
+  export AGENTS_RETRO_REPORT="$report_path"
+}
+
 current_commit=$(git rev-parse HEAD)
 review_file=$(resolve_review_file "$feature_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
 
@@ -205,6 +265,8 @@ export AGENTS_MERGE_BRANCH="$feature_branch"
 export AGENTS_MERGE_REVIEW_FILE="$review_file"
 export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
 export AGENTS_MERGE_COMMIT="$current_commit"
+
+check_retrospective
 
 # Determine base branch via agents-detect.
 detect_output="$(.agents/bin/agents-detect)"

@@ -105,7 +105,7 @@ fi
 
 echo "agents-turn-end: recorded checkpoint for $current_branch at $timestamp"
 
-self_retrospective="$repo_root/.agents/bin/self-retrospective"
-if [[ -x "$self_retrospective" ]]; then
-  "$self_retrospective" || true
+retro_marker="$repo_root/.agents/bin/retro-marker"
+if [[ -x "$retro_marker" ]]; then
+  "$retro_marker" || true
 fi

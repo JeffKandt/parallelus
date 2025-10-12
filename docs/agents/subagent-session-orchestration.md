@@ -12,9 +12,16 @@ agent to take ownership of a scoped task.
 
 > **Senior architect reviews:** Launch them as **synchronous subagents** so the
 > primary agent stays focused on review findings. Populate the configuration
-> header in `.agents/prompts/agent_roles/senior_architect.md` (model, sandbox
-> mode, approval policy) before launch and archive the approved report under
-> `docs/reviews/feature-<slug>-<date>.md`.
+> header in `.agents/prompts/agent_roles/senior_architect.md` (defaults in
+> `.agents/config/senior_architect.yaml`) before launch. The subagent operates
+> read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
+
+> **Retrospective audits:** After each `make turn_end`, launch the Retrospective
+> Coach prompt (`.agents/prompts/agent_roles/agent_coach.md`) to coordinate the
+> synchronous auditor. The auditor works read-only, analyses evidence starting
+> from the marker recorded in `docs/self-improvement/markers/<branch>.json`, and
+> returns a JSON report to be saved under
+> `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
 
 ## 1. Overview
 

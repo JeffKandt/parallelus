@@ -6,16 +6,13 @@
 - Harden deployment to preserve existing instructions and warn when overwriting files.
 
 ## Checklist
-- [x] Update senior architect role prompt with configuration header (model, sandbox, approval) and note synchronous subagent execution.
-- [x] Extend merge helper to require acknowledgement of lower-severity findings prior to merge.
-- [x] Enhance docs/reviews guidance to support unique filenames (branch + date) and address branch slug reuse.
-- [x] Modify agent deployment script to warn about overwrites, create .bak backups, and insert merge instructions into AGENTS.md upon overlay.
-- [x] Document new processes in AGENTS.md, git workflow manual, and relevant manuals.
+- [x] Persist senior architect defaults in repo config and reference them from the prompt header.
+- [x] Replace automated self-retrospective with synchronous marker/coach/auditor workflow.
+- [x] Create agent_coach and agent_auditor prompts with read-only constraints.
+- [x] Gate merge on retrospective reports corresponding to the latest marker.
+- [x] Strengthen deploy safety for hooks and identical overlays.
 - [ ] Validate updated hooks and deployment flow (lint/tests as needed).
 
 ## Next Actions
-- Draft changes to senior architect prompt and update documentation about synchronous review expectations.
-- Amend merge helper/hook logic to capture review findings acknowledgement.
-- Prototype overlay warning/AGENTS.md banner in deploy script, then refresh docs.
-
-- [ ] Prevention (Self-Improvement): Add an environment validation step that checks for ruff before invoking lint
+- Run `make ci` after reformatting any files flagged by black.
+- Capture a sample retrospective report using the new workflow to demonstrate end-to-end usage.

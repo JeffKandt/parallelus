@@ -82,10 +82,11 @@ Consider merging when:
 - `pre-commit` blocks direct commits to the base branch (override with
   `AGENTS_ALLOW_MAIN_COMMIT=1`) and reminds feature-branch contributors to
   update plan/progress notebooks whenever other files are staged.
-- `pre-merge-commit` blocks merges when branch notebooks linger, CI fails, or
-  the senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
+- `pre-merge-commit` blocks merges when branch notebooks linger, CI fails, the
+  senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
   and optionally `AGENTS_MERGE_REVIEW_FILE=...`; acknowledge lower-severity
-  findings with `AGENTS_MERGE_ACK_REVIEW=1`).
+  findings with `AGENTS_MERGE_ACK_REVIEW=1`), or the latest retrospective report
+  for the branch marker has not been committed.
 - `post-merge` emits a reminder to rerun `make read_bootstrap` and return to the
   Recon phase on the base branch.
 - Overlay deployments prepend an **Overlay Notice** to `AGENTS.md`; audit every
@@ -125,9 +126,12 @@ Run this checklist whenever the user requests a merge (even casually):
 3. Run validation inside the project venv (`pytest -m "not slow"`, `ruff
    check`, `black --check`).
 4. Align local branch name with PR slug before merging exported work.
-5. Merge or archive per maintainer guidance; delete notebooks/sessions after
+5. Run the retrospective workflow: consult `docs/self-improvement/markers/` to
+   confirm the latest marker, launch the Retrospective Auditor, and commit the
+   resulting JSON report under `docs/self-improvement/reports/` before merging.
+6. Merge or archive per maintainer guidance; delete notebooks/sessions after
    their content lands.
-6. Treat the workspace as back in Recon & Planning once cleanup completes.
+7. Treat the workspace as back in Recon & Planning once cleanup completes.
 
 ## 6. Branch Notebooks & Session Logs
 - Never create notebooks/session logs during merge operations; they belong on

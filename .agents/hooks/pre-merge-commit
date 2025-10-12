@@ -21,6 +21,7 @@ merge_branch="${AGENTS_MERGE_BRANCH:-}"
 if [[ -z "$merge_branch" && -f .git/MERGE_MSG ]]; then
   merge_branch=$(sed -nE "s/^Merge branch '([^']+)'/\1/p" .git/MERGE_MSG | head -n1)
 fi
+slugged_branch="${merge_branch//\//-}"
 
 resolved_review_file() {
   local branch="$1"
@@ -133,6 +134,66 @@ if [[ -z "$review_date" ]]; then
   echo "Add the field or override via AGENTS_MERGE_FORCE=1." >&2
   exit 1
 fi
+
+check_retrospective() {
+  local marker_path="${AGENTS_RETRO_MARKER:-}"
+  local report_path="${AGENTS_RETRO_REPORT:-}"
+  if [[ -n "$marker_path" && -n "$report_path" && -f "$marker_path" && -f "$report_path" ]]; then
+    return
+  fi
+  if [[ -z "$slugged_branch" ]]; then
+    echo "pre-merge-commit: unable to infer branch slug for retrospective check." >&2
+    exit 1
+  fi
+  marker_path="docs/self-improvement/markers/${slugged_branch}.json"
+  if [[ ! -f "$marker_path" ]]; then
+    echo "pre-merge-commit: run make turn_end to record a retrospective marker before merging." >&2
+    exit 1
+  fi
+  local status=0
+  report_path=$(python3 - <<'PY' "$marker_path" "$merge_branch") || status=$?
+PY
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+branch = sys.argv[2]
+reports_dir = Path('docs/self-improvement/reports')
+
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"pre-merge-commit: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"pre-merge-commit: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+if not reports_dir.exists():
+    print("pre-merge-commit: retrospective reports directory missing", file=sys.stderr)
+    sys.exit(4)
+
+for path in sorted(reports_dir.glob('*.json')):
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        continue
+    if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+        print(path)
+        sys.exit(0)
+
+print(f"pre-merge-commit: no retrospective report found for marker {marker_ts}", file=sys.stderr)
+sys.exit(5)
+PY
+  if [[ ${status:-0} -ne 0 || -z "$report_path" ]]; then
+    exit 1
+  fi
+}
+
+check_retrospective
 
 shopt -s nullglob
 plan_files=(docs/plans/feature-*.md)

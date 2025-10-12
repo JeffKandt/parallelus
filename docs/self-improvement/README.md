@@ -1,25 +1,16 @@
-# Self-Improvement Retrospective Logs
+# Self-Improvement Retrospectives
 
-Turn-end retrospectives are recorded here as JSON Lines (`YYYY-MM-DD.jsonl`).
-Each entry captures detected process issues with the following schema:
+This directory stores two types of artifacts:
 
-```
-{
-  "timestamp": "2025-10-12T07:58:00Z",
-  "branch": "feature/process-review-gate",
-  "session": "20251012-XXXX",
-  "issues": [
-    {
-      "id": "lint-tool-missing",
-      "root_cause": "make ci failed because ruff is not installed in the active environment",
-      "mitigation": "Install ruff via pip in the project virtualenv",
-      "prevention": "Add an environment check that fails early when ruff is absent",
-      "evidence": "command -v ruff exited with status 1"
-    }
-  ]
-}
-```
+1. **Turn markers** (`markers/<branch>.json`) created automatically by
+   `.agents/bin/retro-marker` when the main agent runs `make turn_end`.
+   Markers record the timestamp, plan/progress snapshot, session console offset,
+   and current commit so retrospective auditors know exactly where to resume
+   analysis.
+2. **Retrospective reports** (`reports/<branch>--<marker-timestamp>.json`)
+   written by the Retrospective Auditor subagent. Each report must follow the
+   schema described in `.agents/prompts/agent_roles/agent_auditor.md` and is
+   committed by the main agent after review.
 
-Prevention actions are mirrored into the active branch plan as TODO items so the
-main agent can track follow-up work. Empty `issues` arrays are acceptable when
-no problems were detected.
+Merge guardrails require that the latest marker for a branch has a corresponding
+report committed before `make merge slug=<slug>` will succeed.

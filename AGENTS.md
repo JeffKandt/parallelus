@@ -57,7 +57,9 @@ commands beyond `make read_bootstrap`.
   report under `docs/reviews/<branch>-<date>.md` (`Reviewed-Branch`,
   `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
   Blocker/High`, and acknowledge other findings via
-  `AGENTS_MERGE_ACK_REVIEW`).
+  `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
+  `.agents/config/senior_architect.yaml`; update that file rather than editing
+  the prompt.
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run
@@ -70,9 +72,11 @@ commands beyond `make read_bootstrap`.
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
-- The turn-end helper now records a self-improvement retrospective under
-  `docs/self-improvement/`; resolve any prevention TODOs it adds to the branch
-  plan before closing the feature.
+- `make turn_end` now records a marker in `docs/self-improvement/markers/`.
+  Immediately afterwards, launch the Retrospective Auditor (see
+  `.agents/prompts/agent_roles/agent_coach.md`). Save the JSON response to
+  `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
+  any follow-up TODOs into the branch plan before requesting a merge.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
@@ -88,8 +92,10 @@ commands beyond `make read_bootstrap`.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`,
   `make archive`, or evaluating unmerged branches, revisit
   `docs/agents/git-workflow.md`. Merge requests now require an approved senior
-  architect review staged under `docs/reviews/<branch>-<date>.md`; overrides use
-  `AGENTS_MERGE_FORCE=1` and must be documented in the progress log.
+  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
+  committed retrospective report covering the latest marker; overrides use
+  `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
+  must be documented in the progress log.
 - **Environment & Platform diagnostics:** If environment parity is in question
   (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
   run the diagnostics described there.
