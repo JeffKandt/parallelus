@@ -166,9 +166,19 @@ check_review() {
     exit 1
   fi
   if [[ -n "$commit_ref" && "$review_commit" != "$commit_ref" ]]; then
-    echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref." >&2
-    echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
-    exit 1
+    parent_commit=$(git rev-parse "$commit_ref^" 2>/dev/null || true)
+    if [[ -n "$parent_commit" && "$review_commit" == "$parent_commit" ]]; then
+      diff_names=$(git diff --name-only "$parent_commit" "$commit_ref")
+      if echo "$diff_names" | grep -vq '^docs/reviews/'; then
+        echo "agents-merge: review $file is one commit behind and intervening commit alters non-review files." >&2
+        echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+        exit 1
+      fi
+    else
+      echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref." >&2
+      echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+      exit 1
+    fi
   fi
   if grep -Eqi 'Severity:\s*(Blocker|High)' "$file"; then
     echo "agents-merge: review $file still lists Severity: Blocker/High items." >&2

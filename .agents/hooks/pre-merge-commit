@@ -105,9 +105,19 @@ if [[ -z "$expected_commit" && -n "$merge_branch" ]]; then
 fi
 
 if [[ -n "$expected_commit" && "$review_commit" != "$expected_commit" ]]; then
-  echo "pre-merge-commit: review $review_file covers $review_commit but merge input is $expected_commit." >&2
-  echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
-  exit 1
+  parent_commit=$(git rev-parse "$expected_commit^" 2>/dev/null || true)
+  if [[ -n "$parent_commit" && "$review_commit" == "$parent_commit" ]]; then
+    diff_names=$(git diff --name-only "$parent_commit" "$expected_commit")
+    if echo "$diff_names" | grep -vq '^docs/reviews/'; then
+      echo "pre-merge-commit: review $review_file is one commit behind and intervening commit alters non-review files." >&2
+      echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
+      exit 1
+    fi
+  else
+    echo "pre-merge-commit: review $review_file covers $review_commit but merge input is $expected_commit." >&2
+    echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
+    exit 1
+  fi
 fi
 
 if grep -Eqi 'Severity:\s*(Blocker|High)' "$review_file"; then
