@@ -189,8 +189,7 @@ check_retrospective() {
   fi
   local report_path
   local status=0
-  report_path=$(python3 - <<'PY' "$marker_file" "$reports_dir" "$feature_branch") || status=$?
-PY
+  report_path=$(python3 - "$marker_file" "$reports_dir" "$feature_branch" <<'PY') || status=$?
 import json
 import sys
 from pathlib import Path

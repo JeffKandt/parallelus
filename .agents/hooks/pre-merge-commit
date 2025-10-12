@@ -151,8 +151,7 @@ check_retrospective() {
     exit 1
   fi
   local status=0
-  report_path=$(python3 - <<'PY' "$marker_path" "$merge_branch") || status=$?
-PY
+  report_path=$(python3 - "$marker_path" "$merge_branch" <<'PY') || status=$?
 import json
 import sys
 from pathlib import Path
