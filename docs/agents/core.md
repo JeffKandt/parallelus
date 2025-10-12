@@ -126,6 +126,9 @@ That closes the prior turn so artifacts stay sequenced.
 - Working tree either clean or containing only intentional changes noted in the
   progress log.
 - Fire “ready” audible alert if work block >5s.
+- Self-improvement retrospective logged via `.agents/bin/self-retrospective`
+  (writes `docs/self-improvement/YYYY-MM-DD.jsonl` and adds prevention TODOs to
+  the branch plan).
 
 Run `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to perform
 these updates in one step. The helper appends to the branch progress log and

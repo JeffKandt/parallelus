@@ -85,6 +85,9 @@ Consider merging when:
   findings with `AGENTS_MERGE_ACK_REVIEW=1`).
 - `post-merge` emits a reminder to rerun `make read_bootstrap` and return to the
   Recon phase on the base branch.
+- Overlay deployments prepend an **Overlay Notice** to `AGENTS.md`; audit every
+  `.bak` backup produced by the installer, merge or resolve conflicting
+  instructions, and document the reconciliation before removing the notice.
 
 ### Archive
 Use `make archive b=<branch>` (wraps `.agents/bin/agents-archive-branch`):

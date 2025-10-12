@@ -16,6 +16,8 @@ guardrails, then document that acknowledgement in the branch progress log.
   whenever the environment changes.
 - `../reviews/` – permanent store for senior architect reviews required before
   merging feature branches.
+- `../self-improvement/` – JSONL retrospectives generated automatically at turn
+  end; prevention actions roll into branch plans.
 
 Add new manuals here when specialised workflows emerge, and update `AGENTS.md`
 with the gate condition that sends maintainers to the new document.

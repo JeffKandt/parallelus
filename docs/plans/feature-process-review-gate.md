@@ -17,3 +17,5 @@
 - Draft changes to senior architect prompt and update documentation about synchronous review expectations.
 - Amend merge helper/hook logic to capture review findings acknowledgement.
 - Prototype overlay warning/AGENTS.md banner in deploy script, then refresh docs.
+
+- [ ] Prevention (Self-Improvement): Add an environment validation step that checks for ruff before invoking lint

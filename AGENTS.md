@@ -12,6 +12,9 @@ commands beyond `make read_bootstrap`.
   executing the guarded task and note the acknowledgement in the progress log.
 - Users delegate intent; you own execution, cleanup, and reporting. Never assume
   the user will run shell commands on your behalf.
+- If this file starts with an **Overlay Notice**, reconcile every `.bak`
+  backup created during deployment, merge conflicting instructions into the new
+  guardrails, document the outcome in the branch plan, then remove the notice.
 
 ## 2. Session Cadence & Core Checklists
 
@@ -67,6 +70,9 @@ commands beyond `make read_bootstrap`.
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
+- The turn-end helper now records a self-improvement retrospective under
+  `docs/self-improvement/`; resolve any prevention TODOs it adds to the branch
+  plan before closing the feature.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
