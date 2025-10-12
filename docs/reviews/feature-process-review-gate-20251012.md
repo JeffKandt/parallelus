@@ -1,10 +1,11 @@
 Reviewed-Branch: feature/process-review-gate
-Reviewed-Commit: 70cd2e300d88a6c8759998038992158c3a02fb67
+Reviewed-Commit: 17b987a7fde4621600dd89631cd345ee20be1f41
 Reviewed-On: 2025-10-12
 Decision: approved
 
 ## Summary
-- Process guardrails now enforce retrospective-before-turn_end and verify reports before merge; CI passes.
+- Process guardrails enforce retrospective-before-turn_end and verify reports before merge; CI passes.
+- Post-review tweaks (retro guard command substitution) were re-tested with `make ci`.
 
 ## Findings
 - Severity: Low | Area: Documentation | Summary: Reminder to create the planned validation bullet in branch plan and resolve before merge.
