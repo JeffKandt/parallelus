@@ -1,7 +1,16 @@
 {
   "branch": "feature/publish-repo",
   "marker_timestamp": "2025-10-12T16:11:06+00:00",
-  "summary": "Reviewed the full feature/publish-repo history covering repository publication work, alert guard updates, role front-matter refactors, and the new retrospective guardrail. All notebooks now document their artifacts/actions and no open guardrail placeholders remain.",
-  "issues": [],
-  "follow_ups": []
+  "summary": "Audited the full feature/publish-repo history (publication work, tmux guardrails, role front-matter refactor, and retrospective guard). Guardrail docs and notebooks are now consistent, but CI still fails in the sandbox because the Python lint dependencies are missing.",
+  "issues": [
+    {
+      "id": "python-lint-missing-pip-ruff",
+      "root_cause": "The CI harness invokes python-lint, which expects pip, ruff, and black. The sandbox (and local repo) lack these tools in requirements.txt, so make ci stops at python-lint with `pip: command not found` and earlier `ruff` errors.",
+      "mitigation": "Document and install the lint dependencies before running make ci (e.g., add ruff/black/pipx instructions to README or include them in requirements.txt) or adjust python-lint to skip when tools are absent.",
+      "prevention": "Bake the Python lint toolchain into the repository (pin versions in requirements-dev.txt or ensure the sandbox bootstrap installs them) so future audits do not hit missing-tool failures.",
+      "evidence": "Running make ci from feature/publish-repo on 2025-10-12 produced `ruff: command not found` followed by `/Users/.../.agents/adapters/python/env.sh: line 30: pip: command not found` during python-lint." }
+  ],
+  "follow_ups": [
+    "Decide whether to vendor the lint dependencies (ruff/black) or update the bootstrap instructions so make ci succeeds out of the box.",
+    "Optionally simplify the smoke harness so it skips python-lint when dependencies are missing, but record that decision in docs/agents/adapters/python." ]
 }
