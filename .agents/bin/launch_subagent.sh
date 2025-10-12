@@ -5,14 +5,26 @@ print_manual() {
   local path=$1
   local prompt=$2
   local profile_arg=""
+  local model_arg=""
+  local sandbox_arg=""
+  local approval_arg=""
   if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     profile_arg=" --profile ${SUBAGENT_CODEX_PROFILE}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+    model_arg=" --model ${SUBAGENT_CODEX_MODEL}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+    sandbox_arg=" --sandbox ${SUBAGENT_CODEX_SANDBOX_MODE}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+    approval_arg=" --ask-for-approval ${SUBAGENT_CODEX_APPROVAL_POLICY}"
   fi
   cat <<EOF >&2
 Unable to auto-launch a terminal for the subagent. Run the following manually:
 
   cd '$path'
-  codex --cd '$path'$profile_arg "$(cat "$prompt")"
+  codex --cd '$path'$profile_arg$model_arg$sandbox_arg$approval_arg "$(cat "$prompt")"
 EOF
 }
 
@@ -29,8 +41,32 @@ create_runner() {
   printf -v log_q "%q" "$log"
   printf -v inner_q "%q" "$inner"
   local profile_export=""
+  local model_export=""
+  local sandbox_export=""
+  local approval_export=""
+  local session_export=""
+  local constraints_export=""
+  local writes_export=""
   if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     printf -v profile_export 'export SUBAGENT_CODEX_PROFILE=%q\n' "$SUBAGENT_CODEX_PROFILE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+    printf -v model_export 'export SUBAGENT_CODEX_MODEL=%q\n' "$SUBAGENT_CODEX_MODEL"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+    printf -v sandbox_export 'export SUBAGENT_CODEX_SANDBOX_MODE=%q\n' "$SUBAGENT_CODEX_SANDBOX_MODE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+    printf -v approval_export 'export SUBAGENT_CODEX_APPROVAL_POLICY=%q\n' "$SUBAGENT_CODEX_APPROVAL_POLICY"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
+    printf -v session_export 'export SUBAGENT_CODEX_SESSION_MODE=%q\n' "$SUBAGENT_CODEX_SESSION_MODE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS:-}" ]]; then
+    printf -v constraints_export 'export SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS=%q\n' "$SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ALLOWED_WRITES:-}" ]]; then
+    printf -v writes_export 'export SUBAGENT_CODEX_ALLOWED_WRITES=%q\n' "$SUBAGENT_CODEX_ALLOWED_WRITES"
   fi
 
   cat <<EOF >"$runner"
@@ -58,7 +94,7 @@ export SUBAGENT=1
 if [[ -z "\${CI:-}" ]]; then
   export CI=true
 fi
-${profile_export}
+${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -87,7 +123,9 @@ fi
 
 args=()
 
-if [[ "${SUBAGENT_CODEX_PROFILE:-}" != "gpt-oss" ]]; then
+if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+  args+=("--sandbox" "${SUBAGENT_CODEX_SANDBOX_MODE}")
+elif [[ "${SUBAGENT_CODEX_PROFILE:-}" != "gpt-oss" ]]; then
   args+=(
     "--dangerously-bypass-approvals-and-sandbox"
     "--sandbox" "danger-full-access"
@@ -96,8 +134,16 @@ fi
 
 args+=("--cd" "$WORKDIR")
 
+if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+  args+=("--model" "${SUBAGENT_CODEX_MODEL}")
+fi
+
+if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+  args+=("--ask-for-approval" "${SUBAGENT_CODEX_APPROVAL_POLICY}")
+fi
+
 if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
-  args+=("--profile" "$SUBAGENT_CODEX_PROFILE")
+  args+=("--profile" "${SUBAGENT_CODEX_PROFILE}")
 fi
 
 exec codex "${args[@]}" "$prompt_content"

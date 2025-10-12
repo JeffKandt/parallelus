@@ -1,10 +1,21 @@
+---
+model: ~
+sandbox_mode: ~
+approval_policy: ~
+session_mode: ~
+additional_constraints: ""
+allowed_writes:
+  - docs/reviews/
+profile: ~
+---
+
 # Top‑1% Senior Systems Architect Prompt
 
-> **Execution Setup** (defaults live in `.agents/config/senior_architect.yaml`; update that file, not this prompt)
-> - `Model:` __________________________ (default: gpt-5-codex)
-> - `Sandbox Mode:` ____________________ (default: workspace-write)
-> - `Approval Policy:` _________________ (default: auto)
-> - `Session Mode:` ____________________ (default: synchronous subagent)
+> **Execution Setup**
+> - `Model:` __________________________ (defaults to main-agent model unless overridden above)
+> - `Sandbox Mode:` ____________________ (defaults to main-agent sandbox)
+> - `Approval Policy:` _________________ (defaults to main-agent policy)
+> - `Session Mode:` ____________________ (defaults to main-agent session mode)
 > - `Additional Constraints:` __________
 
 Operate read-only with respect to branch artifacts: do **not** modify code,

@@ -18,6 +18,8 @@
 - Expanded the README prerequisites and workflow notes to cover tmux requirements, status-bar config, Codex shell helpers, and the deploy script for reusable rollouts.
 - Added Codex profile support to subagent launches (including the `--profile` flag, registry tracking, and prompt visibility) for hosted models like `gpt-oss`.
 - Updated materials (README and `docs/agents/subagent-session-orchestration.md`) so humans see the new profile/tmux behaviour without digging into the code.
+- Moved senior architect and auditor role configuration into YAML front matter within their prompts, removed the legacy `.agents/config/*.yaml`, and wired `subagent_manager` to parse/validate overrides (model, sandbox, approval, profile, allowed writes).
+- Added the `--role` launch option plus prompt override summaries so operators know which runtime adjustments are in effect.
 
 **Artifacts**
 - docs/plans/feature-publish-repo.md

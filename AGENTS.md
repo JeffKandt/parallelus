@@ -58,8 +58,8 @@ commands beyond `make read_bootstrap`.
   `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
   Blocker/High`, and acknowledge other findings via
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
-  `.agents/config/senior_architect.yaml`; update that file rather than editing
-  the prompt.
+  the prompt’s YAML front matter (defaults defined at the top of
+  `.agents/prompts/agent_roles/senior_architect.md`).
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run

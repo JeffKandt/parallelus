@@ -270,19 +270,58 @@ create_prompt_file() {
   local profile=${6:-}
   local role_prompt=${7:-}
   local role_text=""
+  local role_config=""
   local profile_display="default (danger-full-access)"
+  local apply_profile_from_role=""
+
+  if [[ -n "$role_prompt" ]]; then
+    local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
+    if [[ -f "$role_file" ]]; then
+      role_config=$(parse_role_config "$role_file")
+      role_text=$(print_role_body "$role_file")
+      while IFS= read -r line; do
+        eval "$line"
+      done < <(role_config_to_env "$role_config")
+    else
+      echo "subagent_manager: role prompt '$role_prompt' not found under $ROLE_PROMPTS_DIR" >&2
+    fi
+  fi
+
+  if [[ -z "$profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    profile="$SUBAGENT_CODEX_PROFILE"
+  fi
 
   if [[ -n "$profile" ]]; then
     profile_display="$profile"
   fi
 
-  if [[ -n "$role_prompt" ]]; then
-    local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
-    if [[ -f "$role_file" ]]; then
-      role_text=$(<"$role_file")
-    else
-      echo "subagent_manager: role prompt '$role_prompt' not found under $ROLE_PROMPTS_DIR" >&2
-    fi
+  local overrides_section=""
+  local overrides_list=()
+  if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+    overrides_list+=("Model: ${SUBAGENT_CODEX_MODEL}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+    overrides_list+=("Sandbox: ${SUBAGENT_CODEX_SANDBOX_MODE}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+    overrides_list+=("Approval policy: ${SUBAGENT_CODEX_APPROVAL_POLICY}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
+    overrides_list+=("Session mode: ${SUBAGENT_CODEX_SESSION_MODE}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS:-}" ]]; then
+    overrides_list+=("Additional constraints: ${SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS}")
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ALLOWED_WRITES:-}" ]]; then
+    overrides_list+=("Allowed writes: ${SUBAGENT_CODEX_ALLOWED_WRITES}")
+  fi
+
+  if (( ${#overrides_list[@]} )); then
+    overrides_section=$'Role overrides:\n'
+    for item in "${overrides_list[@]}"; do
+      overrides_section+=" - ${item}\n"
+    done
+    overrides_section+=$'\n'
   fi
 
   cat <<EOF >"$dest"
@@ -290,6 +329,7 @@ You are operating inside sandbox: $sandbox
 Scope file: $scope
 Sandbox type: $type
 Codex profile: $profile_display
+$overrides_section
 
 1. Read AGENTS.md and all referenced docs.
 2. Review the scope file, then run \`make bootstrap slug=$slug\` to create the
@@ -422,12 +462,13 @@ PY
 }
 
 cmd_launch() {
-  local type slug launcher scope_override codex_profile
+  local type slug launcher scope_override codex_profile role_prompt
   type=""
   slug=""
   launcher="auto"
   scope_override=""
   codex_profile=""
+  role_prompt=""
   while [[ $# -gt 0 ]]; do
     case $1 in
       --type)
@@ -440,9 +481,11 @@ cmd_launch() {
         launcher=$2; shift 2 ;;
       --profile)
         codex_profile=$2; shift 2 ;;
+      --role)
+        role_prompt=$2; shift 2 ;;
       --help)
         cat <<'USAGE'
-Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE]
+Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE] [--role ROLE_PROMPT]
 USAGE
         return 0 ;;
       *)
@@ -490,19 +533,42 @@ USAGE
     fi
   fi
 
+  local tracked_env_vars=(
+    SUBAGENT_CODEX_PROFILE
+    SUBAGENT_CODEX_MODEL
+    SUBAGENT_CODEX_SANDBOX_MODE
+    SUBAGENT_CODEX_APPROVAL_POLICY
+    SUBAGENT_CODEX_SESSION_MODE
+    SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS
+    SUBAGENT_CODEX_ALLOWED_WRITES
+  )
+  local restore_env_cmds=()
+  for _var in "${tracked_env_vars[@]}"; do
+    if [[ "${!_var+x}" == "x" ]]; then
+      printf -v _cmd 'export %s=%q' "$_var" "${!_var}"
+    else
+      _cmd="unset $_var || true"
+    fi
+    restore_env_cmds+=("$_cmd")
+  done
+
   scope_path="$sandbox/SUBAGENT_SCOPE.md"
   create_scope_file "$scope_path" "$scope_override"
   prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile"
+  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$role_prompt"
   log_path="$sandbox/subagent.log"
   : >"$log_path"
 
+  if [[ -z "$codex_profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    codex_profile="$SUBAGENT_CODEX_PROFILE"
+  fi
+
   local entry_json
-  entry_json=$(python3 - <<'PY' "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile") || exit 1
+entry_json=$(python3 - <<'PY' "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$role_prompt") || exit 1
 import json
 import sys
 
-entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile = sys.argv[1:11]
+entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt = sys.argv[1:12]
 payload = {
     "id": entry_id,
     "type": type_,
@@ -520,6 +586,8 @@ payload = {
 }
 if profile:
     payload["codex_profile"] = profile
+if role_prompt:
+    payload["role_prompt"] = role_prompt
 
 print(json.dumps(payload))
 PY
@@ -527,25 +595,15 @@ PY
   append_registry "$entry_json"
 
   echo "Launching subagent: id=$entry_id type=$type path=$sandbox" >&2
-  local _prev_profile_set=0
-  local _prev_profile_value=""
-  if [[ "${SUBAGENT_CODEX_PROFILE+x}" == "x" ]]; then
-    _prev_profile_set=1
-    _prev_profile_value=$SUBAGENT_CODEX_PROFILE
-  fi
-
   if [[ -n "$codex_profile" ]]; then
     export SUBAGENT_CODEX_PROFILE="$codex_profile"
-  else
-    unset SUBAGENT_CODEX_PROFILE || true
   fi
 
   run_launch "$launcher" "$sandbox" "$prompt_path" "$type" "$log_path" "$entry_id" || true
-  if (( _prev_profile_set )); then
-    export SUBAGENT_CODEX_PROFILE="$_prev_profile_value"
-  else
-    unset SUBAGENT_CODEX_PROFILE || true
-  fi
+
+  for _cmd in "${restore_env_cmds[@]}"; do
+    eval "$_cmd"
+  done
   echo "$entry_id"
 }
 
@@ -683,3 +741,106 @@ main() {
 }
 
 main "$@"
+print_role_body() {
+  local file=$1
+  python3 - <<'PY' "$file"
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+body = []
+delimiter_count = 0
+for line in lines:
+    if line.strip() == '---':
+        delimiter_count += 1
+        continue
+    if delimiter_count >= 2 or delimiter_count == 0:
+        body.append(line)
+
+print("\n".join(body))
+PY
+}
+
+parse_role_config() {
+  local file=$1
+  python3 - <<'PY' "$file"
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+
+if not text.startswith('---'):
+    print(json.dumps({}))
+    sys.exit(0)
+
+parts = text.split('---', 2)
+if len(parts) < 3:
+    raise SystemExit("subagent_manager: malformed front matter in {}".format(path))
+
+front_matter = parts[1]
+
+import yaml
+
+data = yaml.safe_load(front_matter)
+if data is None:
+    data = {}
+
+allowed_keys = {
+    "model",
+    "sandbox_mode",
+    "approval_policy",
+    "session_mode",
+    "additional_constraints",
+    "allowed_writes",
+    "profile",
+}
+
+unexpected = sorted(set(data.keys()) - allowed_keys)
+if unexpected:
+    raise SystemExit("subagent_manager: unexpected keys in {}: {}".format(path, ", ".join(unexpected)))
+
+for key in allowed_keys:
+    if key == "allowed_writes":
+        data.setdefault(key, [])
+    else:
+        data.setdefault(key, None)
+
+print(json.dumps(data))
+PY
+}
+
+role_config_to_env() {
+  local json=$1
+  python3 - <<'PY' "$json"
+import json
+import sys
+
+data = json.loads(sys.argv[1]) if sys.argv[1] else {}
+
+mapping = {
+    "model": "SUBAGENT_CODEX_MODEL",
+    "sandbox_mode": "SUBAGENT_CODEX_SANDBOX_MODE",
+    "approval_policy": "SUBAGENT_CODEX_APPROVAL_POLICY",
+    "session_mode": "SUBAGENT_CODEX_SESSION_MODE",
+    "additional_constraints": "SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS",
+    "allowed_writes": "SUBAGENT_CODEX_ALLOWED_WRITES",
+    "profile": "SUBAGENT_CODEX_PROFILE",
+}
+
+for key, env in mapping.items():
+    val = data.get(key)
+    if val is None or (isinstance(val, str) and val.strip().lower() in {"", "default"}):
+        print(f"unset {env} || true")
+        continue
+    if key == "allowed_writes":
+        if isinstance(val, list) and not val:
+            print(f"unset {env} || true")
+            continue
+        print(f"export {env}={json.dumps(val)}")
+    else:
+        print(f"export {env}={json.dumps(val)}")
+PY
+}

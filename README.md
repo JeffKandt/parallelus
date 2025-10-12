@@ -44,7 +44,9 @@ pairing with an assistant, or delegating to fully automated subagents.
 - **Profile-aware Subagents** – Launch subagents with alternative Codex
   profiles (for example, `gpt-oss`) without editing scripts; non-default
   profiles display in the generated prompt and skip the `--dangerously-bypass`
-  sandbox flags when required.
+  sandbox flags when required. Role prompts declare overrides via YAML
+  front matter, so model/sandbox/approval tweaks stay alongside human
+  instructions.
 
 ---
 
@@ -159,6 +161,18 @@ gate (merge, diagnostics, subagents, etc.) triggers.
   in predictable panes, ensure the tmux status overlay is active, and avoid
   environment drift between runs. Feel free to adapt the example above to your
   local shell configuration.
+
+### Role Prompts & Front Matter
+- Each subagent role prompt starts with YAML front matter describing runtime
+  overrides (model, sandbox mode, approval policy, profile, etc.). Leave
+  values as `~` (null) or the string `default` to inherit the main-agent
+  configuration; set explicit values to override.
+- Launch subagents with `--role <prompt-name>` to apply the front-matter
+  overrides automatically. Example: `subagent_manager.sh launch --role
+  senior_architect --profile gpt-oss ...`.
+- Front-matter overrides appear at the top of `SUBAGENT_PROMPT.txt` so humans
+  can confirm the effective model/sandbox, and the registry records the chosen
+  profile for later verification.
 
 ---
 

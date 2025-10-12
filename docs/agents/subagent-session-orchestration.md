@@ -13,7 +13,8 @@ agent to take ownership of a scoped task.
 > **Senior architect reviews:** Launch them as **synchronous subagents** so the
 > primary agent stays focused on review findings. Populate the configuration
 > header in `.agents/prompts/agent_roles/senior_architect.md` (defaults in
-> `.agents/config/senior_architect.yaml`) before launch. The subagent operates
+> the YAML front matter at the top of
+> `.agents/prompts/agent_roles/senior_architect.md`) before launch. The subagent operates
 > read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
 
 > **Retrospective audits:** Before each `make turn_end`, launch the Retrospective
@@ -63,7 +64,7 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 
 - `launch --type {throwaway|worktree} --slug <branch-slug> --scope <scope-file>
   [--launcher auto|iterm-window|iterm-tab|terminal-window|terminal-tab|tmux|code]
-  [--profile CODEX_PROFILE]`
+  [--profile CODEX_PROFILE] [--role ROLE_PROMPT]`
   - Validates the current branch (must not be `main`).
   - Creates the target repo (temp directory or git worktree).
   - Drops the scope file, registers the subagent in
@@ -91,9 +92,12 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     pending subagent relaunched.
   - Use `--profile gpt-oss` (or another Codex profile) when the hosted
     deployment requires restrictions different from the local
-    `--dangerously-bypass-approvals-and-sandbox` mode. The manager exposes the
-    chosen profile inside `SUBAGENT_PROMPT.txt` and the registry so the main
-    agent knows which environment the subagent is running under.
+    `--dangerously-bypass-approvals-and-sandbox` mode. Role prompts can also
+    declare `profile`, `model`, `sandbox_mode`, `approval_policy`, and other
+    overrides in their YAML front matter; those values are applied
+    automatically when you pass `--role ROLE_PROMPT` during launch. The
+    manager records the effective profile in the registry and surfaces the
+    overrides inside `SUBAGENT_PROMPT.txt` for human review.
 - `status`
   - Reads the registry and reports the state of each subagent (running, awaiting
     verification, completed, abandoned). It runs `make read_bootstrap`, inspects
