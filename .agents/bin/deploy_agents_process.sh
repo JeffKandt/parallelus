@@ -216,6 +216,21 @@ prepare_destination() {
     fi
 }
 
+diff_exists() {
+    local src="$1"
+    local dest="$2"
+    if [[ ! -e "$dest" ]]; then
+        return 1
+    fi
+    local output
+    if [[ -d "$src" ]]; then
+        output=$(rsync -rcni --exclude '.git' "$src/" "$dest/" 2>/dev/null || true)
+    else
+        output=$(rsync -rcni "$src" "$dest" 2>/dev/null || true)
+    fi
+    [[ -n "$output" ]]
+}
+
 warn_overlay_overwrites() {
     if [[ "$MODE" != "overlay" ]]; then
         return
@@ -223,7 +238,7 @@ warn_overlay_overwrites() {
     local collisions=()
     local path
     for path in AGENTS.md .agents docs/agents docs/reviews; do
-        if [[ -e "$TARGET_DIR/$path" ]]; then
+        if diff_exists "$SOURCE_REPO/$path" "$TARGET_DIR/$path"; then
             collisions+=("$path")
         fi
     done
@@ -234,6 +249,30 @@ warn_overlay_overwrites() {
     warn "Backups will be written with the .bak suffix. Merge prior guidance before deleting them."
     if [[ $FORCE -eq 0 ]]; then
         fail "Re-run with --force after reviewing the warning above"
+    fi
+}
+
+backup_existing_git_hooks() {
+    local git_hooks="$TARGET_DIR/.git/hooks"
+    if [[ ! -d "$git_hooks" ]]; then
+        return
+    fi
+    local agents_hooks="$TARGET_DIR/.agents/hooks"
+    mkdir -p "$agents_hooks"
+    local ts
+    ts=$(date -u '+%Y%m%d%H%M%S')
+    local backed_up=0
+    local hook_path hook_name dest
+    for hook_path in "$git_hooks"/*; do
+        [[ -f "$hook_path" ]] || continue
+        hook_name=$(basename "$hook_path")
+        [[ "$hook_name" == *.sample ]] && continue
+        dest="$agents_hooks/${hook_name}.predeploy.$ts.bak"
+        cp "$hook_path" "$dest"
+        backed_up=1
+    done
+    if [[ $backed_up -eq 1 ]]; then
+        warn "Preserved existing .git/hooks scripts under .agents/hooks/*.predeploy.*.bak"
     fi
 }
 
@@ -273,6 +312,7 @@ EOF
 
 copy_base_assets() {
     info "Copying agent process assets"
+    backup_existing_git_hooks
     rsync_copy "$SOURCE_REPO/AGENTS.md" "$TARGET_DIR/AGENTS.md"
     rsync_copy "$SOURCE_REPO/.agents/" "$TARGET_DIR/.agents/"
     rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"

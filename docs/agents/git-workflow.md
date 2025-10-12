@@ -76,6 +76,9 @@ Consider merging when:
 ### Managed hooks
 - `install-hooks` (invoked by `make bootstrap`, `make merge`, and the deploy
   script) syncs every file in `.agents/hooks/` into `.git/hooks/`.
+- Existing `.git/hooks/*` are preserved as `.agents/hooks/<name>.predeploy.<ts>.bak`
+  during overlay, and `install-hooks` creates `.git/hooks/<name>.predeploy.<ts>.bak`
+  before rewriting a hook so local customisations can be merged.
 - `pre-commit` blocks direct commits to the base branch (override with
   `AGENTS_ALLOW_MAIN_COMMIT=1`) and reminds feature-branch contributors to
   update plan/progress notebooks whenever other files are staged.

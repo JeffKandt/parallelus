@@ -29,6 +29,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+backup_hook() {
+  local dest="$1"
+  if [[ -f "$dest" ]]; then
+    local backup="$dest.predeploy.$(date -u '+%Y%m%d%H%M%S').bak"
+    cp "$dest" "$backup"
+  fi
+}
+
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
   [[ $quiet -eq 1 ]] || echo "install-hooks: not inside a git repository" >&2
@@ -49,6 +57,7 @@ installed=0
 for hook in "$hooks_src"/*; do
   [[ -f "$hook" ]] || continue
   hook_name=$(basename "$hook")
+  backup_hook "$hooks_dst/$hook_name"
   cp "$hook" "$hooks_dst/$hook_name"
   chmod +x "$hooks_dst/$hook_name"
   ((installed++))
