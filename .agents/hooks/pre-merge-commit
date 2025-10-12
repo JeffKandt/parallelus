@@ -151,7 +151,8 @@ check_retrospective() {
     exit 1
   fi
   local status=0
-  report_path=$(python3 - "$marker_path" "$merge_branch" <<'PY') || status=$?
+  report_path=$(
+    python3 - "$marker_path" "$merge_branch" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -187,6 +188,7 @@ for path in sorted(reports_dir.glob('*.json')):
 print(f"pre-merge-commit: no retrospective report found for marker {marker_ts}", file=sys.stderr)
 sys.exit(5)
 PY
+  ) || status=$?
   if [[ ${status:-0} -ne 0 || -z "$report_path" ]]; then
     exit 1
   fi
