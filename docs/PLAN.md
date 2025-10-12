@@ -1,0 +1,9 @@
+# Project Plan
+
+## Completed Work
+- Synchronous retrospective workflow enforced (marker validation, auditor prompt).
+- Senior architect review guardrails updated (config defaults, review commit checks).
+- Deployment safety and CI flow hardened (hook backups, Python-only adapter).
+
+## Next Focus Areas
+- Continue refining auditor heuristic coverage (e.g., additional log analysis).
