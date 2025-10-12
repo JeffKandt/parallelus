@@ -11,8 +11,7 @@
 - [x] Create a read-only agent_auditor prompt to collect and analyse turn evidence.
 - [x] Gate merge on retrospective reports corresponding to the latest marker.
 - [x] Strengthen deploy safety for hooks and identical overlays.
-- [ ] Validate updated hooks and deployment flow (lint/tests as needed).
+- [x] Validate updated hooks and deployment flow (lint/tests as needed).
 
 ## Next Actions
-- Run `make ci` after reformatting any files flagged by black.
-- Capture a sample retrospective report using the new workflow to demonstrate end-to-end usage.
+- None; ready to merge after maintainer review.

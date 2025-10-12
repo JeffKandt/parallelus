@@ -1,17 +1,16 @@
 # Branch Progress — feature/process-review-gate
 
-## ${DATE_STR}
+## 2025-10-12 10:27:29 UTC
 **Objectives**
-- Implement synchronous retrospective workflow with role configs and merge gating.
+- Finalise retrospective workflow and validation ahead of merge.
 
 **Work Performed**
-- Persisted senior architect defaults, added agent coach/auditor prompts, replaced auto retrospectives with marker + synchronous audit flow, tightened merge/deploy guardrails.
-- Simplified retrospective prompts by consolidating coach/auditor roles into a single read-only auditor instruction set.
-- Enforced audit-before-turn_end by validating the previous marker/report pair and documented the workflow updates; adjusted smoke tests accordingly.
-- Captured senior architect approval (feature-process-review-gate-20251012.md) and retrospective report linked to marker.
+- Re-ran `make ci` (pass) to validate hook/deployment changes after disabling the Swift adapter.
+- Persisted senior architect defaults, added read-only retrospective auditor prompt, and enforced audit-before-turn_end with marker validation and updated smoke tests.
+- Captured senior architect approval (`docs/reviews/feature-process-review-gate-20251012.md`) and retrospective report aligned to the latest marker.
 
 **Artifacts**
-- `AGENTS.md`, `.agents/bin/agents-turn-end`, `.agents/bin/retro-marker`, `.agents/bin/agents-merge`, `.agents/hooks/pre-merge-commit`, `.agents/config/*.yaml`, `.agents/prompts/agent_roles/*.md`, `docs/agents/*`, `docs/self-improvement/**/*`, `tests/test_basic.py`.
+- `AGENTS.md`, `.agents/bin/retro-marker`, `.agents/bin/agents-merge`, `.agents/hooks/pre-merge-commit`, `.agents/config/*.yaml`, `.agents/prompts/agent_roles/agent_auditor.md`, `docs/self-improvement/markers/feature-process-review-gate.json`, `docs/self-improvement/reports/feature-process-review-gate--2025-10-12T10:20:26.400945+00:00.json`.
 
 **Next Actions**
-- Run `make ci` after addressing Swift lint dependency or document the requirement; capture a sample retrospective report using the new workflow.
+- None pending; branch ready for merge.
