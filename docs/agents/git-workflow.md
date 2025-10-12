@@ -44,18 +44,54 @@ ask whether to merge or archive. Two main flows:
 
 ### Merge (use the helper)
 - Run `make merge slug=<slug>` — this wraps pre-merge checks, installs the git
-  guard hook, runs `make ci`, and performs a `--no-ff` merge into the base
-  branch.
+  guard hooks, runs `make ci`, and performs a `--no-ff` merge into the base
+  branch. The helper also exports `AGENTS_MERGE_SKIP_HOOK_CI=1` so the
+  `pre-merge-commit` hook knows tests already passed.
+- Merge requests now require a senior-architect review stored in
+  `docs/reviews/feature-<slug>-<date>.md`. The report must include
+  `Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`, and `Decision: approved`;
+  any finding marked `Severity: Blocker` or `Severity: High` blocks the merge
+  until addressed, and remaining findings must be acknowledged via
+  `AGENTS_MERGE_ACK_REVIEW=1`.
+- Execute the senior review via a **synchronous subagent session** using the
+  updated `senior_architect` role prompt; populate the configuration header
+  (model, sandbox, approval mode) before launch so the review artifact records
+  provenance.
+- Set `AGENTS_MERGE_FORCE=1` when you must override the guardrail in an
+  emergency (document the reason in the progress log), and optionally specify a
+  different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
 - The helper refuses to run if branch notebooks or progress logs still exist,
   or if the working tree is dirty.
 
 Do **not** run `git merge` directly; the helper is the enforcement mechanism for
-the merge-and-close checklist.
+the merge-and-close checklist. If someone tries it anyway, the managed
+`pre-merge-commit` hook re-runs `make ci` (unless the helper signalled success)
+and blocks the merge when branch notebooks remain.
 
 Consider merging when:
 - Work is complete and aligned with current priorities.
 - All tests/lint pass and documentation is current.
 - Code review has been completed (if applicable).
+
+### Managed hooks
+- `install-hooks` (invoked by `make bootstrap`, `make merge`, and the deploy
+  script) syncs every file in `.agents/hooks/` into `.git/hooks/`.
+- Existing `.git/hooks/*` are preserved as `.agents/hooks/<name>.predeploy.<ts>.bak`
+  during overlay, and `install-hooks` creates `.git/hooks/<name>.predeploy.<ts>.bak`
+  before rewriting a hook so local customisations can be merged.
+- `pre-commit` blocks direct commits to the base branch (override with
+  `AGENTS_ALLOW_MAIN_COMMIT=1`) and reminds feature-branch contributors to
+  update plan/progress notebooks whenever other files are staged.
+- `pre-merge-commit` blocks merges when branch notebooks linger, CI fails, the
+  senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
+  and optionally `AGENTS_MERGE_REVIEW_FILE=...`; acknowledge lower-severity
+  findings with `AGENTS_MERGE_ACK_REVIEW=1`), or the latest retrospective report
+  for the branch marker has not been committed.
+- `post-merge` emits a reminder to rerun `make read_bootstrap` and return to the
+  Recon phase on the base branch.
+- Overlay deployments prepend an **Overlay Notice** to `AGENTS.md`; audit every
+  `.bak` backup produced by the installer, merge or resolve conflicting
+  instructions, and document the reconciliation before removing the notice.
 
 ### Archive
 Use `make archive b=<branch>` (wraps `.agents/bin/agents-archive-branch`):
@@ -90,9 +126,12 @@ Run this checklist whenever the user requests a merge (even casually):
 3. Run validation inside the project venv (`pytest -m "not slow"`, `ruff
    check`, `black --check`).
 4. Align local branch name with PR slug before merging exported work.
-5. Merge or archive per maintainer guidance; delete notebooks/sessions after
+5. Run the retrospective workflow: consult `docs/self-improvement/markers/` to
+   confirm the latest marker, launch the Retrospective Auditor, and commit the
+   resulting JSON report under `docs/self-improvement/reports/` before merging.
+6. Merge or archive per maintainer guidance; delete notebooks/sessions after
    their content lands.
-6. Treat the workspace as back in Recon & Planning once cleanup completes.
+7. Treat the workspace as back in Recon & Planning once cleanup completes.
 
 ## 6. Branch Notebooks & Session Logs
 - Never create notebooks/session logs during merge operations; they belong on

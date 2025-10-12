@@ -1,68 +1,115 @@
-# Parallelus Agent Process – Quickstart & Index
+# Parallelus Agent Core Guardrails
 
-Use these targets for a consistent, portable workflow.
+This document is mandatory reading at the start of every session. Record in the
+branch progress notebook that you reviewed it before running any project
+commands beyond `make read_bootstrap`.
 
-## Quickstart (30 seconds)
+## 1. Purpose & Usage
+- Internalise these guardrails during Recon & Planning; they apply to every
+  turn regardless of scope.
+- Operational manuals live under `docs/agents/manuals/`. Only consult them when
+  a gate below fires, but you **must** read the relevant manual *before*
+  executing the guarded task and note the acknowledgement in the progress log.
+- Users delegate intent; you own execution, cleanup, and reporting. Never assume
+  the user will run shell commands on your behalf.
+- If this file starts with an **Overlay Notice**, reconcile every `.bak`
+  backup created during deployment, merge conflicting instructions into the new
+  guardrails, document the outcome in the branch plan, then remove the notice.
 
-```
-make read_bootstrap             # safe, read-only checks
-make bootstrap slug=my-feature  # create feature/my-feature
-make start_session              # scaffold session artifacts
-```
+## 2. Session Cadence & Core Checklists
 
-## Process Targets
+### Recon & Planning (read-only)
+- Run `make read_bootstrap` immediately; report repo mode, branch, remotes, and
+  orphaned notebooks before continuing.
+- Open the active plan and progress notebooks (`docs/plans/<branch>.md`,
+  `docs/progress/<branch>.md`) or confirm they do not exist yet.
+- List recent `sessions/` entries. If none match today (2025-10-12), seed a new
+  session with `SESSION_PROMPT="..." make start_session` **before** leaving
+  Recon & Planning.
+- Inspect repo state, answer questions, plan next moves. Do not edit tracked
+  files or run bootstrap helpers during this phase.
 
-- `make turn_end m="summary"` – checkpoint docs and session meta
-- `make archive b=feature/old` – remote-aware archival flow
-- `make ci` – run lint + tests + agents smoke suite
-- `make merge slug=<branch>` – run CI, enforce guardrails, and merge into the base branch
+### Transition to Editing (trigger once you intend to modify tracked files)
+1. Ensure the Recon checklist above is complete.
+2. Create or switch to a feature branch via `make bootstrap slug=<slug>`; never
+   edit directly on `main`.
+3. Export `SESSION_PROMPT` (optional) and run `make start_session` to capture
+   turn context.
+4. Update the branch plan/progress notebooks with current objectives before
+   editing code or docs.
+5. Run required environment diagnostics (see Operational Gates for details) and
+   log results in the progress notebook.
+6. Commit the bootstrap artifacts once the branch is staged for real work.
+  (Bootstrap syncs managed git hooks into `.git/hooks`; do not delete them.)
 
-## Subagent Monitoring
+### Active Execution & Validation
+- Keep audible alerts active: fire `.agents/bin/agents-alert` **before** any
+  approval pause and after each work block (>5 s) before handing control back.
+- Update branch plan/progress notebooks after meaningful work units. Treat
+  `➜ checkpoint` markers as mandatory commit points.
+- Expect the managed `pre-commit` hook to remind you about plan/progress updates
+  when committing feature work; treat warnings as action items, not noise.
+- Direct commits to the base branch are blocked; set `AGENTS_ALLOW_MAIN_COMMIT=1`
+  only for emergencies, and record the rationale in the progress log.
+- When subagents are active, maintain the monitor loop per the Subagent manual.
+- Stay within the requested scope; defer speculative refactors unless directed.
+- Senior architect review is mandatory before merging: capture the signed-off
+  report under `docs/reviews/<branch>-<date>.md` (`Reviewed-Branch`,
+  `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
+  Blocker/High`, and acknowledge other findings via
+  `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
+  `.agents/config/senior_architect.yaml`; update that file rather than editing
+  the prompt.
 
-Whenever you launch a subagent, start the monitor loop in a dedicated terminal pane:
+### Turn-End & Session Wrap
+- If a new request arrives after the previous conversation has been idle, run
+  `make turn_end m="..."` first to close the earlier turn before starting new
+  work.
+- Use `make turn_end m="summary"` to append structured updates before replying
+  on an active turn; the helper updates progress logs, plan notebooks, session
+  summary, and `meta.json` in one step.
+- Ensure progress logs capture the latest state, session metadata is current,
+  and the working tree is either clean or holds only intentional changes noted
+  in the progress log. Avoid committing unless the maintainer instructs you to.
+- Do not merge or archive unless the maintainer explicitly asks.
+- Before calling `make turn_end`, launch the Retrospective Auditor prompt (see
+  `.agents/prompts/agent_roles/agent_auditor.md`) using the previous marker. The
+  auditor responds with JSON; save it to
+  `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
+  TODOs into the branch plan. Only then run `make turn_end`, which records the
+  next marker in `docs/self-improvement/markers/`.
 
-```
-make monitor_subagents
-```
+## 3. Command Quick Reference
+- `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
+- `make bootstrap slug=<slug>` – create/switch feature branch and seed notebooks.
+- `SESSION_PROMPT="..." make start_session` – initialise session artifacts.
+- `make turn_end m="summary"` – checkpoint plan/progress + session meta.
+- `make ci` – run lint, tests, and smoke suite inside the configured adapters.
 
-The helper runs `agents-monitor-loop.sh` with a 45 s poll interval, a 180 s log-heartbeat
-threshold, and a 10 minute runtime limit. The loop exits automatically when no subagents
-are still `running`, when a sandbox exceeds the heartbeat threshold, or when a sandbox
-has been active for more than 10 minutes. Treat loop exit as a mandatory checkpoint:
-investigate the identified subagent immediately, decide whether to let it continue,
-request changes, or halt it, then restart the loop if work remains.
+## 4. Operational Gates (Read-on-Trigger Manuals)
+- **Subagents:** Before launching or monitoring subagents (e.g.
+  `make monitor_subagents`, `subagent_manager ...`), read
+  `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
+- **Merge / Archive / Remote triage:** Prior to running `make merge`,
+  `make archive`, or evaluating unmerged branches, revisit
+  `docs/agents/git-workflow.md`. Merge requests now require an approved senior
+  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
+  committed retrospective report covering the latest marker; overrides use
+  `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
+  must be documented in the progress log.
+- **Environment & Platform diagnostics:** If environment parity is in question
+  (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
+  run the diagnostics described there.
+- **Language adapters & integrations:** When enabling or maintaining Python or
+  Node tooling—or when Codex integration behaviour changes—consult the manuals
+  under `docs/agents/adapters/` and `docs/agents/integrations/`.
+- A directory index lives at `docs/agents/manuals/README.md`; update it when new
+  manuals are introduced.
 
-When a subagent hands work back, you—not the subagent—own the final quality bar. Run
-the necessary checks, review the diff, and only merge into your feature branch when the
-results meet your standards.
-
-### Monitor Loop Exit Protocol
-
-When `make monitor_subagents` exits:
-- **Inspect immediately.** Tail the flagged subagent’s log (`tail -n 50 <log_path>`) and review its plan/progress notebooks to confirm whether it is still active or truly stalled/complete. ANSI escape sequences from editors can make a stale log look “busy”; rely on timestamps, not just visual churn.
-- **Act before restarting.** Provide the next instructions (resume, request changes, or halt) *before* relaunching the monitor loop. Never leave the loop idle under the assumption the subagent is still working.
-- **Ensure panes are cleared.** If you halt a subagent via `subagent_manager cleanup --force`, immediately close any tmux panes/windows it created (e.g., `tmux kill-pane -t <pane_id>`) and verify no Codex processes from that sandbox remain before launching another run.
-- **Record the decision.** Note the intervention in your progress notebook so reviewers understand why the loop paused and what follow-up occurred.
-
-IMPORTANT: At the start of every session, read this AGENTS.md file **and every linked reference** (`docs/agents/core.md`, `docs/agents/git-workflow.md`, `docs/agents/runtime-matrix.md`, `docs/agents/integrations/*`, `docs/agents/adapters/*`, `docs/agents/project/*`). Treat the combined guidance as authoritative; do not modify code, docs, or plans until you have reviewed and understood all linked material. The guardrails and processes described there are mandatory and must be followed throughout the session.
-
-**Primary agent accountability.** The assistant is responsible for executing commands, enforcing guardrails, and keeping the workspace in policy-compliant shape. Users communicate intent in natural language; the assistant translates that intent into concrete commands, performs the required cleanup (e.g., clearing tmux panes after `subagent_manager cleanup --force`), and reports the outcomes. Never assume the user will run shell commands manually.
-
-Before running any other command, execute `make read_bootstrap` to establish the current branch, repo mode, and session phase, then report those findings (including any orphaned notebooks) to the maintainer. Immediately afterwards, open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so your status report reflects the latest objectives, TODOs, and open questions. Check `sessions/` for a same-day entry; if none exists, run `SESSION_PROMPT="..." make start_session` before moving past Recon & Planning.
-
-## Adapters & Integrations
-
-- Python adapter → `docs/agents/adapters/python.md`
-- Node adapter stub → `docs/agents/adapters/node.md`
-- Codex CLI/Cloud integration → `docs/agents/integrations/codex.md`
-
-## Reference
-
-- Phases & guardrails → `docs/agents/core.md`
-- Git workflow → `docs/agents/git-workflow.md`
-- Runtime support matrix → `docs/agents/runtime-matrix.md`
-- Project-specific context → `docs/agents/project/`
-- Worktree verification checklist → `docs/agents/subagent-session-orchestration.md#c-verification--merge`
-
-Need the legacy instructions? See repository history prior to commit
-`docs: capture agents reorg decisions`.
+## 5. Accountability
+- You own final quality. Run the necessary checks, review diffs, and confirm
+  guardrails before asking to merge.
+- Record interventions (e.g., subagent halts, environment failures) in the
+  progress notebook so reviewers can trace decisions.
+- Leave the workspace in policy-compliant shape at hand-off: clean status or
+  documented deltas, updated notebooks, and acknowledged manuals.

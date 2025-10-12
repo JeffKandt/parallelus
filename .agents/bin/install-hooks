@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+quiet=0
+
+usage() {
+  cat <<'HELP'
+Usage: install-hooks [--quiet]
+
+Syncs the managed git hooks from .agents/hooks into .git/hooks.
+HELP
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -q|--quiet)
+      quiet=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "install-hooks: unknown option $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+backup_hook() {
+  local dest="$1"
+  if [[ -f "$dest" ]]; then
+    local backup="$dest.predeploy.$(date -u '+%Y%m%d%H%M%S').bak"
+    cp "$dest" "$backup"
+  fi
+}
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  [[ $quiet -eq 1 ]] || echo "install-hooks: not inside a git repository" >&2
+  exit 0
+fi
+
+hooks_src="$repo_root/.agents/hooks"
+hooks_dst="$repo_root/.git/hooks"
+
+if [[ ! -d "$hooks_src" ]]; then
+  [[ $quiet -eq 1 ]] || echo "install-hooks: no managed hooks directory at $hooks_src" >&2
+  exit 0
+fi
+
+mkdir -p "$hooks_dst"
+
+installed=0
+for hook in "$hooks_src"/*; do
+  [[ -f "$hook" ]] || continue
+  hook_name=$(basename "$hook")
+  backup_hook "$hooks_dst/$hook_name"
+  cp "$hook" "$hooks_dst/$hook_name"
+  chmod +x "$hooks_dst/$hook_name"
+  ((installed++))
+  if [[ $quiet -eq 0 ]]; then
+    echo "[install-hooks] installed $hook_name" >&2
+  fi
+done
+
+if [[ $quiet -eq 0 ]]; then
+  echo "[install-hooks] synced $installed hook(s)" >&2
+fi
+
+exit 0

@@ -35,6 +35,11 @@ fi
 
 cd "$repo_root"
 
+install_hooks="$repo_root/.agents/bin/install-hooks"
+if [[ -x "$install_hooks" ]]; then
+  "$install_hooks" --quiet || true
+fi
+
 if [[ -n $(git status --porcelain) ]]; then
   echo "agents-merge: working tree dirty; commit, stash, or clean before merging" >&2
   exit 1
@@ -49,6 +54,7 @@ if [[ -z "$slug" ]]; then
 fi
 
 feature_branch="feature/$slug"
+slugged_branch="${feature_branch//\//-}"
 
 if ! git show-ref --verify --quiet "refs/heads/$feature_branch"; then
   echo "agents-merge: branch '$feature_branch' not found" >&2
@@ -95,11 +101,182 @@ if [[ -f "$hook_src" ]]; then
   chmod +x "$hook_dst"
 fi
 
-# Run CI checks before switching branches.
+# Resolve senior review artifact (supports optional timestamp suffix).
+resolve_review_file() {
+  local branch="$1"
+  local override="$2"
+  if [[ -n "$override" ]]; then
+    printf '%s' "$override"
+    return
+  fi
+  python3 - "$branch" <<'PY'
+import sys
+from pathlib import Path
+
+branch = sys.argv[1]
+base = branch.replace('/', '-')
+reviews_dir = Path('docs/reviews')
+if not reviews_dir.exists():
+    sys.exit(0)
+
+direct = reviews_dir / f"{base}.md"
+if direct.exists():
+    print(direct)
+    sys.exit(0)
+
+candidates = []
+for path in reviews_dir.glob(f"{base}-*.md"):
+    try:
+        candidates.append((path.stat().st_mtime, path))
+    except FileNotFoundError:
+        continue
+
+if candidates:
+    candidates.sort(reverse=True)
+    print(candidates[0][1])
+PY
+}
+
+check_review() {
+  local file="$1"
+  local branch="$2"
+  local commit_ref="$3"
+  if [[ ! -f "$file" ]]; then
+    echo "agents-merge: senior architect review $file not found." >&2
+    echo "Run the review using .agents/prompts/agent_roles/senior_architect.md and commit the approved report." >&2
+    exit 1
+  fi
+  if ! grep -qi "^Reviewed-Branch:\s*$branch" "$file"; then
+    echo "agents-merge: review $file must include Reviewed-Branch: $branch." >&2
+    exit 1
+  fi
+  if ! grep -qi '^Decision:\s*approved' "$file"; then
+    echo "agents-merge: review $file is not marked Decision: approved." >&2
+    exit 1
+  fi
+  if ! grep -qi '^Reviewed-On:' "$file"; then
+    echo "agents-merge: review $file must include Reviewed-On: <date>." >&2
+    exit 1
+  fi
+  local review_commit
+  review_commit=$(grep -i '^Reviewed-Commit:' "$file" | head -n1 | sed -E 's/Reviewed-Commit:[[:space:]]*//I')
+  review_commit=${review_commit// /}
+  if [[ -z "$review_commit" ]]; then
+    echo "agents-merge: review $file must include Reviewed-Commit: <commit hash>." >&2
+    exit 1
+  fi
+  if [[ -n "$commit_ref" && "$review_commit" != "$commit_ref" ]]; then
+    parent_commit=$(git rev-parse "$commit_ref^" 2>/dev/null || true)
+    if [[ -n "$parent_commit" && "$review_commit" == "$parent_commit" ]]; then
+      diff_names=$(git diff --name-only "$parent_commit" "$commit_ref")
+      if echo "$diff_names" | grep -vq '^docs/reviews/'; then
+        echo "agents-merge: review $file is one commit behind and intervening commit alters non-review files." >&2
+        echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+        exit 1
+      fi
+    else
+      echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref." >&2
+      echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+      exit 1
+    fi
+  fi
+  if grep -Eqi 'Severity:\s*(Blocker|High)' "$file"; then
+    echo "agents-merge: review $file still lists Severity: Blocker/High items." >&2
+    exit 1
+  fi
+}
+
+check_retrospective() {
+  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
+  local reports_dir="$repo_root/docs/self-improvement/reports"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a retrospective marker before merging." >&2
+    exit 1
+  fi
+  if [[ ! -d "$reports_dir" ]]; then
+    echo "agents-merge: retrospective reports directory missing; commit auditor output before merging." >&2
+    exit 1
+  fi
+  local report_path
+  local status=0
+  report_path=$(
+    python3 - "$marker_file" "$reports_dir" "$feature_branch" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+reports_dir = Path(sys.argv[2])
+branch = sys.argv[3]
+
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+match = None
+for path in sorted(reports_dir.glob('*.json')):
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        continue
+    if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+        match = path
+        break
+
+if match is None:
+    print(f"agents-merge: no retrospective report found for marker {marker_ts}", file=sys.stderr)
+    sys.exit(4)
+
+print(match)
+PY
+  ) || status=$?
+  if [[ ${status:-0} -ne 0 || -z "$report_path" ]]; then
+    exit 1
+  fi
+  echo "agents-merge: using retrospective report ${report_path#$repo_root/}" >&2
+  export AGENTS_RETRO_MARKER="$marker_file"
+  export AGENTS_RETRO_REPORT="$report_path"
+}
+
+current_commit=$(git rev-parse HEAD)
+review_file=$(resolve_review_file "$feature_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
+
+if [[ -z "${AGENTS_MERGE_FORCE:-}" ]]; then
+  check_review "$review_file" "$feature_branch" "$current_commit"
+else
+  echo "agents-merge: AGENTS_MERGE_FORCE set; skipping review checks" >&2
+fi
+
+pending_ack=$(grep -Ei 'Severity:\s*(Medium|Low|Info)' "$review_file" || true)
+if [[ -n "$pending_ack" ]]; then
+  if [[ -z "${AGENTS_MERGE_ACK_REVIEW:-}" ]]; then
+    echo "agents-merge: review $review_file notes lower-severity findings:" >&2
+    echo "$pending_ack" >&2
+    echo "Address them or re-run with AGENTS_MERGE_ACK_REVIEW=1 after documenting follow-ups." >&2
+    exit 1
+  fi
+  echo "agents-merge: AGENTS_MERGE_ACK_REVIEW acknowledged; continuing despite lower-severity findings." >&2
+fi
+
 if ! make ci; then
   echo "agents-merge: make ci failed; resolve issues before merging" >&2
   exit 1
 fi
+
+export AGENTS_MERGE_SKIP_HOOK_CI=1
+export AGENTS_MERGE_BRANCH="$feature_branch"
+export AGENTS_MERGE_REVIEW_FILE="$review_file"
+export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
+export AGENTS_MERGE_COMMIT="$current_commit"
+
+check_retrospective
 
 # Determine base branch via agents-detect.
 detect_output="$(.agents/bin/agents-detect)"

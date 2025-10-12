@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""Record turn-end markers for retrospective auditors."""
+
+import json
+import os
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+
+def git_root() -> Path:
+    out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True)
+    return Path(out.strip())
+
+
+def current_branch() -> str:
+    out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True)
+    branch = out.strip()
+    if branch in {"HEAD", ""}:
+        raise SystemExit("retro-marker: detached HEAD not supported")
+    return branch
+
+
+def git_head() -> Optional[str]:
+    try:
+        out = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
+        return out.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def line_count(path: Path) -> int:
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            return sum(1 for _ in fh)
+    except FileNotFoundError:
+        return 0
+
+
+def find_report_for_marker(repo: Path, branch: str, marker_path: Path) -> Path:
+    try:
+        marker = json.loads(marker_path.read_text())
+    except Exception as exc:  # pragma: no cover
+        raise SystemExit(f"retro-marker: unable to parse {marker_path}: {exc}")
+
+    marker_ts = marker.get("timestamp")
+    if not marker_ts:
+        raise SystemExit(f"retro-marker: marker {marker_path} missing timestamp")
+
+    reports_dir = repo / "docs" / "self-improvement" / "reports"
+    if not reports_dir.exists():
+        raise SystemExit(
+            "retro-marker: latest turn not audited; "
+            "run the Retrospective Auditor before make turn_end."
+        )
+
+    for path in sorted(reports_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+        if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+            return path
+
+    raise SystemExit(
+        "retro-marker: latest marker has no matching retrospective report. "
+        "Run the Retrospective Auditor before calling make turn_end again."
+    )
+
+
+def main() -> None:
+    repo = git_root()
+    branch = current_branch()
+    slugged = branch.replace("/", "-")
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    session_id = os.environ.get("SESSION_ID")
+
+    plan_path = repo / "docs" / "plans" / f"{slugged}.md"
+    progress_path = repo / "docs" / "progress" / f"{slugged}.md"
+
+    session_console = None
+    session_console_size = None
+    if session_id:
+        console_candidate = repo / "sessions" / session_id / "console.log"
+        if console_candidate.exists():
+            session_console = str(console_candidate.relative_to(repo))
+            session_console_size = console_candidate.stat().st_size
+
+    markers_dir = repo / "docs" / "self-improvement" / "markers"
+    marker_path = markers_dir / f"{slugged}.json"
+
+    if marker_path.exists() and not os.environ.get("AGENTS_RETRO_SKIP_VALIDATE"):
+        report_path = find_report_for_marker(repo, branch, marker_path)
+        rel_report = report_path.relative_to(repo)
+        print(
+            f"retro-marker: verified retrospective report {rel_report} for previous turn",
+            flush=True,
+        )
+
+    marker = {
+        "timestamp": timestamp,
+        "branch": branch,
+        "head": git_head(),
+        "plan_path": str(plan_path.relative_to(repo)) if plan_path.exists() else None,
+        "plan_lines": line_count(plan_path),
+        "progress_path": str(progress_path.relative_to(repo)) if progress_path.exists() else None,
+        "progress_lines": line_count(progress_path),
+        "session_id": session_id,
+        "session_console": session_console,
+        "session_console_size": session_console_size,
+    }
+
+    markers_dir.mkdir(parents=True, exist_ok=True)
+    marker_path.write_text(json.dumps(marker, indent=2) + "\n", encoding="utf-8")
+
+    print(f"retro-marker: recorded marker for {branch} at {timestamp}")
+
+
+if __name__ == "__main__":
+    main()

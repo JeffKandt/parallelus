@@ -1,9 +1,27 @@
 # Subagent Session Orchestration
 
-This document describes how a primary Codex CLI session can delegate work to an
+**Read this manual in full before launching or monitoring subagents.** Per the
+core guardrails in `AGENTS.md`, you must acknowledge in the branch progress log
+that you reviewed this document prior to running `make monitor_subagents`,
+`subagent_manager`, or any related helper.
+
+This manual describes how a primary Codex CLI session can delegate work to an
 interactive "subagent" while maintaining traceability. Use this flow when
 non-interactive execution is unavailable or when you want a human-supervised
 agent to take ownership of a scoped task.
+
+> **Senior architect reviews:** Launch them as **synchronous subagents** so the
+> primary agent stays focused on review findings. Populate the configuration
+> header in `.agents/prompts/agent_roles/senior_architect.md` (defaults in
+> `.agents/config/senior_architect.yaml`) before launch. The subagent operates
+> read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
+
+> **Retrospective audits:** Before each `make turn_end`, launch the Retrospective
+> Auditor prompt (`.agents/prompts/agent_roles/agent_auditor.md`). The auditor
+> works read-only, analyses evidence starting from the marker recorded in
+> `docs/self-improvement/markers/<branch>.json`, and returns a JSON report to be
+> saved under
+> `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
 
 ## 1. Overview
 

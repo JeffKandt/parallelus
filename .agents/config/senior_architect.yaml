@@ -1,0 +1,7 @@
+model: gpt-5-codex
+sandbox_mode: workspace-write
+approval_policy: auto
+session_mode: synchronous
+additional_constraints: ""
+allowed_writes:
+  - docs/reviews/

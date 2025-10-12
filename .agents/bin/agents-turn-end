@@ -104,3 +104,8 @@ PY
 fi
 
 echo "agents-turn-end: recorded checkpoint for $current_branch at $timestamp"
+
+retro_marker="$repo_root/.agents/bin/retro-marker"
+if [[ -x "$retro_marker" ]]; then
+  "$retro_marker" || true
+fi

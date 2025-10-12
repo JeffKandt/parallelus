@@ -35,6 +35,11 @@ fi
 
 cd "$repo_root"
 
+install_hooks="$repo_root/.agents/bin/install-hooks"
+if [[ -x "$install_hooks" ]]; then
+  "$install_hooks" --quiet || true
+fi
+
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "agents-ensure-feature: working tree dirty; commit, stash, or clean first" >&2
   exit 1

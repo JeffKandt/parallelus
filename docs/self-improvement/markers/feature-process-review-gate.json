@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-12T10:20:26.400945+00:00",
+  "branch": "feature/process-review-gate",
+  "head": "70cd2e300d88a6c8759998038992158c3a02fb67",
+  "plan_path": "docs/plans/feature-process-review-gate.md",
+  "plan_lines": 18,
+  "progress_path": "docs/progress/feature-process-review-gate.md",
+  "progress_lines": 16,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}

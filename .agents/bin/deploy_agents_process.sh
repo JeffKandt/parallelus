@@ -216,10 +216,70 @@ prepare_destination() {
     fi
 }
 
+diff_exists() {
+    local src="$1"
+    local dest="$2"
+    if [[ ! -e "$dest" ]]; then
+        return 1
+    fi
+    local output
+    if [[ -d "$src" ]]; then
+        output=$(rsync -rcni --exclude '.git' "$src/" "$dest/" 2>/dev/null || true)
+    else
+        output=$(rsync -rcni "$src" "$dest" 2>/dev/null || true)
+    fi
+    [[ -n "$output" ]]
+}
+
+warn_overlay_overwrites() {
+    if [[ "$MODE" != "overlay" ]]; then
+        return
+    fi
+    local collisions=()
+    local path
+    for path in AGENTS.md .agents docs/agents docs/reviews; do
+        if diff_exists "$SOURCE_REPO/$path" "$TARGET_DIR/$path"; then
+            collisions+=("$path")
+        fi
+    done
+    if [[ ${#collisions[@]} -eq 0 ]]; then
+        return
+    fi
+    warn "Overlay will refresh existing paths: ${collisions[*]}"
+    warn "Backups will be written with the .bak suffix. Merge prior guidance before deleting them."
+    if [[ $FORCE -eq 0 ]]; then
+        fail "Re-run with --force after reviewing the warning above"
+    fi
+}
+
+backup_existing_git_hooks() {
+    local git_hooks="$TARGET_DIR/.git/hooks"
+    if [[ ! -d "$git_hooks" ]]; then
+        return
+    fi
+    local agents_hooks="$TARGET_DIR/.agents/hooks"
+    mkdir -p "$agents_hooks"
+    local ts
+    ts=$(date -u '+%Y%m%d%H%M%S')
+    local backed_up=0
+    local hook_path hook_name dest
+    for hook_path in "$git_hooks"/*; do
+        [[ -f "$hook_path" ]] || continue
+        hook_name=$(basename "$hook_path")
+        [[ "$hook_name" == *.sample ]] && continue
+        dest="$agents_hooks/${hook_name}.predeploy.$ts.bak"
+        cp "$hook_path" "$dest"
+        backed_up=1
+    done
+    if [[ $backed_up -eq 1 ]]; then
+        warn "Preserved existing .git/hooks scripts under .agents/hooks/*.predeploy.*.bak"
+    fi
+}
+
 rsync_copy() {
     local src="$1"
     local dest="$2"
-    local opts=(-a)
+    local opts=(-a --no-perms --no-group --no-owner)
     if [[ "$MODE" == "overlay" ]]; then
         opts+=(--backup --suffix=.bak)
     fi
@@ -252,12 +312,49 @@ EOF
 
 copy_base_assets() {
     info "Copying agent process assets"
+    backup_existing_git_hooks
     rsync_copy "$SOURCE_REPO/AGENTS.md" "$TARGET_DIR/AGENTS.md"
     rsync_copy "$SOURCE_REPO/.agents/" "$TARGET_DIR/.agents/"
     rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"
+    rsync_copy "$SOURCE_REPO/docs/reviews/" "$TARGET_DIR/docs/reviews/"
     mkdir -p "$TARGET_DIR/sessions"
     ensure_dir_with_readme "$TARGET_DIR/docs/plans" "Branch Plans" "feature/my-feature.md" "plan"
     ensure_dir_with_readme "$TARGET_DIR/docs/progress" "Branch Progress" "feature/my-feature.md" "progress"
+}
+
+install_hooks_into_repo() {
+    if [[ ! -d "$TARGET_DIR/.git" ]]; then
+        return
+    fi
+    info "Installing managed git hooks"
+    (cd "$TARGET_DIR" && .agents/bin/install-hooks --quiet || true)
+}
+
+annotate_agents_overlay() {
+    if [[ "$MODE" != "overlay" ]]; then
+        return
+    fi
+    local agents_file="$TARGET_DIR/AGENTS.md"
+    if [[ ! -f "$agents_file" ]]; then
+        return
+    fi
+    python3 - "$agents_file" <<'PY'
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+
+agents_path = Path(sys.argv[1])
+notice = (
+    f"> **Overlay Notice ({datetime.now(timezone.utc).date()})**\n"
+    "> This repository now contains a refreshed AGENTS.md. Backups (.bak) were created for every overwritten file (for example AGENTS.md.bak). "
+    "Merge any project-specific instructions from those backups into the new guardrails, record the outcome in the branch plan, then remove this notice.\n\n"
+)
+
+text = agents_path.read_text()
+if notice in text:
+    sys.exit(0)
+agents_path.write_text(f"{notice}{text}")
+PY
 }
 
 update_agentrc() {
@@ -605,7 +702,10 @@ main() {
     echo " Target: $TARGET_DIR"
     echo " Languages: $LANGS"
     prepare_destination
+    warn_overlay_overwrites
     copy_base_assets
+    install_hooks_into_repo
+    annotate_agents_overlay
     update_agentrc
     ensure_makefile
     ensure_readme
