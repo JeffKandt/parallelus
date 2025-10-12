@@ -7,8 +7,8 @@
 
 ## Checklist
 - [x] Persist senior architect defaults in repo config and reference them from the prompt header.
-- [x] Replace automated self-retrospective with synchronous marker/coach/auditor workflow.
-- [x] Create agent_coach and agent_auditor prompts with read-only constraints.
+- [x] Replace automated self-retrospective with synchronous marker/auditor workflow.
+- [x] Create a read-only agent_auditor prompt to collect and analyse turn evidence.
 - [x] Gate merge on retrospective reports corresponding to the latest marker.
 - [x] Strengthen deploy safety for hooks and identical overlays.
 - [ ] Validate updated hooks and deployment flow (lint/tests as needed).

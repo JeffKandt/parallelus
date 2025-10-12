@@ -73,8 +73,8 @@ commands beyond `make read_bootstrap`.
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
 - `make turn_end` now records a marker in `docs/self-improvement/markers/`.
-  Immediately afterwards, launch the Retrospective Auditor (see
-  `.agents/prompts/agent_roles/agent_coach.md`). Save the JSON response to
+  Immediately afterwards, launch the Retrospective Auditor prompt (see
+  `.agents/prompts/agent_roles/agent_auditor.md`). Save the JSON response to
   `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
   any follow-up TODOs into the branch plan before requesting a merge.
 

@@ -17,10 +17,10 @@ agent to take ownership of a scoped task.
 > read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
 
 > **Retrospective audits:** After each `make turn_end`, launch the Retrospective
-> Coach prompt (`.agents/prompts/agent_roles/agent_coach.md`) to coordinate the
-> synchronous auditor. The auditor works read-only, analyses evidence starting
-> from the marker recorded in `docs/self-improvement/markers/<branch>.json`, and
-> returns a JSON report to be saved under
+> Auditor prompt (`.agents/prompts/agent_roles/agent_auditor.md`). The auditor
+> works read-only, analyses evidence starting from the marker recorded in
+> `docs/self-improvement/markers/<branch>.json`, and returns a JSON report to be
+> saved under
 > `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
 
 ## 1. Overview

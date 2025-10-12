@@ -8,9 +8,9 @@
 > - `Additional Constraints:` Read-only; respond with JSON only.
 
 Operate strictly read-only. Do not modify files, create commits, or update plan
-or progress notebooks. Your single responsibility is to analyse the evidence
-provided by the coach and return a JSON report describing any issues observed
-during the turn.
+or progress notebooks. Your single responsibility is to gather evidence based
+on the marker file, analyse the most recent turn, and return a JSON report
+describing any issues observed.
 
 ## Required JSON Schema
 
@@ -38,7 +38,7 @@ Return an object with the following fields:
 ```
 
 - `branch` must match the branch being audited.
-- `marker_timestamp` must equal the timestamp from the coach’s marker file.
+- `marker_timestamp` must equal the timestamp recorded in the marker file.
 - Each issue needs `root_cause`, `mitigation`, `prevention`, and `evidence`.
 - Use the `follow_ups` array to list TODOs that the main agent must carry into
   the branch plan.
