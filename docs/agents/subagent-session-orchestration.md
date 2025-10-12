@@ -1,9 +1,20 @@
 # Subagent Session Orchestration
 
-This document describes how a primary Codex CLI session can delegate work to an
+**Read this manual in full before launching or monitoring subagents.** Per the
+core guardrails in `AGENTS.md`, you must acknowledge in the branch progress log
+that you reviewed this document prior to running `make monitor_subagents`,
+`subagent_manager`, or any related helper.
+
+This manual describes how a primary Codex CLI session can delegate work to an
 interactive "subagent" while maintaining traceability. Use this flow when
 non-interactive execution is unavailable or when you want a human-supervised
 agent to take ownership of a scoped task.
+
+> **Senior architect reviews:** Launch them as **synchronous subagents** so the
+> primary agent stays focused on review findings. Populate the configuration
+> header in `.agents/prompts/agent_roles/senior_architect.md` (model, sandbox
+> mode, approval policy) before launch and archive the approved report under
+> `docs/reviews/feature-<slug>-<date>.md`.
 
 ## 1. Overview
 

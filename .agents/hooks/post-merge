@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || exit 0)
+
+cat >&2 <<'EOF'
+post-merge: Run `make read_bootstrap`, confirm session artifacts, and update
+plan/progress notebooks before continuing. If you merged a feature branch,
+return to Recon & Planning on the base branch.
+EOF
+
+exit 0

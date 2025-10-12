@@ -4,6 +4,136 @@ set -euo pipefail
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || exit 0)
 cd "$repo_root"
 
+if [[ -n "${AGENTS_MERGE_FORCE:-}" ]]; then
+  echo "pre-merge-commit: AGENTS_MERGE_FORCE set; skipping enforcement." >&2
+  exit 0
+fi
+
+if [[ -z "${AGENTS_MERGE_SKIP_HOOK_CI:-}" ]]; then
+  if ! make ci >/dev/null; then
+    echo "pre-merge-commit: make ci failed; resolve issues before merging." >&2
+    echo "(Override with AGENTS_MERGE_FORCE=1 git merge --no-ff ... if absolutely necessary.)" >&2
+    exit 1
+  fi
+fi
+
+merge_branch="${AGENTS_MERGE_BRANCH:-}"
+if [[ -z "$merge_branch" && -f .git/MERGE_MSG ]]; then
+  merge_branch=$(sed -nE "s/^Merge branch '([^']+)'/\1/p" .git/MERGE_MSG | head -n1)
+fi
+
+resolved_review_file() {
+  local branch="$1"
+  local file="$2"
+  if [[ -n "$file" ]]; then
+    printf '%s' "$file"
+    return
+  fi
+  if [[ -n "$branch" ]]; then
+    python3 - "$branch" <<'PY'
+import sys
+from pathlib import Path
+
+branch = sys.argv[1]
+base = branch.replace('/', '-')
+reviews_dir = Path('docs/reviews')
+if not reviews_dir.exists():
+    sys.exit(0)
+
+direct = reviews_dir / f"{base}.md"
+if direct.exists():
+    print(direct)
+    sys.exit(0)
+
+candidates = []
+for path in reviews_dir.glob(f"{base}-*.md"):
+    try:
+        candidates.append((path.stat().st_mtime, path))
+    except FileNotFoundError:
+        continue
+
+if candidates:
+    candidates.sort(reverse=True)
+    print(candidates[0][1])
+PY
+    return
+  fi
+  local staged=()
+  mapfile -t staged < <(git diff --cached --name-only -- 'docs/reviews/*.md')
+  if [[ ${#staged[@]} -eq 1 ]]; then
+    printf '%s' "${staged[0]}"
+    return
+  fi
+  printf ''
+}
+
+review_file=$(resolved_review_file "$merge_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
+
+if [[ -z "$review_file" || ! -f "$review_file" ]]; then
+  echo "pre-merge-commit: senior architect review missing." >&2
+  echo "Expected docs/reviews/<branch>.md with Decision: approved." >&2
+  echo "Set AGENTS_MERGE_REVIEW_FILE=/path/to/review.md or AGENTS_MERGE_FORCE=1 to override." >&2
+  exit 1
+fi
+
+if [[ -n "$merge_branch" ]]; then
+  if ! grep -qi "^Reviewed-Branch:\s*$merge_branch" "$review_file"; then
+    echo "pre-merge-commit: review $review_file does not reference branch $merge_branch." >&2
+    echo "Update the review or override via AGENTS_MERGE_FORCE=1." >&2
+    exit 1
+  fi
+fi
+
+if ! grep -qi '^Decision:\s*approved' "$review_file"; then
+  echo "pre-merge-commit: review $review_file is not marked Decision: approved." >&2
+  echo "Resolve review feedback or override via AGENTS_MERGE_FORCE=1." >&2
+  exit 1
+fi
+
+review_commit=$(grep -i '^Reviewed-Commit:' "$review_file" | head -n1 | sed -E 's/Reviewed-Commit:[[:space:]]*//I')
+review_commit=${review_commit// /}
+if [[ -z "$review_commit" ]]; then
+  echo "pre-merge-commit: review $review_file must include Reviewed-Commit: <hash>." >&2
+  echo "Add the commit hash or override via AGENTS_MERGE_FORCE=1." >&2
+  exit 1
+fi
+
+expected_commit="${AGENTS_MERGE_COMMIT:-}"
+if [[ -z "$expected_commit" && -n "$merge_branch" ]]; then
+  expected_commit=$(git rev-parse "$merge_branch" 2>/dev/null || true)
+fi
+
+if [[ -n "$expected_commit" && "$review_commit" != "$expected_commit" ]]; then
+  echo "pre-merge-commit: review $review_file covers $review_commit but merge input is $expected_commit." >&2
+  echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
+  exit 1
+fi
+
+if grep -Eqi 'Severity:\s*(Blocker|High)' "$review_file"; then
+  echo "pre-merge-commit: high/blocker findings remain in $review_file." >&2
+  echo "Address outstanding issues or override via AGENTS_MERGE_FORCE=1." >&2
+  exit 1
+fi
+
+pending_ack=$(grep -Ei 'Severity:\s*(Medium|Low|Info)' "$review_file" || true)
+if [[ -n "$pending_ack" ]]; then
+  if [[ -z "${AGENTS_MERGE_ACK_REVIEW:-}" ]]; then
+    echo "pre-merge-commit: review $review_file notes additional findings:" >&2
+    echo "$pending_ack" >&2
+    echo "Document resolutions or re-run with AGENTS_MERGE_ACK_REVIEW=1 to proceed." >&2
+    exit 1
+  else
+    echo "pre-merge-commit: AGENTS_MERGE_ACK_REVIEW acknowledged remaining findings." >&2
+  fi
+fi
+
+review_date=$(grep -i '^Reviewed-On:' "$review_file" || true)
+if [[ -z "$review_date" ]]; then
+  echo "pre-merge-commit: review $review_file must include Reviewed-On: <date>." >&2
+  echo "Add the field or override via AGENTS_MERGE_FORCE=1." >&2
+  exit 1
+fi
+
 shopt -s nullglob
 plan_files=(docs/plans/feature-*.md)
 progress_files=(docs/progress/feature-*.md)

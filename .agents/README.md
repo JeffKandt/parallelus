@@ -6,10 +6,12 @@ This directory packages the automation that keeps the Parallelus agent workflow 
 - `agentrc` – central configuration (paths for plans/progress/session logs, adapter list, git defaults, alert text).
 - `adapters/` – language-specific helpers (`python`, `node`, `swift`) with `env.sh`, `lint.sh`, `test.sh`, and formatter shims.
 - `bin/` – executable guardrails (`agents-detect`, `agents-ensure-feature`, `agents-session-start`, etc.) plus orchestration utilities like `launch_subagent.sh`.
-- `hooks/` – git hooks installed by the process (currently `pre-merge-commit`).
+- `hooks/` – managed git hooks (`pre-commit`, `pre-merge-commit`, `post-merge`).
 - `make/` – GNU Make fragments wired into the root `Makefile` (general agents targets and language additions).
 - `prompts/` – templates for smoke prompts and scope text used by automation.
 - `tests/` – smoke test harness (`smoke.sh`) that exercises the critical helpers.
+- `../docs/reviews/` (in the repo root) stores approved senior architect
+  reports referenced by the merge guardrails.
 
 ## Key Executables (`bin/`)
 - `agents-detect` – detects repo mode, branch status, orphaned notebooks; wrapped by `make read_bootstrap`.
@@ -18,6 +20,7 @@ This directory packages the automation that keeps the Parallelus agent workflow 
 - `agents-turn-end` – checkpoint helper invoked via `make turn_end m="..."`.
 - `agents-archive-branch` / `agents-merge` – guardrailed archival and merge flows; do not call raw git commands instead.
 - `deploy_agents_process.sh` – installs or refreshes this agents toolkit in downstream repos via `./deploy_agents_process.sh --repo <path>`.
+- `install-hooks` – synchronises `.agents/hooks/` into `.git/hooks/`; called by bootstrap, merge, and deployment flows.
 - `process_self_test.sh` – runs internal validation against a target repo to confirm bootstrap steps succeed.
 
 ## Adapter Notes (`adapters/`)

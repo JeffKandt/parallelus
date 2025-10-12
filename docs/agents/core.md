@@ -1,7 +1,9 @@
-# Core Agent Process
+# Core Agent Process (Manual)
 
-This guide captures the portable guardrails every agent session follows, from
-initial recon through turn hand-off and merge closure.
+Read this manual when you need deeper context or examples for the core
+guardrails defined in `AGENTS.md`. The summary in `AGENTS.md` remains the
+authoritative checklist at session start; acknowledge this manual in your
+progress log when you consult it for open questions or training.
 
 ## 1. Phases & Mandatory Checks
 
@@ -112,15 +114,23 @@ Only after completing all six items may you begin editing tracked files.
 
 ## 5. Turn-End & Session-End Flow
 
+If a conversation goes idle and a new request arrives later—especially if it
+changes focus—run `make turn_end m="..."` **before** starting the new work.
+That closes the prior turn so artifacts stay sequenced.
+
 ### Turn-End Validation (run before replying to the user)
 - Progress log reflects current state (append timestamped entry).
-- Session summary updated with turn notes.
+- Session summary (`sessions/<ID>/summary.md`) updated with turn notes.
 - `meta.json` refreshed with latest timestamp.
 - No auto-commits; user decides.
+- Working tree either clean or containing only intentional changes noted in the
+  progress log.
 - Fire “ready” audible alert if work block >5s.
 
-Use `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to append
-structured entries to the branch progress log, branch plan, and session summary.
+Run `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to perform
+these updates in one step. The helper appends to the branch progress log and
+plan notebooks (when present), updates the session summary, and touches
+`meta.json`; supply a descriptive message so reviewers understand the outcome.
 
 ### Session Wrap (feature complete)
 - Add end timestamp & duration to `meta.json`.

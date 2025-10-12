@@ -216,10 +216,31 @@ prepare_destination() {
     fi
 }
 
+warn_overlay_overwrites() {
+    if [[ "$MODE" != "overlay" ]]; then
+        return
+    fi
+    local collisions=()
+    local path
+    for path in AGENTS.md .agents docs/agents docs/reviews; do
+        if [[ -e "$TARGET_DIR/$path" ]]; then
+            collisions+=("$path")
+        fi
+    done
+    if [[ ${#collisions[@]} -eq 0 ]]; then
+        return
+    fi
+    warn "Overlay will refresh existing paths: ${collisions[*]}"
+    warn "Backups will be written with the .bak suffix. Merge prior guidance before deleting them."
+    if [[ $FORCE -eq 0 ]]; then
+        fail "Re-run with --force after reviewing the warning above"
+    fi
+}
+
 rsync_copy() {
     local src="$1"
     local dest="$2"
-    local opts=(-a)
+    local opts=(-a --no-perms --no-group --no-owner)
     if [[ "$MODE" == "overlay" ]]; then
         opts+=(--backup --suffix=.bak)
     fi
@@ -255,9 +276,45 @@ copy_base_assets() {
     rsync_copy "$SOURCE_REPO/AGENTS.md" "$TARGET_DIR/AGENTS.md"
     rsync_copy "$SOURCE_REPO/.agents/" "$TARGET_DIR/.agents/"
     rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"
+    rsync_copy "$SOURCE_REPO/docs/reviews/" "$TARGET_DIR/docs/reviews/"
     mkdir -p "$TARGET_DIR/sessions"
     ensure_dir_with_readme "$TARGET_DIR/docs/plans" "Branch Plans" "feature/my-feature.md" "plan"
     ensure_dir_with_readme "$TARGET_DIR/docs/progress" "Branch Progress" "feature/my-feature.md" "progress"
+}
+
+install_hooks_into_repo() {
+    if [[ ! -d "$TARGET_DIR/.git" ]]; then
+        return
+    fi
+    info "Installing managed git hooks"
+    (cd "$TARGET_DIR" && .agents/bin/install-hooks --quiet || true)
+}
+
+annotate_agents_overlay() {
+    if [[ "$MODE" != "overlay" ]]; then
+        return
+    fi
+    local agents_file="$TARGET_DIR/AGENTS.md"
+    if [[ ! -f "$agents_file" ]]; then
+        return
+    fi
+    python3 - "$agents_file" <<'PY'
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+
+agents_path = Path(sys.argv[1])
+notice = (
+    f"> **Overlay Notice ({datetime.now(timezone.utc).date()})**\n"
+    "> This repository now contains a refreshed AGENTS.md. Backups (.bak) were created for every overwritten file (for example AGENTS.md.bak). "
+    "Merge any project-specific instructions from those backups into the new guardrails, record the outcome in the branch plan, then remove this notice.\n\n"
+)
+
+text = agents_path.read_text()
+if notice in text:
+    sys.exit(0)
+agents_path.write_text(f"{notice}{text}")
+PY
 }
 
 update_agentrc() {
@@ -605,7 +662,10 @@ main() {
     echo " Target: $TARGET_DIR"
     echo " Languages: $LANGS"
     prepare_destination
+    warn_overlay_overwrites
     copy_base_assets
+    install_hooks_into_repo
+    annotate_agents_overlay
     update_agentrc
     ensure_makefile
     ensure_readme
