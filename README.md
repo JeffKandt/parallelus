@@ -186,6 +186,9 @@ gate (merge, diagnostics, subagents, etc.) triggers.
   `continuous_improvement_auditor`). Temporarily export
   `AGENTS_RETRO_SKIP_VALIDATE=1` if you must bypass the check (document the
   rationale in the progress log).
+- `AUDIBLE_ALERT_VOICE` and `AUDIBLE_ALERT_REQUIRE_TTY` control how
+  `.agents/bin/agents-alert` emits notifications when running in a tmux/non-TTY
+  session.
 
 ---
 
