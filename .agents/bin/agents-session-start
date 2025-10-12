@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-session-start
+
+Creates a new session directory under ${SESSION_DIR} (configurable via .agents/agentrc)
+and emits shell exports for SESSION_ID/SESSION_DIR.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+
+PYTHON_BIN="${PYTHON:-python3}"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN=python
+  else
+    echo 'agents-session-start: python3 not found; activate your virtualenv or set PYTHON' >&2
+    exit 1
+  fi
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+next_id_from_progress() {
+  local last last_dir max_id
+  last="$(grep -Eo '^##[[:space:]]*Session[[:space:]]+([0-9]+)' docs/PROGRESS.md 2>/dev/null | tail -1 | awk '{print $3}' || true)"
+  last_dir="$(ls -1 "$SESSION_DIR" 2>/dev/null | grep -E '^[0-9]+' | sort | tail -1 || true)"
+  if [[ -n "${last_dir:-}" ]]; then
+    last_dir="${last_dir%%-*}"
+  fi
+  max_id=0
+  if [[ -n "${last:-}" ]]; then
+    max_id=$((10#$last))
+  fi
+  if [[ -n "${last_dir:-}" && 10#$last_dir -gt $max_id ]]; then
+    max_id=$((10#$last_dir))
+  fi
+  if [[ $max_id -gt 0 ]]; then
+    printf "%03d" "$((max_id + 1))"
+  else
+    date +%Y%m%d-%H%M%S
+  fi
+}
+
+SID="${SESSION_ID:-$(next_id_from_progress)}"
+SID_BASE="$SID"
+SID_SUFFIX=""
+
+if [[ -z "${SESSION_ID:-}" ]]; then
+  if [[ -n "${SESSION_SUFFIX:-}" ]]; then
+    SID_SUFFIX="$SESSION_SUFFIX"
+  else
+    SID_SUFFIX="$("$PYTHON_BIN" - <<'PY'
+import datetime
+import re
+import uuid
+
+stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
+rand = uuid.uuid4().hex[:6]
+suffix = f"{stamp}-{rand}"
+suffix = re.sub(r"[^A-Za-z0-9_-]", "-", suffix)
+print(suffix)
+PY
+)"
+  fi
+  SID_SUFFIX="$(printf '%s' "$SID_SUFFIX" | sed -E 's/-{2,}/-/g; s/^-+//; s/-+$//')"
+  if [[ -n "$SID_SUFFIX" ]]; then
+    SID="${SID_BASE}-${SID_SUFFIX}"
+  else
+    SID_SUFFIX=""
+  fi
+fi
+
+SDIR="$ROOT/${SESSION_DIR%/}/$SID"
+mkdir -p "$SDIR" "$SDIR/artifacts"
+
+PYVER="$($PYTHON_BIN -V 2>&1 || true)"
+TORCH_VER="$(${PYTHON_BIN} - <<'PY' 2>/dev/null || true
+try:
+  import torch
+  print(getattr(torch, "__version__", "n/a"))
+except Exception:
+  print("n/a")
+PY
+)"
+MPS_AVAIL="$(${PYTHON_BIN} - <<'PY' 2>/dev/null || true
+import json
+try:
+  import torch
+  value = bool(getattr(torch.backends, "mps", None) and torch.backends.mps.is_available())
+except Exception:
+  value = False
+print(json.dumps(value))
+PY
+)"
+SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "n/a")"
+STARTED="$("$PYTHON_BIN" - <<'PY' 2>/dev/null || true
+import datetime
+print(datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat())
+PY
+)"
+if [[ -z "$STARTED" ]]; then
+  STARTED="$(date -u +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date +%s)"
+fi
+
+PROMPT_DEFAULT="Bootstrap a new session and continue."
+PROMPT_TEXT=""
+if [[ -n "${SESSION_PROMPT_FILE:-}" && -f "${SESSION_PROMPT_FILE}" ]]; then
+  PROMPT_TEXT="$(<"${SESSION_PROMPT_FILE}")"
+elif [[ -n "${SESSION_PROMPT:-}" ]]; then
+  PROMPT_TEXT="$SESSION_PROMPT"
+fi
+
+cat > "$SDIR/meta.json" <<JSON
+{
+  "session_id": "$SID",
+  "session_base_id": "$SID_BASE",
+  "session_suffix": "$SID_SUFFIX",
+  "started_at": "$STARTED",
+  "git_sha": "$SHA",
+  "env": {
+    "python": "$PYVER",
+    "torch": "$TORCH_VER",
+    "mps_available": $MPS_AVAIL
+  }
+}
+JSON
+
+if [[ -n "$PROMPT_TEXT" ]]; then
+  printf "%s\n" "$PROMPT_TEXT" > "$SDIR/prompt.txt"
+elif [[ ! -f "$SDIR/prompt.txt" ]]; then
+  printf "%s\n" "$PROMPT_DEFAULT" > "$SDIR/prompt.txt"
+fi
+
+if [[ ! -f "$SDIR/summary.md" ]]; then
+  printf "# Session %s\n\n- Started: %s\n\n## Notes\n\n" "$SID" "$STARTED" > "$SDIR/summary.md"
+fi
+
+if [[ -d "out" && ! -e "$SDIR/artifacts" ]]; then
+  ln -snf "../../out" "$SDIR/artifacts"
+fi
+
+printf "export SESSION_ID='%s'\n" "$SID"
+printf "export SESSION_DIR='%s'\n" "$SDIR"
+
+if [[ -z "${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ]]; then
+  if [[ -z "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
+    tmux_env="$(tmux display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"
+    if [[ -n "$tmux_env" ]]; then
+      printf "export TMUX='%s'\n" "$tmux_env"
+    fi
+  fi
+fi
+
+printf "echo \"Session %s at %s\"\n" "$SID" "$SDIR"

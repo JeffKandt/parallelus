@@ -1,0 +1,26 @@
+Process Smoke Test Prompt
+=========================
+
+Context:
+- You are operating inside a freshly scaffolded repository that already contains the Parallelus agent process docs and helpers.
+- Work autonomously using the documented guardrails (AGENTS.md and linked references) without repeating them here.
+
+Objective:
+- Execute the following checklist, working strictly in order. Items tagged with "➜ checkpoint" require you to follow the mandatory checkpoint cadence before continuing.
+
+Checklist:
+1. [ ] Run `make read_bootstrap` to confirm repository state.
+2. [ ] Create a feature branch by running `make bootstrap slug=process-smoke` ➜ checkpoint
+3. [ ] Start a session with the prompt "Process smoke test scenario" ➜ checkpoint
+4. [ ] Edit `README.md` to add a one-line "Smoke test updated at <date>" note under the Quick Start heading ➜ checkpoint
+5. [ ] Update the branch plan to reflect the README change and mark the relevant task complete.
+6. [ ] Append a progress log entry summarising the work so far ➜ checkpoint
+7. [ ] Run `make ci` and resolve any issues ➜ checkpoint
+8. [ ] Merge the feature branch using `make merge slug=process-smoke` and ensure notebooks are cleaned up.
+9. [ ] Confirm `git status` is clean and no feature notebooks remain.
+
+Scope:
+- Do not make additional edits beyond what is necessary to satisfy the checklist.
+- Leave the repository ready for handoff once all tasks are complete.
+- If you ever believe you are finished, double-check the checklist and branch state; only stop once everything is satisfied and you have merged back to the base branch.
+- If you catch yourself waiting for a response, assume the answer is “Continue” and keep working through the next step automatically.

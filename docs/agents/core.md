@@ -1,0 +1,161 @@
+# Core Agent Process
+
+This guide captures the portable guardrails every agent session follows, from
+initial recon through turn hand-off and merge closure.
+
+## 1. Phases & Mandatory Checks
+
+### Recon & Planning (read-only)
+- Run `make read_bootstrap` immediately to detect repo mode, current branch, and outstanding notebooks; relay the branch/phase status to the maintainer before proceeding.
+- Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
+- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
+- Inspect repo state, answer questions, plan next moves.
+- Do **not** modify code, docs, or plans, and skip bootstrap helpers.
+
+### Transition Checklist (from recon to editing)
+Trigger as soon as you intend to change any tracked file.
+1. Run repository detection: `eval "$(.agents/bin/agents-detect)"` or the equivalent `make read_bootstrap` target.
+2. Create/switch to a feature branch via `make bootstrap slug=<slug>`.
+3. Export `SESSION_PROMPT` (optional) and run `make start_session` to capture the turn context.
+4. Update branch plan/progress notebooks with objectives before editing files.
+5. Run environment diagnostics (see §3) and confirm readiness.
+6. Commit the initialized plan/progress notebooks (and session metadata) so future contributors inherit scope, diagnostics, and starting context.
+
+### Active Execution (editing & validation)
+- Follow checkpoint cadence (plan, progress log, commits) after every meaningful unit of work.
+- Keep audible-alert guardrail active (see below).
+
+Skipping these steps causes inconsistent state, missing logs, and fragile merge workflows.
+
+
+### Recon & Planning (read-only)
+
+## Recon & Planning (read-only)
+- Run `make read_bootstrap` immediately to detect repo mode, current branch, and outstanding notebooks; relay the branch/phase status to the maintainer before proceeding.
+- Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
+- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
+- Inspect repo state, answer questions, plan next moves.
+- Do **not** modify code, docs, or plans, and skip bootstrap helpers.
+
+### Transition Checklist (from recon to editing)
+Trigger as soon as you intend to change any tracked file.
+1. Run repository detection: `eval "$(.agents/bin/agents-detect)"` or the
+   equivalent `make read_bootstrap` target.
+2. Create/switch to a feature branch via `make bootstrap slug=<slug>`. **If `make bootstrap` (or any bootstrap step) exits non-zero, stop immediately, describe the failure, and wait for the user to resolve it. Do not create or switch branches manually until the command succeeds with a clean tree.**
+3. Export `SESSION_PROMPT` (optional) and run `make start_session` to capture the
+   turn context.
+4. Update branch plan/progress notebooks with objectives before editing files.
+5. Run environment diagnostics (see §3) and confirm readiness.
+
+## Active Execution (editing & validation)
+- Follow checkpoint cadence (plan, progress log, commits) after every meaningful
+  unit of work.
+- Keep audible-alert guardrail active (see below).
+- When subagents are running, keep the monitor loop active via
+  `make monitor_subagents` (45 s poll interval, 180 s heartbeat threshold,
+  600 s runtime threshold). The loop exits when no subagents remain, when a sandbox
+  stops logging inside the heartbeat window, or when a sandbox has been active for
+  ten minutes. Treat loop exit as a mandatory checkpoint: review the flagged sandbox,
+  issue new instructions or halt it as needed, log the intervention, and only then restart the loop.
+
+Skipping these steps causes inconsistent state, missing logs, and fragile merge
+workflows.
+
+### Session Continuity Check (always Step 1)
+Run the quick audit before touching anything:
+```bash
+git status --short --branch
+ls -1 sessions/ | tail -5
+ls docs/progress/ | tail -5
+ls docs/plans/ | tail -5
+```
+Use the output to determine whether you are resuming an existing feature or
+starting fresh (Recon & Planning), then open the branch plan/progress notebooks
+you just listed to capture outstanding work before proposing next steps. If the
+latest `sessions/` directory predates today, seed a fresh session immediately via
+`SESSION_PROMPT="..." make start_session` before editing tracked files.
+
+## 2. Audible Alert Rule
+> `.agents/bin/agents-alert "Codex is waiting for your input"` **before** you
+> pause for approval or user input. No exceptions.
+>
+> `AUDIBLE_ALERT_MESSAGE="Codex is ready for your input" .agents/bin/agents-alert`
+> **after** each work block before handing control back (unless <5 seconds).
+
+- macOS prefers `say` (voice `Reed` by default), falls back to `afplay`, then
+  terminal BEL + log line.
+- Headless/CI shells degrade to BEL/log-only behaviour.
+- Fire an alert *before* running commands likely to gate on approval so the user
+  hears the pause even if the command itself blocks.
+- Track elapsed time between alerts; when unsure, default to firing the “ready”
+  alert.
+
+## 3. Environment Validation (Transition checklist step 5)
+Run inside the project virtualenv:
+```bash
+python scripts/check_env.py --check-internet https://pypi.org \
+  --ssh-host m4-mac-mini --check-command ffmpeg
+ffmpeg -version
+```
+Ensure `.venv` exists, dependencies align, SSH heartbeat succeeds, and ffmpeg is
+available. Log results in the branch progress notebook.
+
+## 4. Session Bootstrap Checklist
+1. `make read_bootstrap`
+2. `make bootstrap slug=<slug>` (refuses if worktree dirty)
+3. `SESSION_PROMPT="..." make start_session`
+4. Update plan/progress docs with objectives and links to `sessions/<ID>/`
+5. Record environment diagnostics (above)
+6. Commit the plan/progress bootstrap to freeze the starting state
+
+Only after completing all six items may you begin editing tracked files.
+
+## 5. Turn-End & Session-End Flow
+
+### Turn-End Validation (run before replying to the user)
+- Progress log reflects current state (append timestamped entry).
+- Session summary updated with turn notes.
+- `meta.json` refreshed with latest timestamp.
+- No auto-commits; user decides.
+- Fire “ready” audible alert if work block >5s.
+
+Use `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to append
+structured entries to the branch progress log, branch plan, and session summary.
+
+### Session Wrap (feature complete)
+- Add end timestamp & duration to `meta.json`.
+- Link session summary from branch log.
+- Final checkpoint commit: `docs: checkpoint – close session <ID>`.
+
+## 6. Checkpointing Cadence
+After each meaningful change (compiling edit, test run, doc migration):
+1. Update branch plan checklist / next actions.
+2. Append timestamped progress entry (with artifacts + follow-ups).
+3. Commit docs alongside code.
+
+Checklist markers (➜ checkpoint) are treated as mandatory commit points.
+
+## 7. Planning & Progress Conventions
+- `docs/PLAN.md` remains the canonical roadmap; refresh only after merges.
+- Each feature branch owns `docs/plans/<branch>.md` and
+  `docs/progress/<branch>.md` while active.
+- Merge branch notebooks into canonical docs before deleting them.
+- Inline answers (code comments, spec updates) are preferred over new ad-hoc docs
+  unless a lasting reference is needed.
+
+## 8. Autonomy Guardrails
+- Avoid pausing for approval unless destructive operations, milestone
+  boundaries, or clarification is required.
+- Keep work close to the user’s request; defer speculative refactors.
+- Treat audible alerts, session logging, and checkpointing as non-negotiable.
+
+## 9. Process Enforcement & Violations
+Violations lead to inconsistent state, lost progress, broken merge workflows, and
+confusion. Avoid:
+- Skipping session continuity checks.
+- Editing without full bootstrap.
+- Auto-committing at turn end.
+- Starting new sessions while a feature branch remains active.
+- Ignoring checkpoint validation reminders.
+
+The process exists to prevent these failures—follow it consistently.

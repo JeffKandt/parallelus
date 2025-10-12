@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-archive-branch <branch>
+
+Moves the provided branch to the archive namespace defined in .agents/agentrc,
+updates the remote when available, and prunes stale references.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+branch=${1:-}
+if [[ -z "$branch" ]]; then
+  echo "agents-archive-branch: branch required" >&2
+  usage >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  echo "agents-archive-branch: not inside a git repository" >&2
+  exit 1
+fi
+
+cd "$repo_root"
+
+if [[ $branch == archive/* ]]; then
+  echo "agents-archive-branch: $branch already archived" >&2
+  exit 0
+fi
+
+if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+  echo "agents-archive-branch: branch '$branch' not found locally" >&2
+  exit 1
+fi
+
+archive_branch="${ARCHIVE_NAMESPACE%/}/${branch#*/}"
+
+git branch -m "$branch" "$archive_branch"
+
+echo "Archived $branch -> $archive_branch" >&2
+
+if git remote | grep -qx "$BASE_REMOTE"; then
+  git push "$BASE_REMOTE" ":$branch" >/dev/null 2>&1 || true
+  git push "$BASE_REMOTE" "$archive_branch:$archive_branch" >/dev/null 2>&1 || true
+  git fetch "$BASE_REMOTE" -p >/dev/null 2>&1 || true
+fi
+
+echo "$archive_branch"

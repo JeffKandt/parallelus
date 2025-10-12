@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-merge <slug>
+
+Merges feature/<slug> into the detected base branch after verifying guardrails
+(plan/progress notebooks removed, clean working tree, CI checks). This helper
+replaces manual git merge commands.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+slug_input=${1:-}
+if [[ -z "$slug_input" ]]; then
+  echo "agents-merge: slug required" >&2
+  usage >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  echo "agents-merge: not inside a git repository" >&2
+  exit 1
+fi
+
+cd "$repo_root"
+
+if [[ -n $(git status --porcelain) ]]; then
+  echo "agents-merge: working tree dirty; commit, stash, or clean before merging" >&2
+  exit 1
+fi
+
+slug=$(printf '%s' "$slug_input" | tr '[:upper:]' '[:lower:]')
+slug=$(printf '%s' "$slug" | tr -c 'a-z0-9-' '-')
+slug=$(printf '%s' "$slug" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')
+if [[ -z "$slug" ]]; then
+  echo "agents-merge: slug must contain alphanumeric characters" >&2
+  exit 1
+fi
+
+feature_branch="feature/$slug"
+
+if ! git show-ref --verify --quiet "refs/heads/$feature_branch"; then
+  echo "agents-merge: branch '$feature_branch' not found" >&2
+  exit 1
+fi
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$current_branch" != "$feature_branch" ]]; then
+  echo "agents-merge: switching to $feature_branch" >&2
+  git checkout "$feature_branch" >/dev/null
+  current_branch="$feature_branch"
+fi
+
+# Ensure branch notebooks are already folded into canonical docs.
+shopt -s nullglob
+plan_files=("docs/plans/feature-"*.md)
+progress_files=("docs/progress/feature-"*.md)
+shopt -u nullglob
+
+if ((${#plan_files[@]} > 0)); then
+  echo "agents-merge: branch plan notebooks still present:" >&2
+  for f in "${plan_files[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Please fold plan updates into docs/PLAN.md and remove branch notebooks before merging." >&2
+  exit 1
+fi
+
+if ((${#progress_files[@]} > 0)); then
+  echo "agents-merge: branch progress logs still present:" >&2
+  for f in "${progress_files[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Please stitch progress logs into docs/PROGRESS.md before merging." >&2
+  exit 1
+fi
+
+# Install/refresh merge guard hook.
+hook_src="$repo_root/.agents/hooks/pre-merge-commit"
+hook_dst="$repo_root/.git/hooks/pre-merge-commit"
+if [[ -f "$hook_src" ]]; then
+  mkdir -p "$repo_root/.git/hooks"
+  cp "$hook_src" "$hook_dst"
+  chmod +x "$hook_dst"
+fi
+
+# Run CI checks before switching branches.
+if ! make ci; then
+  echo "agents-merge: make ci failed; resolve issues before merging" >&2
+  exit 1
+fi
+
+# Determine base branch via agents-detect.
+detect_output="$(.agents/bin/agents-detect)"
+base_branch=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="BASE_BRANCH" {print $2}')
+has_remote=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="HAS_REMOTE" {print $2}')
+
+if [[ -z "$base_branch" ]]; then
+  echo "agents-merge: unable to determine base branch" >&2
+  exit 1
+fi
+
+if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
+  echo "agents-merge: checking out base branch $base_branch" >&2
+  git checkout -b "$base_branch" "${BASE_REMOTE}/$base_branch" >/dev/null 2>&1 || {
+    echo "agents-merge: base branch $base_branch not available locally" >&2
+    exit 1
+  }
+else
+  git checkout "$base_branch" >/dev/null
+fi
+
+if [[ "$has_remote" == true ]]; then
+  git fetch "$BASE_REMOTE" >/dev/null 2>&1 || true
+  git merge --ff-only "${BASE_REMOTE}/$base_branch" >/dev/null 2>&1 || true
+fi
+
+echo "agents-merge: merging $feature_branch into $base_branch" >&2
+if ! git merge --no-ff "$feature_branch"; then
+  echo "agents-merge: merge failed" >&2
+  exit 1
+fi
+
+echo "agents-merge: deleting $feature_branch" >&2
+git branch -d "$feature_branch" >/dev/null
+
+echo "agents-merge: merge complete on $base_branch" >&2

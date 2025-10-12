@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Portable audible/log alert helper.
+# Usage: agents-alert "Message here" (message optional; falls back to env or default).
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+
+MSG="${1:-${AUDIBLE_ALERT_MESSAGE:-${ALERT_DEFAULT_MESSAGE:-Agent pause}}}"
+
+if [[ "${CI:-}" == "true" || ! -t 1 ]]; then
+  printf '[alert] %s\n' "$MSG"
+  exit 0
+fi
+
+if command -v say >/dev/null 2>&1; then
+  say "$MSG"
+  exit 0
+fi
+
+if command -v afplay >/dev/null 2>&1; then
+  if [[ -f /System/Library/Sounds/Glass.aiff ]]; then
+    afplay /System/Library/Sounds/Glass.aiff >/dev/null 2>&1 || printf '\a'
+  else
+    printf '\a'
+  fi
+  printf '[alert] %s\n' "$MSG"
+  exit 0
+fi
+
+if command -v paplay >/dev/null 2>&1; then
+  paplay /usr/share/sounds/freedesktop/stereo/bell.oga >/dev/null 2>&1 || printf '\a'
+  printf '[alert] %s\n' "$MSG"
+  exit 0
+fi
+
+printf '\a'
+printf '[alert] %s\n' "$MSG"
