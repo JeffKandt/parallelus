@@ -72,8 +72,8 @@ commands beyond `make read_bootstrap`.
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
-- Before calling `make turn_end`, launch the Retrospective Auditor prompt (see
-  `.agents/prompts/agent_roles/agent_auditor.md`) using the previous marker. The
+- Before calling `make turn_end`, launch the Continuous Improvement Auditor prompt (see
+  `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the previous marker. The
   auditor responds with JSON; save it to
   `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
   TODOs into the branch plan. Only then run `make turn_end`, which records the

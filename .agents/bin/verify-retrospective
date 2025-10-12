@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ALLOWED_SKIP_VAR = "AGENTS_RETRO_SKIP_VALIDATE"
-AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
+AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
 
 
 def git_root() -> Path:
@@ -42,6 +42,7 @@ def main() -> None:
 
     agentrc = load_agentrc(repo)
     require_retro = agentrc.get(AGENT_RC_FLAG, "1")
+    role_prompt = agentrc.get("AGENT_CI_AGENT_ROLE", "continuous_improvement_auditor")
     if require_retro.lower() in {"0", "false", "no"}:
         return
 
@@ -56,7 +57,8 @@ def main() -> None:
         if not reports_dir.exists() or not any(reports_dir.glob(f"{branch}--*.json")):
             return  # nothing to validate yet
         raise SystemExit(
-            "verify-retrospective: marker not found but reports exist; please run the Retrospective Auditor first."
+            "verify-retrospective: marker not found but reports exist; please run the "
+            f"{role_prompt} prompt before turn_end."
         )
 
     try:
@@ -70,7 +72,8 @@ def main() -> None:
 
     if not reports_dir.exists():
         raise SystemExit(
-            "verify-retrospective: no reports directory; run the Retrospective Auditor before make turn_end."
+            "verify-retrospective: no reports directory; run the "
+            f"{role_prompt} prompt before make turn_end."
         )
 
     expected = f"{branch}--{marker_ts}.json"
@@ -78,7 +81,7 @@ def main() -> None:
     if not target.exists():
         raise SystemExit(
             "verify-retrospective: latest marker has no matching retrospective report. "
-            "Run the Retrospective Auditor before calling make turn_end again."
+            f"Run the {role_prompt} prompt before calling make turn_end again."
         )
 
     try:
@@ -88,7 +91,8 @@ def main() -> None:
 
     if data.get("branch") != branch or data.get("marker_timestamp") != marker_ts:
         raise SystemExit(
-            "verify-retrospective: report contents do not match current branch/marker; rerun the auditor."
+            "verify-retrospective: report contents do not match current branch/marker; rerun the "
+            f"{role_prompt} prompt."
         )
 
     print(

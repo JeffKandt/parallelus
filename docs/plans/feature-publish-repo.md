@@ -20,3 +20,5 @@
 - Confirm remote repository contents and branch protection needs.
 - Plan follow-up work once additional requests arrive.
 - Revisit whether `--dangerously-bypass-approvals-and-sandbox` should remain the default for subagent launches.
+
+- [ ] Testing guardrail

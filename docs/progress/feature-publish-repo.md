@@ -21,6 +21,7 @@
 - Moved senior architect and auditor role configuration into YAML front matter within their prompts, removed the legacy `.agents/config/*.yaml`, and wired `subagent_manager` to parse/validate overrides (model, sandbox, approval, profile, allowed writes).
 - Added the `--role` launch option plus prompt override summaries so operators know which runtime adjustments are in effect.
 - Plumbed `config_overrides` through front matter so roles can inject Codex `-c key=value` settings (e.g., reasoning effort) without relying on named profiles and ensured dangerous sandbox flags are only skipped when a sandbox override is supplied.
+- Renamed the retrospective role to `continuous_improvement_auditor`, introduced guardrail toggles/role selectors (`REQUIRE_AGENT_CI_AUDITS`, `AGENT_CI_AGENT_ROLE`, `REQUIRE_CODE_REVIEWS`, `CODE_REVIEW_AGENT_ROLE`), and wired `make turn_end` to require the configured audit report.
 
 **Artifacts**
 - docs/plans/feature-publish-repo.md
@@ -39,6 +40,16 @@
 ## 2025-10-12 19:32:51 UTC
 **Summary**
 - Removed execution setup reminder blocks; reasoning effort now in front matter.
+
+**Artifacts**
+- TODO: list touched files.
+
+**Next Actions**
+- [ ] TODO: follow-up
+
+## 2025-10-12 19:50:02 UTC
+**Summary**
+- Testing guardrail
 
 **Artifacts**
 - TODO: list touched files.

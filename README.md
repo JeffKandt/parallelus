@@ -177,6 +177,16 @@ gate (merge, diagnostics, subagents, etc.) triggers.
   can confirm the effective model/sandbox, and the registry records the chosen
   profile for later verification.
 
+### Guardrail Configuration (`.agents/agentrc`)
+- `REQUIRE_CODE_REVIEWS` (default `1`) enforces senior architect review; the
+  specific prompt is defined by `CODE_REVIEW_AGENT_ROLE` (default
+  `senior_architect`).
+- `REQUIRE_AGENT_CI_AUDITS` (default `1`) enforces the continuous improvement
+  audit; the prompt is selected via `AGENT_CI_AGENT_ROLE` (default
+  `continuous_improvement_auditor`). Temporarily export
+  `AGENTS_RETRO_SKIP_VALIDATE=1` if you must bypass the check (document the
+  rationale in the progress log).
+
 ---
 
 ## Directory Overview

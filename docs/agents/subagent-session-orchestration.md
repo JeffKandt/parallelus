@@ -17,8 +17,8 @@ agent to take ownership of a scoped task.
 > `.agents/prompts/agent_roles/senior_architect.md`) before launch. The subagent operates
 > read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
 
-> **Retrospective audits:** Before each `make turn_end`, launch the Retrospective
-> Auditor prompt (`.agents/prompts/agent_roles/agent_auditor.md`). The auditor
+> **Retrospective audits:** Before each `make turn_end`, launch the Continuous
+> Improvement Auditor prompt (`.agents/prompts/agent_roles/continuous_improvement_auditor.md`). The auditor
 > works read-only, analyses evidence starting from the marker recorded in
 > `docs/self-improvement/markers/<branch>.json`, and returns a JSON report to be
 > saved under
