@@ -74,9 +74,13 @@ gate (merge, diagnostics, subagents, etc.) triggers.
 - tmux 3.x or newer. Parallelus relies on tmux to multiplex the main agent and
   subagents; if tmux is missing you can still launch subagents manually, but the
   automated panes/windows and status overlays will not be available.
-  - The tmux status layout lives at `.agents/tmux/parallelus-status.tmux`. You
-    can source it from your tmux configuration or pass it via
-    `tmux -f .agents/tmux/parallelus-status.tmux` to match the Parallelus UI.
+  - `make read_bootstrap` automatically sources `.agents/tmux/parallelus-status.tmux`
+    whenever tmux is available. Set `PARALLELUS_SUPPRESS_TMUX_EXPORT=1` before running
+    the command to skip this if you prefer a neutral tmux config.
+  - To keep Parallelus panes isolated from personal tmux sessions, launch Codex on
+    a dedicated socket (e.g. `tmux -L parallelus …`) or add a conditional
+    `if-shell` to your own `~/.tmux.conf` that only loads the overlay when
+    `.agents/tmux/parallelus-status.tmux` exists in the current repository.
   - When tmux truly isn’t an option, launch subagents with
     `subagent_manager.sh launch --launcher manual …` and follow the printed
     command in a regular terminal.
@@ -96,10 +100,14 @@ gate (merge, diagnostics, subagents, etc.) triggers.
 5. **Log your objectives** – Update
    `docs/plans/feature-intro.md` and `docs/progress/feature-intro.md` with the
    goals outlined in AGENTS.md.
-6. **Wire your tmux session** – Source `.agents/tmux/parallelus-status.tmux`
-   from `~/.tmux.conf` (or load it ad hoc with
-   `tmux source-file .agents/tmux/parallelus-status.tmux`) so subagent panes
-   display live status and guardrail prompts.
+6. **Wire your tmux session (optional)** – The status bar overlay is applied
+   automatically by `make read_bootstrap`, but you can scope it to Parallelus
+   sessions by launching Codex on a dedicated socket and/or sourcing the file
+   conditionally in `~/.tmux.conf`. Example:
+   ```tmux
+   if-shell '[ -f .agents/tmux/parallelus-status.tmux ]' \
+     "source-file .agents/tmux/parallelus-status.tmux"
+   ```
 
 ### Adopting Parallelus in an Existing Repository
 1. **Bring in the framework** – Copy the `.agents/` directory, `Makefile`
@@ -130,11 +138,13 @@ gate (merge, diagnostics, subagents, etc.) triggers.
 
 ### Codex Launch Helpers
 - Many teams wrap the Codex CLI in shell helpers so every session starts inside
-  tmux with a clean environment. For example:
+  tmux with a clean environment. To isolate Parallelus panes, run those helpers
+  on a dedicated socket (here `parallelus`) and let the notebook bootstrap load
+  the status overlay automatically:
   ```sh
   cx() {
     local CLEAN_PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
-    TMUX= tmux -f /dev/null \
+    TMUX= tmux -L parallelus -f /dev/null \
       new-session -As codex-$(basename "$PWD") \
       -e PATH="$CLEAN_PATH" \
       -- codex --dangerously-bypass-approvals-and-sandbox --search "$@"
