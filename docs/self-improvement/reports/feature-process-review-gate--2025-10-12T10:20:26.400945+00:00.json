@@ -1,0 +1,9 @@
+{
+  "branch": "feature/process-review-gate",
+  "marker_timestamp": "2025-10-12T10:20:26.400945+00:00",
+  "summary": "No issues detected in the most recent turn; CI passes and documentation reflects the new audit workflow.",
+  "issues": [],
+  "follow_ups": [
+    "Complete the planned validation task for hooks/deployment (see branch plan checklist)."
+  ]
+}
