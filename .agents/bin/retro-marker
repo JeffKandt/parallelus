@@ -38,6 +38,37 @@ def line_count(path: Path) -> int:
         return 0
 
 
+def find_report_for_marker(repo: Path, branch: str, marker_path: Path) -> Path:
+    try:
+        marker = json.loads(marker_path.read_text())
+    except Exception as exc:  # pragma: no cover
+        raise SystemExit(f"retro-marker: unable to parse {marker_path}: {exc}")
+
+    marker_ts = marker.get("timestamp")
+    if not marker_ts:
+        raise SystemExit(f"retro-marker: marker {marker_path} missing timestamp")
+
+    reports_dir = repo / "docs" / "self-improvement" / "reports"
+    if not reports_dir.exists():
+        raise SystemExit(
+            "retro-marker: latest turn not audited; "
+            "run the Retrospective Auditor before make turn_end."
+        )
+
+    for path in sorted(reports_dir.glob("*.json")):
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+        if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+            return path
+
+    raise SystemExit(
+        "retro-marker: latest marker has no matching retrospective report. "
+        "Run the Retrospective Auditor before calling make turn_end again."
+    )
+
+
 def main() -> None:
     repo = git_root()
     branch = current_branch()
@@ -57,6 +88,17 @@ def main() -> None:
             session_console = str(console_candidate.relative_to(repo))
             session_console_size = console_candidate.stat().st_size
 
+    markers_dir = repo / "docs" / "self-improvement" / "markers"
+    marker_path = markers_dir / f"{slugged}.json"
+
+    if marker_path.exists() and not os.environ.get("AGENTS_RETRO_SKIP_VALIDATE"):
+        report_path = find_report_for_marker(repo, branch, marker_path)
+        rel_report = report_path.relative_to(repo)
+        print(
+            f"retro-marker: verified retrospective report {rel_report} for previous turn",
+            flush=True,
+        )
+
     marker = {
         "timestamp": timestamp,
         "branch": branch,
@@ -70,9 +112,7 @@ def main() -> None:
         "session_console_size": session_console_size,
     }
 
-    markers_dir = repo / "docs" / "self-improvement" / "markers"
     markers_dir.mkdir(parents=True, exist_ok=True)
-    marker_path = markers_dir / f"{slugged}.json"
     marker_path.write_text(json.dumps(marker, indent=2) + "\n", encoding="utf-8")
 
     print(f"retro-marker: recorded marker for {branch} at {timestamp}")

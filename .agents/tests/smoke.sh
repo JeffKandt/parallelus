@@ -43,7 +43,7 @@ mkdir -p "$TMP_REPO/docs" "$TMP_REPO/sessions"
   test -d "${SESSION_DIR:-}"
 
   # Record a checkpoint
-  .agents/bin/agents-turn-end "smoke checkpoint"
+  AGENTS_RETRO_SKIP_VALIDATE=1 .agents/bin/agents-turn-end "smoke checkpoint"
   grep -q "smoke checkpoint" docs/progress/feature-smoke.md
 
   # Archive the branch and ensure ref renamed locally

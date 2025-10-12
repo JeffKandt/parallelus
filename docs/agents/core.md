@@ -126,12 +126,12 @@ That closes the prior turn so artifacts stay sequenced.
 - Working tree either clean or containing only intentional changes noted in the
   progress log.
 - Fire “ready” audible alert if work block >5s.
-- `.agents/bin/retro-marker` records a marker in
-  `docs/self-improvement/markers/<branch>.json`. Immediately after
-  `make turn_end`, launch the Retrospective Auditor (prompts live under
-  `.agents/prompts/agent_roles/`) to produce a JSON report and store it in
-  `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`. Carry
-  prevention items into the branch plan.
+- Run the Retrospective Auditor (see
+  `.agents/prompts/agent_roles/agent_auditor.md`) **before** calling
+  `make turn_end`. It reads the existing marker and returns a JSON report that
+  you must save under `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
+  Only after the report is saved should you run `make turn_end`; the helper then
+  records the next marker via `.agents/bin/retro-marker`.
 
 Run `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to perform
 these updates in one step. The helper appends to the branch progress log and
