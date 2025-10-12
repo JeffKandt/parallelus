@@ -3,7 +3,7 @@
 # >>> agent-process integration >>>
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 AGENTS_DIR ?= $(ROOT)/.agents
-LANG_ADAPTERS ?= python swift
+LANG_ADAPTERS ?= python
 
 include $(AGENTS_DIR)/make/agents.mk
 ifneq (,$(findstring python,$(LANG_ADAPTERS)))
