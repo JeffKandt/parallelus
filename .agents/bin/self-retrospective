@@ -25,8 +25,11 @@ def current_branch() -> str:
     return branch
 
 
-def has_command(cmd: str) -> bool:
-    return shutil.which(cmd) is not None
+def has_command(cmd: str, repo: Path) -> bool:
+    if shutil.which(cmd) is not None:
+        return True
+    venv_path = repo / ".venv" / "bin" / cmd
+    return venv_path.exists()
 
 
 def append_plan_todo(plan_path: Path, text: str) -> None:
@@ -50,13 +53,30 @@ def main() -> None:
 
     issues = []
 
-    if not has_command("ruff"):
-        issues.append({
-            "id": "lint-tool-missing",
+    required_tools = {
+        "ruff": {
+            "id": "lint-tool-missing-ruff",
             "root_cause": "make ci lint phase will fail because ruff is not installed in the active environment",
             "mitigation": "Install ruff into the project virtualenv (pip install ruff) before running make ci",
             "prevention": "Add an environment validation step that checks for ruff before invoking lint",
-            "evidence": "command -v ruff returned non-zero during retrospective scan"
+        },
+        "black": {
+            "id": "formatter-tool-missing-black",
+            "root_cause": "make ci lint phase will fail because black is not installed in the active environment",
+            "mitigation": "Install black into the project virtualenv (pip install black) before running make ci",
+            "prevention": "Add an environment validation step that checks for black before invoking lint",
+        },
+    }
+
+    for tool, meta in required_tools.items():
+        if has_command(tool, repo):
+            continue
+        issues.append({
+            "id": meta["id"],
+            "root_cause": meta["root_cause"],
+            "mitigation": meta["mitigation"],
+            "prevention": meta["prevention"],
+            "evidence": f"command -v {tool} returned non-zero during retrospective scan",
         })
 
     log_dir = repo / "docs" / "self-improvement"
