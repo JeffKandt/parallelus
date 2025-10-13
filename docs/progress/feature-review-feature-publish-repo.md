@@ -102,14 +102,8 @@
 - Summarise the remediation work for maintainers and capture CI auditor follow-ups.
 
 **Work Performed**
-- Drafted a maintainer-facing summary (below) covering the scalar export fix, retrospective verifier slug guard, CI auditor validation, and the new monitor-loop/cleanup guardrails now logged in the manual.
+- Drafted a maintainer-facing summary covering the scalar export fix, retrospective verifier slug guard, CI auditor validation, and the new monitor-loop/cleanup guardrails now logged in the manual.
 - Listed the CI auditor follow-ups that still need resolution (missing marker for `feature/publish-repo`, ensuring audits run on the feature branch instead of `main`, and rehydrating that branch’s plan/progress notebooks).
-
-**Maintainer Summary**
-- Scalar exports: `.agents/bin/subagent_manager.sh` now emits plain strings for role front-matter scalars and still JSON-encodes structured overrides; CI auditor launch confirmed the fix.
-- Retrospective guard: `.agents/bin/verify-retrospective` normalises branch slugs when globbing reports, so slash-branches without markers fail fast.
-- Operational guardrails: Added `.agents/bin/tmux-safe`, routed subagent tooling through it, surfaced mandatory `agents-monitor-loop.sh --id …` usage, and blocked `cleanup` on running entries without `--force`.
-- Observed issues: CI auditor reported missing marker/report notebooks and a branch mismatch for `feature/publish-repo`; those remain open follow-ups.
 
 **Next Actions**
 - Decide whether to restore the `feature/publish-repo` marker/notebooks within this branch or delegate to the owning feature branch.
@@ -145,3 +139,15 @@
 **Next Actions**
 - Rerun the relevant validation (e.g., `make monitor_subagents` during the next subagent launch) to demonstrate the heartbeat fix.
 - Confirm the Python toolchain dependency change remains intact and ready for CI rerun.
+
+## 2025-10-13 07:03:00 UTC
+**Objectives**
+- Stabilise throwaway sandbox creation and capture remaining TODOs.
+
+**Work Performed**
+- Switched throwaway sandbox creation to `git clone` the current commit instead of invoking `.agents/bin/deploy_agents_process.sh`, avoiding implicit `make bootstrap` calls that clobbered the main repo.
+- Logged the repo-level TODOs (refresh `docs/agents/project/`, lock down subagent allowed writes) in `docs/PLAN.md`.
+
+**Next Actions**
+- Rerun the senior architect review with `make monitor_subagents` now that sandbox creation is isolated.
+- Follow through on the plan-level TODOs after review sign-off.

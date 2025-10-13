@@ -16,3 +16,4 @@
 - Decide how to resolve the CI auditor follow-ups (restore feature/publish-repo marker + notebooks, ensure audits run from that branch) and record the plan.
 - Re-run targeted validation (CI + `make monitor_subagents`) to demonstrate the heartbeat fix and capture evidence for senior architect sign-off.
 - Refresh `docs/agents/project/` so it no longer references the Interruptus project; add any remaining TODOs to the docs worklist.
+- Harden subagent launch permissions by codifying allowed write paths (e.g., review-specific `allowed_writes` entries and automated verification).

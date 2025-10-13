@@ -457,12 +457,12 @@ EOF
   else
     read -r -d '' instructions <<EOF || true
 1. Read AGENTS.md and all referenced docs.
-2. Review the scope file, then run `make bootstrap slug=${slug}` to create the
+2. Review the scope file, then run 'make bootstrap slug=${slug}' to create the
    feature branch.
 3. Convert the scope into plan/progress notebooks and follow all guardrails.
-4. Keep the session open until the entire checklist is complete and `git status`
+4. Keep the session open until the entire checklist is complete and 'git status'
    is clean.
-5. Immediately after `make read_bootstrap`, **do not pause**—begin reviewing
+5. Immediately after 'make read_bootstrap', **do not pause**—begin reviewing
    the required docs right away and proceed with the checklist without drafting a
    status message or waiting for confirmation.
 6. Before pausing, audit the branch plan checklist and mark every completed
@@ -477,7 +477,7 @@ EOF
     agent.
 ---
 
-Keep working even after `make read_bootstrap`, `make bootstrap`, and the initial
+Keep working even after 'make read_bootstrap', 'make bootstrap', and the initial
 scope review. Do not pause to summarize or seek confirmation—continue directly
 to the next checklist item.
 Avoid standalone status reports after bootstrap; only document progress in the
