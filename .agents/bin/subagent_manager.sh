@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
+  if command -v tmux >/dev/null 2>&1; then
+    tmux_env=$(tmux -S "${PARALLELUS_TMUX_SOCKET}" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)
+    if [[ -n "${tmux_env:-}" ]]; then
+      export TMUX="$tmux_env"
+    fi
+  fi
+fi
+
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REGISTRY_FILE="docs/agents/subagent-registry.json"
 SCOPE_TEMPLATE="docs/agents/templates/subagent_scope_template.md"
@@ -261,6 +270,118 @@ EOF
   fi
 }
 
+print_role_body() {
+  local file=$1
+  python3 - <<'PY' "$file"
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+body = []
+delimiter_count = 0
+for line in lines:
+    if line.strip() == '---':
+        delimiter_count += 1
+        continue
+    if delimiter_count >= 2 or delimiter_count == 0:
+        body.append(line)
+
+print("\n".join(body))
+PY
+}
+
+parse_role_config() {
+  local file=$1
+  python3 - <<'PY' "$file"
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+
+if not text.startswith('---'):
+    print(json.dumps({}))
+    sys.exit(0)
+
+parts = text.split('---', 2)
+if len(parts) < 3:
+    raise SystemExit("subagent_manager: malformed front matter in {}".format(path))
+
+front_matter = parts[1]
+
+import yaml
+
+data = yaml.safe_load(front_matter)
+if data is None:
+    data = {}
+
+allowed_keys = {
+    "model",
+    "sandbox_mode",
+    "approval_policy",
+    "session_mode",
+    "additional_constraints",
+    "allowed_writes",
+    "profile",
+    "config_overrides",
+}
+
+unexpected = sorted(set(data.keys()) - allowed_keys)
+if unexpected:
+    raise SystemExit("subagent_manager: unexpected keys in {}: {}".format(path, ", ".join(unexpected)))
+
+for key in allowed_keys:
+    if key in {"allowed_writes", "config_overrides"}:
+        data.setdefault(key, {} if key == "config_overrides" else [])
+    else:
+        data.setdefault(key, None)
+
+print(json.dumps(data))
+PY
+}
+
+role_config_to_env() {
+  local json=$1
+  python3 - "$json" <<'PY'
+import json
+import sys
+import shlex
+
+data = json.loads(sys.argv[1]) if sys.argv[1] else {}
+
+mapping = {
+    "model": "SUBAGENT_CODEX_MODEL",
+    "sandbox_mode": "SUBAGENT_CODEX_SANDBOX_MODE",
+    "approval_policy": "SUBAGENT_CODEX_APPROVAL_POLICY",
+    "session_mode": "SUBAGENT_CODEX_SESSION_MODE",
+    "additional_constraints": "SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS",
+    "allowed_writes": "SUBAGENT_CODEX_ALLOWED_WRITES",
+    "profile": "SUBAGENT_CODEX_PROFILE",
+    "config_overrides": "SUBAGENT_CODEX_CONFIG_OVERRIDES",
+}
+
+for key, env in mapping.items():
+    val = data.get(key)
+    if val is None or (isinstance(val, str) and val.strip().lower() in {"", "default"}):
+        print(f"unset {env} || true")
+        continue
+    if key == "allowed_writes":
+        if isinstance(val, list) and not val:
+            print(f"unset {env} || true")
+            continue
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
+    elif key == "config_overrides":
+        if isinstance(val, dict) and not val:
+            print(f"unset {env} || true")
+            continue
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
+    else:
+        print(f"export {env}={shlex.quote(json.dumps(val))}")
+PY
+}
+
 create_prompt_file() {
   local dest=$1
   local sandbox=$2
@@ -269,12 +390,20 @@ create_prompt_file() {
   local slug=$5
   local profile=${6:-}
   local role_prompt=${7:-}
+  local parent_branch=${8:-}
   local role_text=""
   local role_config=""
   local profile_display="default (danger-full-access)"
+  local effective_role="$role_prompt"
 
   if [[ -n "$role_prompt" ]]; then
     local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
+    if [[ ! -f "$role_file" && "$role_prompt" != *.md ]]; then
+      if [[ -f "$ROLE_PROMPTS_DIR/${role_prompt}.md" ]]; then
+        effective_role="${role_prompt}.md"
+        role_file="$ROLE_PROMPTS_DIR/$effective_role"
+      fi
+    fi
     if [[ -f "$role_file" ]]; then
       role_config=$(parse_role_config "$role_file")
       role_text=$(print_role_body "$role_file")
@@ -284,6 +413,8 @@ create_prompt_file() {
     else
       echo "subagent_manager: role prompt '$role_prompt' not found under $ROLE_PROMPTS_DIR" >&2
     fi
+  else
+    effective_role=""
   fi
 
   if [[ -z "$profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
@@ -292,6 +423,56 @@ create_prompt_file() {
 
   if [[ -n "$profile" ]]; then
     profile_display="$profile"
+  fi
+
+  local role_name="${effective_role##*/}"
+  local branch_slug="${parent_branch//\//-}"
+  if [[ -z "$branch_slug" ]]; then
+    branch_slug="<branch>"
+  fi
+  if [[ -z "$parent_branch" ]]; then
+    parent_branch="<branch>"
+  fi
+
+  local instructions
+  if [[ "$role_name" == "continuous_improvement_auditor" || "$role_name" == "continuous_improvement_auditor.md" ]]; then
+    read -r -d '' instructions <<EOF || true
+1. Read AGENTS.md and docs/prompts/agent_roles/continuous_improvement_auditor.md to confirm guardrails.
+2. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
+3. Gather evidence without modifying the workspace: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
+4. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
+5. Stay read-only—do not run make bootstrap or alter files. Print the JSON report and exit.
+EOF
+  else
+    read -r -d '' instructions <<EOF || true
+1. Read AGENTS.md and all referenced docs.
+2. Review the scope file, then run `make bootstrap slug=${slug}` to create the
+   feature branch.
+3. Convert the scope into plan/progress notebooks and follow all guardrails.
+4. Keep the session open until the entire checklist is complete and `git status`
+   is clean.
+5. Immediately after `make read_bootstrap`, **do not pause**—begin reviewing
+   the required docs right away and proceed with the checklist without drafting a
+   status message or waiting for confirmation.
+6. Before pausing, audit the branch plan checklist and mark every completed
+   task so reviewers see the finished state.
+7. Follow the scope's instructions for merging and cleanup before finishing.
+8. Leave a detailed summary in the progress notebook before exiting.
+9. You already have approval to run commands. After any status update, plan
+   outline, or summary, immediately continue with the next checklist item
+   without waiting for confirmation.
+10. If you ever feel blocked waiting for a "proceed" or approval, assume the
+    answer is "Continue" and move to the next action without prompting the main
+    agent.
+---
+
+Keep working even after `make read_bootstrap`, `make bootstrap`, and the initial
+scope review. Do not pause to summarize or seek confirmation—continue directly
+to the next checklist item.
+Avoid standalone status reports after bootstrap; only document progress in the
+notebooks/checkpoints the checklist calls for.
+---
+EOF
   fi
 
   local overrides_section=""
@@ -333,33 +514,7 @@ Sandbox type: $type
 Codex profile: $profile_display
 $overrides_section
 
-1. Read AGENTS.md and all referenced docs.
-2. Review the scope file, then run \`make bootstrap slug=$slug\` to create the
-   feature branch.
-3. Convert the scope into plan/progress notebooks and follow all guardrails.
-4. Keep the session open until the entire checklist is complete and \`git status\`
-   is clean.
-5. Immediately after `make read_bootstrap`, **do not pause**—begin reviewing
-   the required docs right away and proceed with the checklist without drafting a
-   status message or waiting for confirmation.
-6. Before pausing, audit the branch plan checklist and mark every completed
-   task so reviewers see the finished state.
-7. Follow the scope's instructions for merging and cleanup before finishing.
-8. Leave a detailed summary in the progress notebook before exiting.
-9. You already have approval to run commands. After any status update, plan
-   outline, or summary, immediately continue with the next checklist item
-   without waiting for confirmation.
-10. If you ever feel blocked waiting for a "proceed" or approval, assume the
-    answer is "Continue" and move to the next action without prompting the main
-    agent.
- ---
-
-Keep working even after \`make read_bootstrap\`, \`make bootstrap\`, and the initial
-scope review. Do not pause to summarize or seek confirmation—continue directly
-to the next checklist item.
-Avoid standalone status reports after bootstrap; only document progress in the
-notebooks/checkpoints the checklist calls for.
----
+$instructions
 EOF
 
   if [[ -n "$role_text" ]]; then
@@ -508,6 +663,14 @@ USAGE
   ensure_registry
   ensure_tmux_ready "$launcher"
 
+  local parent_branch
+  parent_branch=$(current_branch)
+
+  local normalized_role="$role_prompt"
+  if [[ -n "$role_prompt" && "$role_prompt" != *.md && -f "$ROLE_PROMPTS_DIR/${role_prompt}.md" ]]; then
+    normalized_role="${role_prompt}.md"
+  fi
+
   local timestamp entry_id sandbox scope_path prompt_path log_path
   timestamp=$(date -u +%Y%m%d-%H%M%S)
   entry_id="${timestamp}-${slug}"
@@ -557,7 +720,7 @@ USAGE
   scope_path="$sandbox/SUBAGENT_SCOPE.md"
   create_scope_file "$scope_path" "$scope_override"
   prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$role_prompt"
+  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch"
   log_path="$sandbox/subagent.log"
   : >"$log_path"
 
@@ -567,7 +730,7 @@ USAGE
 
   local entry_json
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$role_prompt" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" <<'PY'
 import json
 import sys
 import shlex
@@ -745,113 +908,3 @@ main() {
 }
 
 main "$@"
-print_role_body() {
-  local file=$1
-  python3 - <<'PY' "$file"
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-lines = path.read_text(encoding="utf-8").splitlines()
-body = []
-delimiter_count = 0
-for line in lines:
-    if line.strip() == '---':
-        delimiter_count += 1
-        continue
-    if delimiter_count >= 2 or delimiter_count == 0:
-        body.append(line)
-
-print("\n".join(body))
-PY
-}
-
-parse_role_config() {
-  local file=$1
-  python3 - <<'PY' "$file"
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-
-if not text.startswith('---'):
-    print(json.dumps({}))
-    sys.exit(0)
-
-parts = text.split('---', 2)
-if len(parts) < 3:
-    raise SystemExit("subagent_manager: malformed front matter in {}".format(path))
-
-front_matter = parts[1]
-
-import yaml
-
-data = yaml.safe_load(front_matter)
-if data is None:
-    data = {}
-
-allowed_keys = {
-    "model",
-    "sandbox_mode",
-    "approval_policy",
-    "session_mode",
-    "additional_constraints",
-    "allowed_writes",
-    "profile",
-    "config_overrides",
-}
-
-unexpected = sorted(set(data.keys()) - allowed_keys)
-if unexpected:
-    raise SystemExit("subagent_manager: unexpected keys in {}: {}".format(path, ", ".join(unexpected)))
-
-for key in allowed_keys:
-    if key in {"allowed_writes", "config_overrides"}:
-        data.setdefault(key, {} if key == "config_overrides" else [])
-    else:
-        data.setdefault(key, None)
-
-print(json.dumps(data))
-PY
-}
-
-role_config_to_env() {
-  local json=$1
-  python3 - "$json" <<'PY'
-import json
-import sys
-
-data = json.loads(sys.argv[1]) if sys.argv[1] else {}
-
-mapping = {
-    "model": "SUBAGENT_CODEX_MODEL",
-    "sandbox_mode": "SUBAGENT_CODEX_SANDBOX_MODE",
-    "approval_policy": "SUBAGENT_CODEX_APPROVAL_POLICY",
-    "session_mode": "SUBAGENT_CODEX_SESSION_MODE",
-    "additional_constraints": "SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS",
-    "allowed_writes": "SUBAGENT_CODEX_ALLOWED_WRITES",
-    "profile": "SUBAGENT_CODEX_PROFILE",
-    "config_overrides": "SUBAGENT_CODEX_CONFIG_OVERRIDES",
-}
-
-for key, env in mapping.items():
-    val = data.get(key)
-    if val is None or (isinstance(val, str) and val.strip().lower() in {"", "default"}):
-        print(f"unset {env} || true")
-        continue
-    if key == "allowed_writes":
-        if isinstance(val, list) and not val:
-            print(f"unset {env} || true")
-            continue
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
-    elif key == "config_overrides":
-        if isinstance(val, dict) and not val:
-            print(f"unset {env} || true")
-            continue
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
-    else:
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
-PY
-}

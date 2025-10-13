@@ -58,3 +58,95 @@
 
 **Next Actions**
 - None pending; guardrail validated.
+
+## 2025-10-12 23:36:44 UTC
+**Objectives**
+- Ensure `make read_bootstrap` applies the Parallelus tmux overlay when Codex runs inside a clean-environment tmux session.
+
+**Work Planned**
+- Update the read bootstrap helper to honor `PARALLELUS_TMUX_SOCKET`.
+- Confirm whether other tmux-touching scripts need adjustments.
+
+**Work Performed**
+- Taught `.agents/make/agents.mk` to pass `-S $PARALLELUS_TMUX_SOCKET` to tmux commands and refresh the overlay on Codex start.
+- Propagated the socket-aware tmux lookup to subagent tooling (`launch_subagent.sh`, `subagent_manager.sh`, `resume_in_tmux.sh`, `get_current_session_id.sh`) so they export `TMUX` when the clean Codex environment lacks it.
+- Updated `agents-session-start` to emit the tmux exports via the provided socket for future session shells.
+- Verified the behaviour by standing up a temporary tmux server, running `PARALLELUS_TMUX_SOCKET=... make read_bootstrap`, and inspecting the status configuration applied to that server.
+
+**Validation**
+- `PARALLELUS_TMUX_SOCKET=/tmp/parallelus-test.sock make read_bootstrap`
+- `tmux -S /tmp/parallelus-test.sock show-option -g status-left`
+
+**Next Actions**
+- Monitor other tmux-integrated scripts for socket-awareness needs as they come up.
+
+## 2025-10-12 23:49:32 UTC
+**Objectives**
+- Tweak the tmux overlay layout to show the branch next to the session name and move phase/window indicators to the right status segment.
+
+**Work Performed**
+- Updated `.agents/tmux/parallelus-status.tmux` so `status-left` renders the session name plus current branch, and `status-right` now includes phase, worktree, git state, window index, and heartbeat.
+- Revalidated the overlay by loading it into a temporary tmux server with `PARALLELUS_TMUX_SOCKET=/tmp/parallelus-test.sock make read_bootstrap` and inspecting the resulting status strings.
+
+**Validation**
+- `tmux -S /tmp/parallelus-test.sock show-option -g status-left`
+- `tmux -S /tmp/parallelus-test.sock show-option -g status-right`
+
+**Next Actions**
+- Confirm the updated layout meets operator expectations during live Codex runs.
+
+## 2025-10-12 23:56:42 UTC
+**Objectives**
+- Clarify the base worktree indicator and fine-tune status ordering per operator feedback.
+
+**Work Performed**
+- Changed `.agents/bin/subagent_prompt_phase.py` to emit `•` when running in the primary checkout so it no longer collides with branch names.
+- Restructured the right-hand status string to lead with the active window id/title and keep phase, worktree marker, git state, and heartbeat separated by consistent dividers.
+- Reloaded the tmux overlay on the active Codex socket to apply the new layout.
+
+**Next Actions**
+- Observe the new indicator in daily workflows and adjust the symbol if further clarity is needed.
+
+## 2025-10-13 00:52:09 UTC
+**Objectives**
+- Kick off the Continuous Improvement audit for the current branch work.
+
+**Work Performed**
+- Launched `subagent_manager` with the CI auditor role; the generated scope reused the default bootstrap checklist, so the sandbox failed immediately on dirty-tree checks.
+- Stopped the stray tmux pane (`tmux kill-pane -t %1`), forced cleanup of registry entry `20251013-004814-ci-audit`, and removed the temporary sandbox directory.
+
+**Next Actions**
+- Prepare a minimal CI-audit scope/prompt and re-run the auditor so the JSON report reflects today's changes before the next `make turn_end`.
+
+## 2025-10-13 01:08:22 UTC
+**Objectives**
+- Deliver a successful Continuous Improvement audit run with a scope tailored to the current branch state.
+
+**Work Performed**
+- Added `docs/agents/templates/ci_audit_scope.md` as a reusable scope and enhanced `subagent_manager.sh` to normalize role prompts, pass the parent branch into CI-auditor instructions, and avoid bootstrap steps for that role.
+- Updated the tmux prompt generator and related helpers to respect `PARALLELUS_TMUX_SOCKET`, then launched `subagent_manager.sh launch --type throwaway --slug ci-audit --scope ... --role continuous_improvement_auditor.md` via tmux.
+- Captured the auditor's JSON findings and wrote them to `docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json`, then cleaned the sandbox registry entry and deleted `.parallelus/` artifacts.
+- Re-read `docs/agents/subagent-session-orchestration.md` and recorded this acknowledgement here so future subagent launches meet the guardrail expectation.
+
+**Validation**
+- Verified the parsed JSON report contents before saving and confirmed `subagent_manager.sh status` reports no running entries.
+
+**Next Actions**
+- Address the auditor's follow-up items as we continue refining the CI audit tooling.
+
+## 2025-10-13 02:01:29 UTC
+**Objectives**
+- Re-run the Continuous Improvement audit with the updated scope and capture the full transcript.
+
+**Work Performed**
+- Relaunched `subagent_manager.sh` with the CI auditor role and the new scope template; let the subagent complete without manual prompts.
+- Captured the auditor pane to `docs/logs/ci-audit-20251013T015421.txt`, parsed the JSON output, and updated `docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json`.
+- Cleaned the registry entry `20251013-015421-ci-audit` and deleted the throwaway sandbox directory.
+- Documented the operator preference to store future subagent transcripts under `docs/logs/` and avoid manual prompts unless coordinated.
+- Recreated the Python virtual environment, added `black`, `ruff`, and `pytest` to `requirements.txt`, and ran `make ci` to confirm lint and test targets now pass locally.
+- Recorded the directive to archive the full main-agent console transcript for every session and fold transcript retrospectives into the turn-end checklist.
+
+**Validation**
+- `cat docs/logs/ci-audit-20251013T015421.txt`
+- `cat docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json`
+- `make ci`

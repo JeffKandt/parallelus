@@ -11,10 +11,15 @@ SESSION_DIR ?= sessions
 
 read_bootstrap:
 	@if [ -z "$${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ] && command -v tmux >/dev/null 2>&1; then \
-		tmux has-session >/dev/null 2>&1 && tmux source-file .agents/tmux/parallelus-status.tmux >/dev/null 2>&1 || true; \
-		tmux_env="$$({ command -v tmux >/dev/null 2>&1 && tmux display-message -p '#{socket_path},#{session_id},#{pane_id}' ; } 2>/dev/null)"; \
+		tmux_args=""; \
+		if [ -n "$${PARALLELUS_TMUX_SOCKET:-}" ] && [ -S "$${PARALLELUS_TMUX_SOCKET}" ]; then \
+			tmux_args="-S $${PARALLELUS_TMUX_SOCKET}"; \
+		fi; \
+		tmux $$tmux_args has-session >/dev/null 2>&1 && tmux $$tmux_args source-file .agents/tmux/parallelus-status.tmux >/dev/null 2>&1 || true; \
+		tmux_env="$$({ command -v tmux >/dev/null 2>&1 && tmux $$tmux_args display-message -p '#{socket_path},#{session_id},#{pane_id}' ; } 2>/dev/null)"; \
 		if [ -n "$$tmux_env" ]; then \
-			tmux set-environment -g TMUX "$$tmux_env" >/dev/null 2>&1 || true; \
+			export TMUX="$$tmux_env"; \
+			tmux $$tmux_args set-environment -g TMUX "$$tmux_env" >/dev/null 2>&1 || true; \
 		fi; \
 	fi
 	@$(AGENTS_BIN)/agents-detect

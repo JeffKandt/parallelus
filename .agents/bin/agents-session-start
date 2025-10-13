@@ -156,7 +156,11 @@ printf "export SESSION_DIR='%s'\n" "$SDIR"
 
 if [[ -z "${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ]]; then
   if [[ -z "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-    tmux_env="$(tmux display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"
+    tmux_args=()
+    if [[ -n "${PARALLELUS_TMUX_SOCKET:-}" && -S "${PARALLELUS_TMUX_SOCKET}" ]]; then
+      tmux_args=(-S "${PARALLELUS_TMUX_SOCKET}")
+    fi
+    tmux_env="$(tmux "${tmux_args[@]}" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"
     if [[ -n "$tmux_env" ]]; then
       printf "export TMUX='%s'\n" "$tmux_env"
     fi

@@ -1134,5 +1134,110 @@
       "pane_id": "%5"
     },
     "role_prompt": "continuous_improvement_auditor"
+  },
+  {
+    "id": "20251013-004814-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-SBWfqa",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-SBWfqa/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-SBWfqa/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-SBWfqa/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251013-004814",
+    "window_title": "20251013-004814-ci-audit",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251013-004814-ci-audit",
+      "window_id": "@0",
+      "pane_id": "%1"
+    },
+    "role_prompt": "continuous_improvement_auditor"
+  },
+  {
+    "id": "20251013-005943-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-cdKx6s",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-cdKx6s/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-cdKx6s/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-cdKx6s/subagent.log",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20251013-005943",
+    "window_title": "20251013-005943-ci-audit",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251013-005943-ci-audit",
+      "window_id": "@0",
+      "pane_id": "%2"
+    },
+    "role_prompt": "continuous_improvement_auditor.md"
+  },
+  {
+    "id": "20251013-015421-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-FIMrZw",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-FIMrZw/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-FIMrZw/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-FIMrZw/subagent.log",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20251013-015421",
+    "window_title": "20251013-015421-ci-audit",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251013-015421-ci-audit",
+      "window_id": "@0",
+      "pane_id": "%3"
+    },
+    "role_prompt": "continuous_improvement_auditor.md"
+  },
+  {
+    "id": "20251013-025944-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-GRozQc",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-GRozQc/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-GRozQc/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-GRozQc/subagent.log",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20251013-025944",
+    "window_title": "20251013-025944-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251013-025944-senior-review",
+      "window_id": "@0",
+      "pane_id": "%4"
+    },
+    "role_prompt": "senior_architect.md"
+  },
+  {
+    "id": "20251013-030150-review-feature-publish-repo",
+    "type": "worktree",
+    "slug": "review-feature-publish-repo",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/worktrees/review-feature-publish-repo",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/worktrees/review-feature-publish-repo/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/worktrees/review-feature-publish-repo/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/worktrees/review-feature-publish-repo/subagent.log",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20251013-030150",
+    "window_title": "20251013-030150-review-feature-publish-repo",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251013-030150-review-feature-publish-repo",
+      "window_id": "@0",
+      "pane_id": "%5"
+    },
+    "role_prompt": "senior_architect.md"
   }
 ]

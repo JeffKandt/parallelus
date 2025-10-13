@@ -20,3 +20,8 @@
 - Confirm remote repository contents and branch protection needs.
 - Plan follow-up work once additional requests arrive.
 - Revisit whether `--dangerously-bypass-approvals-and-sandbox` should remain the default for subagent launches.
+- Monitor tmux helper scripts for any remaining socket-awareness gaps as automation evolves.
+- Document the review of `docs/agents/subagent-session-orchestration.md` before any subsequent subagent launches, per the latest CI audit follow-up.
+- Confirm the revised tmux overlay layout with operators and document the outcome.
+- Observe the new base worktree indicator in day-to-day use and record feedback.
+- Capture and archive the complete main-agent console transcript for every session (not just CI audits). At each turn end, perform a retrospective review of the transcript to log execution anomalies, reasoning faults, prompt-context conflicts, specification drift, and any deviations, then record mitigations or guardrail updates.

@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
+  if command -v tmux >/dev/null 2>&1; then
+    tmux_env=$(tmux -S "${PARALLELUS_TMUX_SOCKET}" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)
+    if [[ -n "${tmux_env:-}" ]]; then
+      export TMUX="$tmux_env"
+    fi
+  fi
+fi
+
 usage() {
   cat <<'USAGE'
 Usage: get_current_session_id.sh [options]

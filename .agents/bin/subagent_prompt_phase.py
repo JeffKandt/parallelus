@@ -48,7 +48,7 @@ def worktree_indicator() -> str:
     except subprocess.CalledProcessError:
         return "-"
     git_path = Path(toplevel) / ".git"
-    indicator = "Main"
+    indicator = "•"
     if git_path.is_file():
         try:
             content = git_path.read_text().strip()
