@@ -2,16 +2,21 @@
 
 ## Context
 - **Branch:** feature/publish-repo
-- **Base commit:** 9554bf0862ae777458d5ac22f16f1ea2b3fde61b (origin/main)
-- **Head commit:** (current working tree; include uncommitted changes in assessment)
-- **Focus:** Guardrail updates for tmux overlays, subagent orchestration, CI audit process, and lint/test toolchain setup.
+- **Commit under review:** $(git rev-parse HEAD)
+- **Remote check:** ensure the commit exists on origin/feature-publish-repo before review begins.
+- **Focus:** Guardrail updates for tmux overlays, subagent orchestration, CI audit process, transcript capture commitments, and lint/test toolchain setup.
+
+## Preconditions
+- Working tree is clean and matches the pushed commit.
+- CI (`make ci`) has passed on this commit.
+- No additional changes will be introduced until the review is complete.
 
 ## Objectives
-- [ ] Review code and documentation diffs between the base commit and the current working tree.
-- [ ] Validate the new tmux status overlay behaviour and socket-aware bootstrap changes.
+- [ ] Review code and docs between the base commit (origin/main) and the commit hash above.
+- [ ] Validate tmux status overlay behaviour and socket-aware bootstrap changes.
 - [ ] Assess subagent orchestration updates (role normalization, CI audit scope template, transcript capture requirements).
 - [ ] Confirm Python lint/test toolchain additions (`requirements.txt`, `.agents/adapters/python/env.sh`) and `make ci` readiness.
-- [ ] Inspect progress/plan updates for alignment with guardrail expectations.
+- [ ] Inspect progress/plan updates for alignment with guardrail expectations and transcript stewardship.
 
 ## Key Artifacts
 - `.agents/make/agents.mk`, `.agents/tmux/parallelus-status.tmux`, `.agents/bin/subagent_prompt_phase.py`
@@ -21,9 +26,8 @@
 
 ## Review Deliverable
 - Produce `docs/reviews/feature-publish-repo-2025-10-13.md` with:
-  - Reviewed branch, commit (use `git rev-parse HEAD`), and review date.
-  - Decision (`approved` or `changes requested`).
-  - Severity-classified findings (Blocker/High/Medium/Low/Info) with evidence and remediation notes.
-  - Summary of overall assessment and follow-up recommendations.
+  - `Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`, `Decision`.
+  - Severity-classified findings with evidence and remediation notes.
+  - Summary and follow-up recommendations.
 
 _Work read-only except for the review file described above._
