@@ -7,3 +7,4 @@
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
+- Refresh `docs/agents/project/` so it reflects the Parallelus repo (remove lingering Interruptus references) and fold any new guidance into the guardrail docs.

@@ -97,11 +97,12 @@ if __name__ == "__main__":
                         log = row.get("log_path")
                         if log and os.path.exists(log):
                             mtime = os.path.getmtime(log)
-                            delta = int(now - mtime)
-                            minutes, seconds = divmod(max(delta, 0), 60)
-                            ages.append(f"{minutes:02d}:{seconds:02d}")
+                            delta = max(int(now - mtime), 0)
+                            ages.append(delta)
                     if ages:
-                        value = min(ages)
+                        worst = max(ages)
+                        minutes, seconds = divmod(worst, 60)
+                        value = f"{minutes:02d}:{seconds:02d}"
                 else:
                     value = "ready"
             except Exception:

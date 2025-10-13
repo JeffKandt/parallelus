@@ -62,6 +62,11 @@ Target modes:
 All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 (to be implemented). Interface summary:
 
+> **Socket guard:** Helper scripts route all tmux calls through
+> `.agents/bin/tmux-safe`, which automatically applies `PARALLELUS_TMUX_SOCKET`
+> when present. When you need to run tmux commands manually, prefer
+> `tmux-safe …` so the socket flag is never omitted.
+
 - `launch --type {throwaway|worktree} --slug <branch-slug> --scope <scope-file>
   [--launcher auto|iterm-window|iterm-tab|terminal-window|terminal-tab|tmux|code]
   [--profile CODEX_PROFILE] [--role ROLE_PROMPT]`
@@ -83,6 +88,9 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
   - tmux panes automatically display the registry ID in the pane border, and
     `subagent_manager.sh status` reports the matching pane/window handle so you
     can jump straight to the right pane when the monitor loop flags an agent.
+  - After launch, the CLI prints a reminder to run
+    `.agents/bin/agents-monitor-loop.sh --id <entry>`; treat this as mandatory
+    and wait for the loop to exit cleanly before attempting cleanup.
   - Launches now check whether a tmux session is available; if none is found,
     the helper prints the current Codex session ID and points to
     `.agents/bin/resume_in_tmux.sh` so you can resume the session inside the
@@ -176,6 +184,9 @@ When the loop exits:
    and then decide whether to request revisions, let the subagent continue, or proceed toward merge/cleanup.
 4. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
    remaining subagents stay covered.
+5. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
+   `status` no longer reports the entry as `running`. The helper enforces this guard; use
+   `--force` solely for confirmed-aborted sessions.
 
 ### 4.4 Completion & Verification
 

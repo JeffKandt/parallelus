@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
-  if command -v tmux >/dev/null 2>&1; then
-    tmux_env=$(tmux -S "${PARALLELUS_TMUX_SOCKET}" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+RAW_TMUX_BIN=$(command -v tmux || true)
+TMUX_WRAPPER="$ROOT/.agents/bin/tmux-safe"
+if [[ -x "$TMUX_WRAPPER" && -n "$RAW_TMUX_BIN" ]]; then
+  TMUX_BIN="$TMUX_WRAPPER"
+else
+  TMUX_BIN="$RAW_TMUX_BIN"
+fi
+
+if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" && -n "$TMUX_BIN" ]]; then
+    tmux_env=$("$TMUX_BIN" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)
     if [[ -n "${tmux_env:-}" ]]; then
       export TMUX="$tmux_env"
     fi
-  fi
 fi
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REGISTRY_FILE="docs/agents/subagent-registry.json"
 SCOPE_TEMPLATE="docs/agents/templates/subagent_scope_template.md"
 SANDBOX_ROOT="$ROOT/.parallelus/subagents/sandboxes"
@@ -20,8 +27,8 @@ DEPLOY_HELPER="$ROOT/.agents/bin/deploy_agents_process.sh"
 VERIFY_HELPER="$ROOT/.agents/bin/verify_process_run.py"
 SESSION_HELPER="$ROOT/.agents/bin/get_current_session_id.sh"
 RESUME_HELPER="$ROOT/.agents/bin/resume_in_tmux.sh"
+MONITOR_HELPER="$ROOT/.agents/bin/agents-monitor-loop.sh"
 SUBAGENT_LANGS=${SUBAGENT_LANGS:-python}
-TMUX_BIN=$(command -v tmux || true)
 ROLE_PROMPTS_DIR="$ROOT/.agents/prompts/agent_roles"
 
 usage() {
@@ -378,7 +385,11 @@ for key, env in mapping.items():
             continue
         print(f"export {env}={shlex.quote(json.dumps(val))}")
     else:
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
+        if isinstance(val, (list, dict)):
+            rendered = json.dumps(val)
+        else:
+            rendered = str(val)
+        print(f"export {env}={shlex.quote(rendered)}")
 PY
 }
 
@@ -565,6 +576,11 @@ ensure_tmux_ready() {
     echo "  Helper $SESSION_HELPER not found or not executable." >&2
   fi
 
+  local tmux_cmd="tmux"
+  if [[ -n "$TMUX_BIN" ]]; then
+    tmux_cmd="$TMUX_BIN"
+  fi
+
   if [[ -x "$RESUME_HELPER" ]]; then
     if [[ -n "$session_id" ]]; then
       echo "  Command: $RESUME_HELPER $session_id" >&2
@@ -573,9 +589,9 @@ ensure_tmux_ready() {
     fi
   else
     if [[ -n "$session_id" ]]; then
-      echo "  Command: tmux new-session -s parallelus -c '$ROOT' 'codex resume $session_id'" >&2
+      echo "  Command: $tmux_cmd new-session -s parallelus -c '$ROOT' 'codex resume $session_id'" >&2
     else
-      echo "  Command: tmux new-session -s parallelus -c '$ROOT' 'codex resume <SESSION_ID>'" >&2
+      echo "  Command: $tmux_cmd new-session -s parallelus -c '$ROOT' 'codex resume <SESSION_ID>'" >&2
     fi
   fi
 
@@ -706,6 +722,7 @@ USAGE
     SUBAGENT_CODEX_SESSION_MODE
     SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS
     SUBAGENT_CODEX_ALLOWED_WRITES
+    SUBAGENT_CODEX_CONFIG_OVERRIDES
   )
   local restore_env_cmds=()
   for _var in "${tracked_env_vars[@]}"; do
@@ -771,6 +788,10 @@ PY
   for _cmd in "${restore_env_cmds[@]}"; do
     eval "$_cmd"
   done
+  if [[ -x "$MONITOR_HELPER" ]]; then
+    echo "Monitor with: $MONITOR_HELPER --id $entry_id" >&2
+    echo "Wait for the monitor loop to exit cleanly before running subagent_manager.sh cleanup." >&2
+  fi
   echo "$entry_id"
 }
 
@@ -862,7 +883,11 @@ PY
 )
 
   if [[ $force -eq 0 && "$status" == "running" ]]; then
-    echo "subagent_manager cleanup: refusing to remove running sandbox $entry_id (use --force to override)" >&2
+    echo "subagent_manager cleanup: refusing to remove running sandbox $entry_id." >&2
+    if [[ -x "$MONITOR_HELPER" ]]; then
+      echo "  Run $MONITOR_HELPER --id $entry_id and wait for it to exit (subagent finished) before cleaning up." >&2
+    fi
+    echo "  Re-run with --force only if you are certain the subagent has stopped." >&2
     return 1
   fi
 
@@ -875,14 +900,16 @@ PY
     fi
   fi
   update_registry "$entry_id" "row['status'] = 'cleaned'"
-  if [[ "$launcher_kind" == "tmux-window" && -n "$launcher_window" ]]; then
-    tmux kill-window -t "$launcher_window" >/dev/null 2>&1 || true
-  elif [[ "$launcher_kind" == "tmux-pane" && -n "$launcher_pane" ]]; then
-    tmux kill-pane -t "$launcher_pane" >/dev/null 2>&1 || true
-    if [[ -n "$launcher_window" ]]; then
-      mapfile -t _remaining < <(tmux list-panes -t "$launcher_window" -F '#{pane_id}' 2>/dev/null || true)
-      if (( ${#_remaining[@]} == 0 )); then
-        tmux kill-window -t "$launcher_window" >/dev/null 2>&1 || true
+  if [[ -n "$TMUX_BIN" ]]; then
+    if [[ "$launcher_kind" == "tmux-window" && -n "$launcher_window" ]]; then
+      "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
+    elif [[ "$launcher_kind" == "tmux-pane" && -n "$launcher_pane" ]]; then
+      "$TMUX_BIN" kill-pane -t "$launcher_pane" >/dev/null 2>&1 || true
+      if [[ -n "$launcher_window" ]]; then
+        mapfile -t _remaining < <("$TMUX_BIN" list-panes -t "$launcher_window" -F '#{pane_id}' 2>/dev/null || true)
+        if (( ${#_remaining[@]} == 0 )); then
+          "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
+        fi
       fi
     fi
   fi

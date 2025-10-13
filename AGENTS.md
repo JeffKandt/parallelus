@@ -7,6 +7,10 @@ commands beyond `make read_bootstrap`.
 ## 1. Purpose & Usage
 - Internalise these guardrails during Recon & Planning; they apply to every
   turn regardless of scope.
+- Every mitigation must become a durable, versioned artifact that ships with the
+  repository (e.g. `.agents` tooling, docs/agents runbooks, automated setup,
+  tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
+  not acceptable mitigations.
 - Operational manuals live under `docs/agents/manuals/`. Only consult them when
   a gate below fires, but you **must** read the relevant manual *before*
   executing the guarded task and note the acknowledgement in the progress log.
@@ -60,6 +64,9 @@ commands beyond `make read_bootstrap`.
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
   the prompt’s YAML front matter (defaults defined at the top of
   `.agents/prompts/agent_roles/senior_architect.md`).
+- Launch the senior architect review subagent **only after** staging/committing
+  the work under review and pushing it to the feature branch; reviews operate on
+  the committed state, not local working tree changes.
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run

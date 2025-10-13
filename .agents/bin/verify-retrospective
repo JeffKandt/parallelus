@@ -54,7 +54,8 @@ def main() -> None:
     marker_path = markers_dir / f"{slugged}.json"
 
     if not marker_path.exists():
-        if not reports_dir.exists() or not any(reports_dir.glob(f"{branch}--*.json")):
+        pattern = f"{slugged}--*.json"
+        if not reports_dir.exists() or not any(reports_dir.glob(pattern)):
             return  # nothing to validate yet
         raise SystemExit(
             "verify-retrospective: marker not found but reports exist; please run the "
