@@ -688,18 +688,25 @@ USAGE
   fi
 
   local timestamp entry_id sandbox scope_path prompt_path log_path
+  local current_branch current_commit
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  current_commit=$(git rev-parse HEAD)
   timestamp=$(date -u +%Y%m%d-%H%M%S)
   entry_id="${timestamp}-${slug}"
 
   if [[ "$type" == "throwaway" ]]; then
     mkdir -p "$SANDBOX_ROOT"
     sandbox=$(mktemp -d "$SANDBOX_ROOT/${slug}-XXXXXX")
-    LANG_FLAGS=()
-    while IFS= read -r line; do
-      [[ -z "$line" ]] && continue
-      LANG_FLAGS+=("$line")
-    done < <(build_lang_flags)
-    "$DEPLOY_HELPER" --mode scaffold "${LANG_FLAGS[@]}" --name "$slug" "$sandbox" >&2
+    git clone --no-hardlinks --local "$ROOT" "$sandbox" >/dev/null 2>&1
+    (
+      cd "$sandbox"
+      git fetch --quiet >/dev/null 2>&1 || true
+      git checkout --quiet "$current_commit" >/dev/null 2>&1 || {
+        git checkout --quiet -B "$current_branch" "$current_commit" >/dev/null 2>&1
+      }
+      git reset --quiet --hard "$current_commit" >/dev/null
+      git submodule update --init --recursive >/dev/null 2>&1 || true
+    )
   else
     mkdir -p "$WORKTREE_ROOT"
     sandbox="$WORKTREE_ROOT/$slug"
