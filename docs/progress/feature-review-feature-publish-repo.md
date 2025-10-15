@@ -1,5 +1,17 @@
 # Branch Progress — feature/review-feature-publish-repo
 
+## 2025-10-15 21:41:28 UTC
+**Objectives**
+- Reconfirm guardrails and capture the current branch/subagent context.
+
+**Work Performed**
+- Reviewed the Parallelus Agent Core Guardrails and noted the acknowledgement here before continuing.
+- Ran `make read_bootstrap` to snapshot repo state ahead of investigating the branch divergence.
+
+**Next Actions**
+- Clean up the leftover `senior-review-kE0C7y` subagent sandbox and remove the `.parallelus` artefacts before committing.
+- Ensure the branch plan reflects the latest remediation/status updates once cleanup is complete.
+
 ## 2025-10-13 03:53:50 UTC
 **Objectives**
 - Review guardrails, build an actionable plan, and diagnose the tmux overlay prompt injection.
@@ -151,3 +163,16 @@
 **Next Actions**
 - Rerun the senior architect review with `make monitor_subagents` now that sandbox creation is isolated.
 - Follow through on the plan-level TODOs after review sign-off.
+
+## 2025-10-13 07:43:30 UTC
+**Objectives**
+- Re-run the senior architect review on the committed branch.
+
+**Work Performed**
+- Launched `subagent_manager.sh launch --type throwaway --slug senior-review --scope docs/agents/templates/senior_architect_scope.md --role senior_architect.md` against commit `feba011`; monitored it via `make monitor_subagents ARGS="--id 20251013-072554-senior-review …"` until the log heartbeat stalled at the 3-minute mark.
+- Captured the subagent’s analysis up to the stall (log confirms review drafting started) and force-cleaned the sandbox to avoid leaving a running entry.
+- Restarted the review (`id=20251013-074311-senior-review`) but paused work here so the next session can continue with a fresh monitor loop.
+
+**Next Actions**
+- Resume the latest senior-review run (`make monitor_subagents ARGS="--id 20251013-074311-senior-review"`) and let it finish; capture the generated review file in the main repo.
+- If the subagent still stalls, investigate the missing `python3` tooling inside the sandbox before relaunching.
