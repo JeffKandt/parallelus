@@ -1,14 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
+  if command -v tmux >/dev/null 2>&1; then
+    tmux_env=$(tmux -S "${PARALLELUS_TMUX_SOCKET}" display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)
+    if [[ -n "${tmux_env:-}" ]]; then
+      export TMUX="$tmux_env"
+    fi
+  fi
+fi
+
 print_manual() {
   local path=$1
   local prompt=$2
+  local profile_arg=""
+  local model_arg=""
+  local sandbox_arg=""
+  local approval_arg=""
+  local config_args=""
+  if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    profile_arg=" --profile ${SUBAGENT_CODEX_PROFILE}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+    model_arg=" --model ${SUBAGENT_CODEX_MODEL}"
+  fi
+  local dangerous_args=""
+  if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+    sandbox_arg=" --sandbox ${SUBAGENT_CODEX_SANDBOX_MODE}"
+  else
+    dangerous_args=" --dangerously-bypass-approvals-and-sandbox --sandbox danger-full-access"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+    approval_arg=" --ask-for-approval ${SUBAGENT_CODEX_APPROVAL_POLICY}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+    config_args=$(python3 - <<'PY' "${SUBAGENT_CODEX_CONFIG_OVERRIDES}"
+import json, shlex, sys
+data=json.loads(sys.argv[1])
+parts=[]
+for key, value in data.items():
+    parts.append(" -c " + shlex.quote(f"{key}={json.dumps(value)}"))
+print("".join(parts))
+PY
+)
+  fi
   cat <<EOF >&2
 Unable to auto-launch a terminal for the subagent. Run the following manually:
 
   cd '$path'
-  codex --cd '$path' "$(cat "$prompt")"
+  codex --cd '$path'$profile_arg$model_arg$sandbox_arg$approval_arg$config_args$dangerous_args "$(cat "$prompt")"
 EOF
 }
 
@@ -24,6 +64,44 @@ create_runner() {
   printf -v prompt_q "%q" "$prompt"
   printf -v log_q "%q" "$log"
   printf -v inner_q "%q" "$inner"
+  local profile_export=""
+  local model_export=""
+  local sandbox_export=""
+  local approval_export=""
+  local session_export=""
+  local constraints_export=""
+  local writes_export=""
+  local config_export=""
+  local model_export=""
+  local sandbox_export=""
+  local approval_export=""
+  local session_export=""
+  local constraints_export=""
+  local writes_export=""
+  if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+    printf -v profile_export 'export SUBAGENT_CODEX_PROFILE=%q\n' "$SUBAGENT_CODEX_PROFILE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+    printf -v model_export 'export SUBAGENT_CODEX_MODEL=%q\n' "$SUBAGENT_CODEX_MODEL"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+    printf -v sandbox_export 'export SUBAGENT_CODEX_SANDBOX_MODE=%q\n' "$SUBAGENT_CODEX_SANDBOX_MODE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+    printf -v approval_export 'export SUBAGENT_CODEX_APPROVAL_POLICY=%q\n' "$SUBAGENT_CODEX_APPROVAL_POLICY"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
+    printf -v session_export 'export SUBAGENT_CODEX_SESSION_MODE=%q\n' "$SUBAGENT_CODEX_SESSION_MODE"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS:-}" ]]; then
+    printf -v constraints_export 'export SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS=%q\n' "$SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_ALLOWED_WRITES:-}" ]]; then
+    printf -v writes_export 'export SUBAGENT_CODEX_ALLOWED_WRITES=%q\n' "$SUBAGENT_CODEX_ALLOWED_WRITES"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+    printf -v config_export 'export SUBAGENT_CODEX_CONFIG_OVERRIDES=%q\n' "$SUBAGENT_CODEX_CONFIG_OVERRIDES"
+  fi
 
   cat <<EOF >"$runner"
 #!/usr/bin/env bash
@@ -46,6 +124,11 @@ export PARALLELUS_PROMPT_FILE
 export PARALLELUS_LOG_PATH
 export PARALLELUS_ORIG_TERM="\${TERM:-xterm-256color}"
 export PARALLELUS_SUPPRESS_TMUX_EXPORT=1
+export SUBAGENT=1
+if [[ -z "\${CI:-}" ]]; then
+  export CI=true
+fi
+${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}${config_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -67,12 +150,49 @@ WORKDIR="${PARALLELUS_WORKDIR:?}"
 prompt_content="$(<"$PROMPT_FILE")"
 
 export TERM="${PARALLELUS_ORIG_TERM:-xterm-256color}"
+export SUBAGENT=1
+if [[ -z "${CI:-}" ]]; then
+  export CI=true
+fi
 
-exec codex \
-  --dangerously-bypass-approvals-and-sandbox \
-  --sandbox danger-full-access \
-  --cd "$WORKDIR" \
-  "$prompt_content"
+args=()
+
+if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
+  args+=("--sandbox" "${SUBAGENT_CODEX_SANDBOX_MODE}")
+else
+  args+=(
+    "--dangerously-bypass-approvals-and-sandbox"
+    "--sandbox" "danger-full-access"
+  )
+fi
+
+args+=("--cd" "$WORKDIR")
+
+if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+  args+=("--model" "${SUBAGENT_CODEX_MODEL}")
+fi
+
+if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+  args+=("--ask-for-approval" "${SUBAGENT_CODEX_APPROVAL_POLICY}")
+fi
+
+if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
+  while IFS= read -r kv; do
+    args+=("-c" "$kv")
+  done < <(python3 - <<'PY' "${SUBAGENT_CODEX_CONFIG_OVERRIDES}"
+import json, sys
+data=json.loads(sys.argv[1])
+for key, value in data.items():
+    print(f"{key}={json.dumps(value)}")
+PY
+)
+fi
+
+if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
+  args+=("--profile" "${SUBAGENT_CODEX_PROFILE}")
+fi
+
+exec codex "${args[@]}" "$prompt_content"
 EOF
   chmod +x "$inner"
   echo "$runner"

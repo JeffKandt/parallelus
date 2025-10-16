@@ -1,1 +1,5 @@
-# List project dependencies here (pip-style, one per line).
+# Linting / formatting toolchain for CI
+black==24.4.2
+ruff==0.5.6
+pytest==8.2.1
+PyYAML==6.0.2

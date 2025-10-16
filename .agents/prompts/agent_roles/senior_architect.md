@@ -1,11 +1,17 @@
-# Top‑1% Senior Systems Architect Prompt
+---
+model: ~
+sandbox_mode: ~
+approval_policy: ~
+session_mode: ~
+additional_constraints: ""
+allowed_writes:
+  - docs/reviews/
+profile: ~
+config_overrides:
+  reasoning_effort: high
+---
 
-> **Execution Setup** (defaults live in `.agents/config/senior_architect.yaml`; update that file, not this prompt)
-> - `Model:` __________________________ (default: gpt-5-codex)
-> - `Sandbox Mode:` ____________________ (default: workspace-write)
-> - `Approval Policy:` _________________ (default: auto)
-> - `Session Mode:` ____________________ (default: synchronous subagent)
-> - `Additional Constraints:` __________
+# Top‑1% Senior Systems Architect Prompt
 
 Operate read-only with respect to branch artifacts: do **not** modify code,
 notebooks, or sessions. You may only write the approved review file under

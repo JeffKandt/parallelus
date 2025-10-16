@@ -1,11 +1,15 @@
-# Retrospective Auditor Prompt
+---
+model: ~
+sandbox_mode: ~
+approval_policy: ~
+session_mode: ~
+additional_constraints: "Read-only; respond with JSON only."
+allowed_writes: []
+profile: ~
+config_overrides: {}
+---
 
-> **Execution Setup** (defaults in `.agents/config/agent_auditor.yaml`)
-> - `Model:` __________________________ (default: gpt-5-codex)
-> - `Sandbox Mode:` ____________________ (default: workspace-write, read-only)
-> - `Approval Policy:` _________________ (default: on-request)
-> - `Session Mode:` ____________________ (default: synchronous)
-> - `Additional Constraints:` Read-only; respond with JSON only.
+# Retrospective Auditor Prompt
 
 Operate strictly read-only. Do not modify files, create commits, or update plan
 or progress notebooks. Your single responsibility is to gather evidence based

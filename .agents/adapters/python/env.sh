@@ -26,8 +26,13 @@ fi
 # shellcheck disable=SC1090
 . "$VENV_DIR/bin/activate"
 
+if ! command -v pip >/dev/null 2>&1; then
+  "$PYTHON_BIN" -m ensurepip --upgrade >/dev/null 2>&1 || true
+fi
+
 if [[ -f "$ROOT/requirements.txt" ]]; then
-  pip install -r "$ROOT/requirements.txt" >/dev/null
+  "$PYTHON_BIN" -m pip install --upgrade pip >/dev/null 2>&1 || true
+  "$PYTHON_BIN" -m pip install -r "$ROOT/requirements.txt" >/dev/null
 fi
 
 echo "python adapter: environment ready at $VENV_DIR" >&2

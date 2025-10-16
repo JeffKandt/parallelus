@@ -1,5 +1,0 @@
-model: gpt-5-codex
-sandbox_mode: workspace-write
-approval_policy: on-request
-session_mode: synchronous
-additional_constraints: "Read-only; respond with JSON report only."

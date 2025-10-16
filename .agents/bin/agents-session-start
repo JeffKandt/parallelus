@@ -154,9 +154,26 @@ fi
 printf "export SESSION_ID='%s'\n" "$SID"
 printf "export SESSION_DIR='%s'\n" "$SDIR"
 
+tmux_args=()
+if [[ -n "${PARALLELUS_TMUX_SOCKET:-}" && -S "${PARALLELUS_TMUX_SOCKET}" ]]; then
+  tmux_args=(-S "${PARALLELUS_TMUX_SOCKET}")
+fi
+
 if [[ -z "${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ]]; then
   if [[ -z "${TMUX:-}" ]] && command -v tmux >/dev/null 2>&1; then
-    tmux_env="$(tmux display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"
+    tmux_env=""
+    tmux_cmd=(tmux)
+    if ((${#tmux_args[@]})); then
+      tmux_cmd+=("${tmux_args[@]}")
+    fi
+    if tmux_env_line="$("${tmux_cmd[@]}" show-environment -g TMUX 2>/dev/null)"; then
+      tmux_env="${tmux_env_line#TMUX=}"
+    else
+      tmux_control="$("${tmux_cmd[@]}" -C display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"
+      if [[ -n "$tmux_control" ]]; then
+        tmux_env="$(printf '%s\n' "$tmux_control" | awk 'NR==2 {print; exit}')"
+      fi
+    fi
     if [[ -n "$tmux_env" ]]; then
       printf "export TMUX='%s'\n" "$tmux_env"
     fi

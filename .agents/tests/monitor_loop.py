@@ -22,7 +22,7 @@ from textwrap import dedent
 SCRIPT_UNDER_TEST = Path(__file__).resolve().parents[1] / "bin" / "agents-monitor-loop.sh"
 
 HEADER = (
-    "ID                       Type       Slug                      Status           Run Time  Log Age   Last Log (UTC)"
+    "ID                       Type       Slug                      Status           Deliverables Run Time  Log Age   Handle         Last Log (UTC)"
 )
 SEPARATOR = "-" * len(HEADER)
 
@@ -40,7 +40,7 @@ def _write_stub(repo_root: Path, scenario: str) -> None:
             cat <<'EOF'
 {HEADER}
 {SEPARATOR}
-20251009-000000-monitor worktree   monitor-loop-test         running          11:05     00:20     2025-10-09 19:00:00
+20251009-000000-monitor worktree   monitor-loop-test         running          pending      11:05     00:20     -              2025-10-09 19:00:00
 EOF
         """
     elif scenario == "heartbeat":
@@ -50,7 +50,7 @@ EOF
             cat <<'EOF'
 {HEADER}
 {SEPARATOR}
-20251009-000001-monitor worktree   monitor-loop-test         running          02:15     04:10     2025-10-09 19:05:00
+20251009-000001-monitor worktree   monitor-loop-test         running          pending      02:15     04:10     -              2025-10-09 19:05:00
 EOF
         """
     elif scenario == "none":
@@ -66,9 +66,9 @@ EOF
             cat <<'EOF'
 {HEADER}
 {SEPARATOR}
-20251009-000010-monitor worktree   monitor-loop-alpha       running          01:15     00:45     2025-10-09 19:10:00
-20251009-000011-monitor worktree   monitor-loop-beta        running          00:25     00:30     2025-10-09 19:10:10
-20251009-000012-monitor worktree   monitor-loop-gamma       cleaned          00:00     -         -
+20251009-000010-monitor worktree   monitor-loop-alpha       running          pending      01:15     00:45     %0/@0          2025-10-09 19:10:00
+20251009-000011-monitor worktree   monitor-loop-beta        running          pending      00:25     00:30     %1/@0          2025-10-09 19:10:10
+20251009-000012-monitor worktree   monitor-loop-gamma       cleaned          harvested    00:00     -         -              -
 EOF
         """
     elif scenario == "stale":
@@ -78,7 +78,7 @@ EOF
             cat <<'EOF'
 {HEADER}
 {SEPARATOR}
-20251009-000020-monitor worktree   monitor-loop-stale       running          00:00     -         -
+20251009-000020-monitor worktree   monitor-loop-stale       running          pending      00:00     -         -              -
 EOF
         """
     else:

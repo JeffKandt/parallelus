@@ -79,7 +79,7 @@ if ((${#plan_files[@]} > 0)); then
   for f in "${plan_files[@]}"; do
     echo "  - $f" >&2
   done
-  echo "Please fold plan updates into docs/PLAN.md and remove branch notebooks before merging." >&2
+  echo "Fold plan updates into docs/PLAN.md (or the canonical plan) and remove branch notebooks before merging." >&2
   exit 1
 fi
 
@@ -88,7 +88,7 @@ if ((${#progress_files[@]} > 0)); then
   for f in "${progress_files[@]}"; do
     echo "  - $f" >&2
   done
-  echo "Please stitch progress logs into docs/PROGRESS.md before merging." >&2
+  echo "Stitch progress notes into docs/PROGRESS.md and delete branch notebooks before merging." >&2
   exit 1
 fi
 
@@ -269,6 +269,9 @@ if ! make ci; then
   echo "agents-merge: make ci failed; resolve issues before merging" >&2
   exit 1
 fi
+
+# Clean up artifacts generated during CI runs (e.g., smoke test registry entries).
+git checkout -- docs/agents/subagent-registry.json >/dev/null 2>&1 || true
 
 export AGENTS_MERGE_SKIP_HOOK_CI=1
 export AGENTS_MERGE_BRANCH="$feature_branch"

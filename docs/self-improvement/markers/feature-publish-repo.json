@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-12T16:11:06+00:00",
+  "branch": "feature/publish-repo",
+  "head": "6a25e1e4fe7c3d5e58a9bd6e53556983c821fa1b",
+  "plan_path": "docs/plans/feature-publish-repo.md",
+  "plan_lines": 24,
+  "progress_path": "docs/progress/feature-publish-repo.md",
+  "progress_lines": 57,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}

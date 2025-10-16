@@ -9,7 +9,7 @@ This directory stores two types of artifacts:
    analysis.
 2. **Retrospective reports** (`reports/<branch>--<marker-timestamp>.json`)
    written by the Retrospective Auditor subagent. Each report must follow the
-   schema described in `.agents/prompts/agent_roles/agent_auditor.md` and is
+  schema described in `.agents/prompts/agent_roles/continuous_improvement_auditor.md` and is
    committed by the main agent after review.
 
 Merge guardrails require that the latest marker for a branch has a corresponding

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+socket=${PARALLELUS_TMUX_SOCKET:-}
+
+if [[ -n "$socket" ]]; then
+  exec tmux -S "$socket" "$@"
+else
+  exec tmux "$@"
+fi

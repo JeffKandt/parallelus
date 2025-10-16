@@ -9,15 +9,36 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/../agentrc"
 
 MSG="${1:-${AUDIBLE_ALERT_MESSAGE:-${ALERT_DEFAULT_MESSAGE:-Agent pause}}}"
+force_audio="${AUDIBLE_ALERT_FORCE_AUDIO:-}"
+require_tty="${AUDIBLE_ALERT_REQUIRE_TTY:-0}"
+subagent_flag="${SUBAGENT:-}"
+ci_flag="${CI:-}"
 
-if [[ "${CI:-}" == "true" || ! -t 1 ]]; then
-  printf '[alert] %s\n' "$MSG"
-  exit 0
+is_true() {
+  case "$1" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if is_true "$subagent_flag" || [[ "$ci_flag" == "true" ]]; then
+  if [[ "$force_audio" != "1" ]]; then
+    printf '[alert] %s\n' "$MSG"
+    exit 0
+  fi
+fi
+
+if [[ ! -t 1 ]]; then
+  if [[ "$force_audio" == "1" || "$require_tty" != "1" ]]; then
+    :
+  else
+    printf '[alert] %s\n' "$MSG"
+    exit 0
+  fi
 fi
 
 if command -v say >/dev/null 2>&1; then
-  say "$MSG"
-  exit 0
+  say -v "${AUDIBLE_ALERT_VOICE:-Alex}" "$MSG" || true
 fi
 
 if command -v afplay >/dev/null 2>&1; then

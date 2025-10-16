@@ -7,6 +7,10 @@ commands beyond `make read_bootstrap`.
 ## 1. Purpose & Usage
 - Internalise these guardrails during Recon & Planning; they apply to every
   turn regardless of scope.
+- Every mitigation must become a durable, versioned artifact that ships with the
+  repository (e.g. `.agents` tooling, docs/agents runbooks, automated setup,
+  tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
+  not acceptable mitigations.
 - Operational manuals live under `docs/agents/manuals/`. Only consult them when
   a gate below fires, but you **must** read the relevant manual *before*
   executing the guarded task and note the acknowledgement in the progress log.
@@ -58,8 +62,11 @@ commands beyond `make read_bootstrap`.
   `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
   Blocker/High`, and acknowledge other findings via
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
-  `.agents/config/senior_architect.yaml`; update that file rather than editing
-  the prompt.
+  the prompt’s YAML front matter (defaults defined at the top of
+  `.agents/prompts/agent_roles/senior_architect.md`).
+- Launch the senior architect review subagent **only after** staging/committing
+  the work under review and pushing it to the feature branch; reviews operate on
+  the committed state, not local working tree changes.
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run
@@ -72,8 +79,8 @@ commands beyond `make read_bootstrap`.
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
-- Before calling `make turn_end`, launch the Retrospective Auditor prompt (see
-  `.agents/prompts/agent_roles/agent_auditor.md`) using the previous marker. The
+- Before calling `make turn_end`, launch the Continuous Improvement Auditor prompt (see
+  `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the previous marker. The
   auditor responds with JSON; save it to
   `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
   TODOs into the branch plan. Only then run `make turn_end`, which records the
