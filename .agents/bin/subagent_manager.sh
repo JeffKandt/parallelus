@@ -79,6 +79,9 @@ current_branch() {
 
 ensure_not_main() {
   local branch
+  if [[ "${SUBAGENT_MANAGER_ALLOW_MAIN:-0}" == "1" ]]; then
+    return 0
+  fi
   branch=$(current_branch)
   if [[ "$branch" == "main" ]]; then
     echo "subagent_manager: refuse to run on 'main'. Checkout a feature branch first." >&2
@@ -145,9 +148,9 @@ PY
 
 print_status() {
   local filter_id=${1:-}
-  python3 - "$REGISTRY_FILE" "$filter_id" <<'PY'
+python3 - "$REGISTRY_FILE" "$filter_id" <<'PY'
 import json, sys, os, time
-from datetime import datetime
+from datetime import datetime, timezone
 
 registry_path, filter_id = sys.argv[1:3]
 with open(registry_path, "r", encoding="utf-8") as fh:
@@ -231,7 +234,7 @@ for row in entries:
     launched_at = row.get('launched_at')
     if launched_at:
         try:
-            launched = datetime.strptime(launched_at, "%Y%m%d-%H%M%S")
+            launched = datetime.strptime(launched_at, "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc)
             delta = int(max(now - launched.timestamp(), 0))
             minutes, seconds = divmod(delta, 60)
             runtime = f"{minutes:02d}:{seconds:02d}"

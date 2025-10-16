@@ -1673,5 +1673,66 @@
     "window_title": "",
     "launcher_kind": "",
     "launcher_handle": null
+  },
+  {
+    "id": "20251016-143847-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kg88eO",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kg88eO/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kg88eO/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kg88eO/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-143847",
+    "window_title": "20251016-143847-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251016-143847-senior-review",
+      "window_id": "@0",
+      "pane_id": "%10"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T14:52:11Z",
+        "target_path": "docs/reviews"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251016-145149-pytest-test_subagent_launch_without_r0",
+    "type": "throwaway",
+    "slug": "pytest-test_subagent_launch_without_r0",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-LepE2C",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-LepE2C/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-LepE2C/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-LepE2C/subagent.log",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20251016-145149",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null
+  },
+  {
+    "id": "20251016-145206-pytest-test_subagent_launch_without_r0",
+    "type": "throwaway",
+    "slug": "pytest-test_subagent_launch_without_r0",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-XkhpjF",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-XkhpjF/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-XkhpjF/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-XkhpjF/subagent.log",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20251016-145206",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null
   }
 ]

@@ -1,7 +1,6 @@
 """Basic smoke tests for project utilities."""
 
-from __future__ import annotations
-
+import os
 import subprocess
 from pathlib import Path
 
@@ -11,12 +10,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     """Run helper that enforces success and captures output."""
+    env = os.environ.copy()
+    env.setdefault("SUBAGENT_MANAGER_ALLOW_MAIN", "1")
     return subprocess.run(
         cmd,
         cwd=ROOT,
         text=True,
         capture_output=True,
         check=True,
+        env=env,
     )
 
 

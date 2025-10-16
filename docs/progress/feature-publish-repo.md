@@ -214,3 +214,20 @@
 
 **Next Actions**
 - Launch the senior architect subagent again so the reviewer can verify the monitor-loop fix.
+
+## 2025-10-16 14:52:35 UTC
+**Objectives**
+- Address the senior architect feedback on the no-role smoke test and rerun the review.
+
+**Work Performed**
+- Taught `ensure_not_main` to honor `SUBAGENT_MANAGER_ALLOW_MAIN=1` so test harnesses (and targeted diagnostics) can opt-in without weakening the default guardrail.
+- Updated `tests/test_basic.py` to export the override during the launch/cleanup smoke test; revalidated the test and the monitor-loop suite individually, then reran `make ci` to confirm a clean build.
+- Relaunched the senior-review subagent (`20251016-143847-senior-review`) for the updated commit; captured the review output noting the remaining blocker before applying the override fix.
+
+**Validation**
+- `pytest tests/test_basic.py -k subagent_launch_without_role_succeeds -q`
+- `pytest .agents/tests/monitor_loop.py -q`
+- `make ci`
+
+**Next Actions**
+- Relaunch the senior architect review on the latest commit to confirm the blocker is resolved.
