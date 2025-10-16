@@ -1,15 +1,14 @@
 Reviewed-Branch: feature/publish-repo
-Reviewed-Commit: 61aec4acdd976ca5d84721c201c7f86f0d4e455f
-Reviewed-On: 2025-10-17
+Reviewed-Commit: d56535dfad1894fc1df1efca42e8cb4c2f99c7a0
+Reviewed-On: 2025-10-16
 Decision: changes requested
 
 ## Findings
-- **Severity: High** – Guardrail toggles are wired to the wrong agentrc keys (`.agents/agentrc:16`, `.agents/bin/verify-retrospective:8`, `.agents/bin/retro-marker:8`). The new config adds `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW`, but the enforcement scripts still read `REQUIRE_AGENT_CI_AUDITS` (and related knobs). As a result, the shipped settings never engage, so `make turn_end` / senior-review checks cannot be disabled or reconfigured as documented. Align the loaders with the new key names (or rename the keys back) and cover both retro and review guards.
-- **Severity: Medium** – The CI audit scope template promises branch/marker parameterisation, yet `create_scope_file` just copies it verbatim, leaving `{{PARENT_BRANCH}}` / `{{MARKER_PATH}}` placeholders in the generated scope (`docs/agents/templates/ci_audit_scope.md:3`, `.agents/bin/subagent_manager.sh:244`). Subagents still have to fill the values manually, so the template does not deliver the claimed automation. Render the template with actual branch and marker data at launch time (or rewrite it without placeholders) before handing it to the auditor.
+- **Severity: High** – Guardrail toggles never engage. `.agents/agentrc:16-17` introduces `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW`, but the enforcement scripts still read the legacy keys. `docs/self-improvement` gating continues to check `REQUIRE_AGENT_CI_AUDITS` via `.agents/bin/verify-retrospective:8-46`, and `retro-marker` references the same constant at `.agents/bin/retro-marker:11-120`. Because the new knobs are ignored, operators cannot disable / switch auditors as documented, and future branches could silently bypass the retrospective requirement by setting the old key back to 0. Align the loader constants (and the senior-review hook, once it exists) with the new names, add regression coverage, and ensure both retro and review gates honour the documented configuration.
 
 ## Summary
-Process guardrails, tmux work, and documentation look solid, but the new retrospective/review enforcement knobs are inert and the CI audit scope template is still manual, so ship is blocked until those are fixed.
+The tmux socket awareness, subagent orchestration improvements, CI-audit template fixes, and tooling docs look solid. However, the guardrail configuration shipped in `.agents/agentrc` is inert—the verification helpers still listen for the previous key names—so the most critical gating feature remains miswired. Ship is blocked until the configuration flag mismatch is resolved and covered by tests or automated checks.
 
 ## Recommendations
-1. Fix the guardrail flag wiring and add coverage so configuration updates are exercised by tests/tooling.
-2. Populate the CI audit scope placeholders programmatically (or drop them) so auditors receive concrete branch/marker context out of the box.
+1. Update `verify-retrospective`, `retro-marker`, and any related hooks to consume `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW` (or rename the agentrc entries back to the legacy keys) and add a quick self-check that fails when the expected flag is missing.
+2. Add a follow-up to wire the senior-review requirement gate to `AGENTS_REQUIRE_SENIOR_REVIEW` so the documented flag actually controls the launch/merge guard.

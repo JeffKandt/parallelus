@@ -5,7 +5,8 @@ import subprocess
 from pathlib import Path
 
 ALLOWED_SKIP_VAR = "AGENTS_RETRO_SKIP_VALIDATE"
-AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
+NEW_AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
+LEGACY_AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
 
 
 def git_root() -> Path:
@@ -41,7 +42,9 @@ def main() -> None:
     slugged = branch.replace("/", "-")
 
     agentrc = load_agentrc(repo)
-    require_retro = agentrc.get(AGENT_RC_FLAG, "1")
+    require_retro = agentrc.get(NEW_AGENT_RC_FLAG)
+    if require_retro is None:
+        require_retro = agentrc.get(LEGACY_AGENT_RC_FLAG, "1")
     role_prompt = agentrc.get("AGENT_CI_AGENT_ROLE", "continuous_improvement_auditor")
     if require_retro.lower() in {"0", "false", "no"}:
         return

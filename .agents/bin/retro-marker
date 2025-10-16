@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
+NEW_AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
+LEGACY_AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
 ROLE_VAR = "AGENT_CI_AGENT_ROLE"
 DEFAULT_ROLE = "continuous_improvement_auditor"
 
@@ -110,7 +111,9 @@ def main() -> None:
     marker_path = markers_dir / f"{slugged}.json"
 
     agentrc = load_agentrc(repo)
-    require_retro = agentrc.get(AGENT_RC_FLAG, "1")
+    require_retro = agentrc.get(NEW_AGENT_RC_FLAG)
+    if require_retro is None:
+        require_retro = agentrc.get(LEGACY_AGENT_RC_FLAG, "1")
     role_prompt = agentrc.get(ROLE_VAR, DEFAULT_ROLE)
 
     report_path = None

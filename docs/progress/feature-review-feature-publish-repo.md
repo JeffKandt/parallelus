@@ -108,6 +108,17 @@
 **Next Actions**
 - Rerun the senior architect review on `feature/publish-repo` to confirm the auditor fixes clear the outstanding findings.
 
+## 2025-10-16 08:45:39 UTC
+**Objectives**
+- Align guardrail toggles with the new configuration flags.
+
+**Work Performed**
+- Switched `verify-retrospective` and `retro-marker` to honour `AGENTS_REQUIRE_RETRO`, retaining the legacy key as a fallback for older branches.
+- Captured the latest senior-review log (`docs/logs/senior-review-20251016T083119.txt`) after harvesting/cleanup.
+
+**Next Actions**
+- Re-run the senior architect review to verify the new guardrail wiring clears the blocker.
+
 **Next Actions**
 - Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
 ## 2025-10-15 21:41:28 UTC
