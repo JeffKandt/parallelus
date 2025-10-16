@@ -1386,5 +1386,69 @@
       "pane_id": "%8"
     },
     "role_prompt": "senior_architect.md"
+  },
+  {
+    "id": "20251016-054956-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-ma4KYe",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-ma4KYe/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-ma4KYe/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-ma4KYe/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-054956",
+    "window_title": "20251016-054956-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251016-054956-senior-review",
+      "window_id": "@0",
+      "pane_id": "%1"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T06:26:50Z",
+        "target_path": "docs/reviews"
+      },
+      {
+        "source": "docs/logs",
+        "target": "docs/logs",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T06:26:50Z",
+        "target_path": "docs/logs"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251016-064757-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-G6D1d8",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-G6D1d8/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-G6D1d8/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-G6D1d8/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-064757",
+    "window_title": "20251016-064757-senior-review",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T07:05:56Z",
+        "target_path": "docs/reviews"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]

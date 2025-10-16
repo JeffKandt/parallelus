@@ -69,7 +69,8 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 
 - `launch --type {throwaway|worktree} --slug <branch-slug> --scope <scope-file>
   [--launcher auto|iterm-window|iterm-tab|terminal-window|terminal-tab|tmux|code]
-  [--profile CODEX_PROFILE] [--role ROLE_PROMPT]`
+  [--profile CODEX_PROFILE] [--role ROLE_PROMPT]
+  [--deliverable SRC[:DEST]]...`
   - Validates the current branch (must not be `main`).
   - Creates the target repo (temp directory or git worktree).
   - Drops the scope file, registers the subagent in
@@ -88,6 +89,17 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
   - tmux panes automatically display the registry ID in the pane border, and
     `subagent_manager.sh status` reports the matching pane/window handle so you
     can jump straight to the right pane when the monitor loop flags an agent.
+  - Record each expected artifact with `--deliverable`. Paths are relative to
+    the sandbox root; omit `:DEST` to copy back to the same location inside the
+    main repo. The manager captures these in the registry so you can harvest
+    them later without spelunking the sandbox.
+- Senior architect runs require a clean worktree. If `git status` reports
+  local edits, the launcher will refuse to start the review—commit/stash your
+  changes first so the subagent inspects the exact state under review.
+  - When a senior architect asks for revisions, apply fixes directly to the
+    feature branch under review. Avoid spinning a throwaway “review” branch—the
+    reviewer’s findings are anchored to a specific commit hash, and the merge
+    gate already enforces a fresh review after new commits land.
   - After launch, the CLI prints a reminder to run
     `.agents/bin/agents-monitor-loop.sh --id <entry>`; treat this as mandatory
     and wait for the loop to exit cleanly before attempting cleanup.
@@ -114,6 +126,10 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 - `verify --id <registry-id>`
   - Executes the appropriate verification checklist (throwaway vs worktree) and
     records the outcome.
+- `harvest --id <registry-id> [--dest DIR]`
+  - Copies every pending deliverable from the sandbox/worktree into the main
+    repo (or the optional destination inside the repo). Run this before
+    cleanup so review reports, logs, and other artifacts are versioned.
 - `cleanup --id <registry-id>`
   - Removes the target repo/worktree and finalises the registry entry. The helper
     refuses to clean a sandbox whose status is still `running`; pass `--force`
@@ -171,20 +187,29 @@ threshold, and a 600 s runtime threshold.
   flagged sandbox right away, respond, document the intervention (plan/progress + progress log),
   and restart the loop only after next steps are clear.
 
-When the loop exits:
+When the loop exits (the helper highlights any registry IDs with pending deliverables):
 1. Run `./.agents/bin/subagent_manager.sh status --id <registry-id>` to confirm which
-   subagent triggered the exit and capture its latest log age.
-2. Review the subagent’s plan/progress notebooks and console log; if the work is unfinished,
-   message the subagent with next steps and rerun the monitor loop. Verify timestamps—ANSI redraws can
-   make stale logs look active. For runtime threshold exits, watch the live log to ensure forward progress
-   resumes. If the sandbox is stuck (e.g., looping, burning tokens without completing tasks), halt the
-   session (`Esc` in Codex CLI or killing the pane), capture notes about the failure, and **leave the sandbox
-   intact** for human forensics.
-3. If the subagent appears complete, follow the verification checklist below, run any required CI/lint,
+   subagent triggered the exit, capture its latest log age, and inspect the new
+   `Deliverables` column for anything still marked `pending`.
+2. If deliverables remain pending, copy them back immediately with
+   `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` (repeat for each ID)
+   so review reports, logs, and evidence land in version control before cleanup.
+3. Inspect recent activity without stealing focus: from the main agent pane, run a
+   one-shot log capture such as
+   `tail -n 80 .parallelus/subagents/sandboxes/<registry-id>/subagent.log` to confirm
+   whether the subagent is still emitting output. This works for any launch mode (tmux,
+   Terminal, worktree) because every subagent writes the same sandbox log. Avoid
+   long-running tails—grab a snapshot, review it, and return to command mode immediately.
+4. If the snapshot shows continued progress, restart the monitor loop right away
+   (`make monitor_subagents ARGS="--id <registry-id>"`) and note the intervention in the branch
+   progress log. Leave the subagent pane untouched so it can continue working.
+5. When the subagent looks finished, harvest deliverables immediately (before sending
+   interactive `/exit`/`Ctrl+C` prompts) so a stalled pane doesn’t reset the heartbeat.
+   After harvest, follow the verification checklist below, run any required CI/lint,
    and then decide whether to request revisions, let the subagent continue, or proceed toward merge/cleanup.
-4. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
+6. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
    remaining subagents stay covered.
-5. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
+7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
    `status` no longer reports the entry as `running`. The helper enforces this guard; use
    `--force` solely for confirmed-aborted sessions.
 
@@ -197,18 +222,21 @@ record the outcome.
   1. `make read_bootstrap`
   2. Confirm plan/progress notebooks indicate completion.
   3. Inspect `sessions/<id>/summary.md` & `meta.json`.
-  4. Ensure `git status` is clean; no notebooks remain.
-  5. Log results in the main branch progress doc.
+  4. Ensure recorded deliverables were harvested and landed in the main repo.
+  5. Ensure `git status` is clean; no notebooks remain.
+  6. Log results in the main branch progress doc.
 
 - **Worktree verification**
   1. `make read_bootstrap`
   2. Confirm plan/progress notebooks are complete and the subagent left a
      detailed summary for review.
   3. Run lint/tests as required.
-  4. Decide whether to request further work or move toward merge.
-  5. If approved, merge via the standard helper, then fold notebooks back into
+  4. If deliverables were recorded, harvest them into the main repo before
+     proceeding so evidence lives alongside the worktree changes.
+  5. Decide whether to request further work or move toward merge.
+  6. If approved, merge via the standard helper, then fold notebooks back into
      the canonical docs.
-  6. Remember that the main agent owns the final quality bar—only merge once the changes
+  7. Remember that the main agent owns the final quality bar—only merge once the changes
      satisfy your standards and you are confident the feature branch remains healthy.
 
 Follow this worktree verification checklist before accepting or merging subagent output:

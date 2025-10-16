@@ -38,6 +38,7 @@ Commands:
   launch   Create a sandbox/worktree and launch a subagent session
   status   List registry entries (optionally filter by --id)
   verify   Validate a completed subagent sandbox/worktree
+  harvest  Copy recorded deliverables from a sandbox/worktree into the repo
   cleanup  Remove sandbox/worktree and update registry status
 USAGE
 }
@@ -81,6 +82,14 @@ ensure_not_main() {
   branch=$(current_branch)
   if [[ "$branch" == "main" ]]; then
     echo "subagent_manager: refuse to run on 'main'. Checkout a feature branch first." >&2
+    exit 1
+  fi
+}
+
+ensure_clean_worktree() {
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "subagent_manager: refuse to launch senior-review while the worktree has unstaged changes." >&2
+    echo "  Commit, stash, or revert local edits before rerunning." >&2
     exit 1
   fi
 }
@@ -163,12 +172,25 @@ id_values = [row.get("id", "-") or "-" for row in entries]
 slug_values = [row.get("slug", "-") or "-" for row in entries]
 type_values = [row.get("type", "-") or "-" for row in entries]
 status_values = [row.get("status", "-") or "-" for row in entries]
+deliverable_values = []
+for row in entries:
+    deliverables = row.get("deliverables") or []
+    meta = (row.get("deliverables_status") or "").strip()
+    if meta:
+        label = meta
+    elif deliverables:
+        pending = any((item.get("status") or "pending").lower() != "harvested" for item in deliverables)
+        label = "pending" if pending else "harvested"
+    else:
+        label = "-"
+    deliverable_values.append(label)
 handle_values = []
 
 id_width = width_for("ID", id_values, 24, 40)
 type_width = width_for("Type", type_values, 10, 14)
 slug_width = width_for("Slug", slug_values, 25, 40)
 status_width = width_for("Status", status_values, 16, 20)
+deliverables_width = width_for("Deliverables", deliverable_values, 12, 18)
 runtime_width = width_for("Run Time", [], 9, 9)
 log_width = width_for("Log Age", [], 9, 9)
 handle_width = width_for("Handle", [], 14, 24)
@@ -180,6 +202,7 @@ row_fmt = (
     f"{{:<{type_width}}} "
     f"{{:<{slug_width}}} "
     f"{{:<{status_width}}} "
+    f"{{:<{deliverables_width}}} "
     f"{{:<{runtime_width}}} "
     f"{{:<{log_width}}} "
     f"{{:<{handle_width}}} "
@@ -191,6 +214,7 @@ header = row_fmt.format(
     "Type",
     "Slug",
     "Status",
+    "Deliverables",
     "Run Time",
     "Log Age",
     "Handle",
@@ -238,11 +262,16 @@ for row in entries:
             handle = f"{handle}:{title}"
         else:
             handle = title
+    deliverable_label = row.get('deliverables_status') or '-'
+    if deliverable_label == '-' and (row.get('deliverables') or []):
+        pending = any((item.get('status') or 'pending').lower() != 'harvested' for item in row['deliverables'])
+        deliverable_label = 'pending' if pending else 'harvested'
     print(row_fmt.format(
         row.get('id','-'),
         row.get('type','-'),
         row.get('slug','-'),
         row.get('status','-'),
+        deliverable_label,
         runtime,
         log_age,
         handle,
@@ -374,22 +403,28 @@ for key, env in mapping.items():
     if val is None or (isinstance(val, str) and val.strip().lower() in {"", "default"}):
         print(f"unset {env} || true")
         continue
+
     if key == "allowed_writes":
         if isinstance(val, list) and not val:
             print(f"unset {env} || true")
             continue
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
+        rendered = json.dumps(val, separators=(",", ":"))
     elif key == "config_overrides":
         if isinstance(val, dict) and not val:
             print(f"unset {env} || true")
             continue
-        print(f"export {env}={shlex.quote(json.dumps(val))}")
+        rendered = json.dumps(val, separators=(",", ":"))
     else:
-        if isinstance(val, (list, dict)):
-            rendered = json.dumps(val)
+        if isinstance(val, bool):
+            rendered = "true" if val else "false"
+        elif isinstance(val, (int, float)):
+            rendered = str(val)
+        elif isinstance(val, (list, dict)):
+            rendered = json.dumps(val, separators=(",", ":"))
         else:
             rendered = str(val)
-        print(f"export {env}={shlex.quote(rendered)}")
+
+    print(f"export {env}={shlex.quote(rendered)}")
 PY
 }
 
@@ -636,6 +671,7 @@ PY
 
 cmd_launch() {
   local type slug launcher scope_override codex_profile role_prompt
+  local -a deliverables_specs=()
   type=""
   slug=""
   launcher="auto"
@@ -656,9 +692,11 @@ cmd_launch() {
         codex_profile=$2; shift 2 ;;
       --role)
         role_prompt=$2; shift 2 ;;
+      --deliverable)
+        deliverables_specs+=("$2"); shift 2 ;;
       --help)
         cat <<'USAGE'
-Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE] [--role ROLE_PROMPT]
+Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE] [--role ROLE_PROMPT] [--deliverable SRC[:DEST]]...
 USAGE
         return 0 ;;
       *)
@@ -693,6 +731,10 @@ USAGE
   current_commit=$(git rev-parse HEAD)
   timestamp=$(date -u +%Y%m%d-%H%M%S)
   entry_id="${timestamp}-${slug}"
+
+  if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
+    ensure_clean_worktree
+  fi
 
   if [[ "$type" == "throwaway" ]]; then
     mkdir -p "$SANDBOX_ROOT"
@@ -753,13 +795,52 @@ USAGE
   fi
 
   local entry_json
+  local deliverables_payload="[]"
+  if ((${#deliverables_specs[@]})); then
+    deliverables_payload=$(python3 - <<'PY' "${deliverables_specs[@]}"
+import json
+import sys
+from pathlib import PurePosixPath
+
+def validate(spec: str) -> str:
+    if not spec:
+        raise SystemExit("subagent_manager launch: empty deliverable spec")
+    if spec.startswith('/'):
+        raise SystemExit(f"subagent_manager launch: deliverable must be relative, got {spec}")
+    path = PurePosixPath(spec)
+    if any(part == '..' for part in path.parts):
+        raise SystemExit(f"subagent_manager launch: deliverable must stay within sandbox, got {spec}")
+    return path.as_posix()
+
+items = []
+args = sys.argv[1:]
+for raw in args:
+    raw = raw.strip()
+    if not raw:
+        continue
+    if ':' in raw:
+        source, target = raw.split(':', 1)
+    else:
+        source, target = raw, raw
+    source = validate(source)
+    target = validate(target)
+    items.append({
+        "source": source,
+        "target": target,
+        "status": "pending"
+    })
+
+print(json.dumps(items))
+PY
+    ) || return 1
+  fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" <<'PY'
 import json
 import sys
 import shlex
 
-entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt = sys.argv[1:12]
+entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt, deliverables_json = sys.argv[1:13]
 payload = {
     "id": entry_id,
     "type": type_,
@@ -779,6 +860,11 @@ if profile:
     payload["codex_profile"] = profile
 if role_prompt:
     payload["role_prompt"] = role_prompt
+if deliverables_json:
+    deliverables = json.loads(deliverables_json)
+    if deliverables:
+        payload["deliverables"] = deliverables
+        payload["deliverables_status"] = "pending"
 
 print(json.dumps(payload))
 PY
@@ -798,6 +884,9 @@ PY
   if [[ -x "$MONITOR_HELPER" ]]; then
     echo "Monitor with: $MONITOR_HELPER --id $entry_id" >&2
     echo "Wait for the monitor loop to exit cleanly before running subagent_manager.sh cleanup." >&2
+  fi
+  if ((${#deliverables_specs[@]})); then
+    echo "Harvest deliverables with: $0 harvest --id $entry_id" >&2
   fi
   echo "$entry_id"
 }
@@ -851,6 +940,157 @@ cmd_verify() {
     update_registry "$entry_id" "row['status'] = 'ready_for_merge'"
   fi
   echo "Verified $entry_id ($type)"
+}
+
+cmd_harvest() {
+  local entry_id=""
+  local dest_root="$ROOT"
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --id)
+        entry_id=$2; shift 2 ;;
+      --dest)
+        dest_root=$2; shift 2 ;;
+      --help)
+        cat <<'USAGE'
+Usage: subagent_manager.sh harvest --id ID [--dest DIR]
+
+Copy deliverables recorded for the specified subagent into the current repo.
+By default, deliverables land at the repo root; use --dest to override (must
+remain within the repo tree).
+USAGE
+        return 0 ;;
+      *)
+        echo "Unknown option $1" >&2; return 1 ;;
+    esac
+  done
+  if [[ -z "$entry_id" ]]; then
+    echo "subagent_manager harvest: --id required" >&2
+    return 1
+  fi
+
+  ensure_registry
+  local entry_json
+  entry_json=$(get_registry_entry "$entry_id") || return 1
+
+  local dest_root_abs
+  dest_root_abs=$(python3 - <<'PY' "$dest_root" "$ROOT"
+import os
+import sys
+
+dest = os.path.realpath(os.path.expanduser(sys.argv[1]))
+root = os.path.realpath(sys.argv[2])
+if not dest.startswith(root):
+    raise SystemExit("subagent_manager harvest: destination must be inside the repository root")
+os.makedirs(dest, exist_ok=True)
+print(dest)
+PY
+  ) || return 1
+
+  local harvest_payload
+  harvest_payload=$(python3 - <<'PY' "$entry_json" "$dest_root_abs"
+import json
+import os
+import shutil
+import sys
+import time
+from typing import List
+
+entry = json.loads(sys.argv[1])
+dest_root = os.path.normpath(sys.argv[2])
+sandbox_root = os.path.normpath(entry.get("path", ""))
+if not sandbox_root:
+    raise SystemExit("subagent_manager harvest: registry entry missing sandbox path")
+
+deliverables: List[dict] = entry.get("deliverables") or []
+if not deliverables:
+    raise SystemExit("subagent_manager harvest: no deliverables recorded for this subagent")
+
+copied: List[str] = []
+sandbox_root_with_sep = sandbox_root + os.sep
+dest_root_with_sep = dest_root + os.sep
+
+for item in deliverables:
+    status = (item.get("status") or "pending").lower()
+    source_rel = item.get("source")
+    target_rel = item.get("target") or source_rel
+    if not source_rel:
+        continue
+    if status == "harvested":
+        continue
+    source_path = os.path.normpath(os.path.join(sandbox_root, source_rel))
+    target_path = os.path.normpath(os.path.join(dest_root, target_rel))
+    if not (source_path == sandbox_root or source_path.startswith(sandbox_root_with_sep)):
+        raise SystemExit(f"subagent_manager harvest: deliverable source escapes sandbox: {source_rel}")
+    if not (target_path == dest_root or target_path.startswith(dest_root_with_sep)):
+        raise SystemExit(f"subagent_manager harvest: deliverable target escapes repo: {target_rel}")
+    if not os.path.exists(source_path):
+        raise SystemExit(f"subagent_manager harvest: deliverable not found: {source_rel}")
+
+    target_parent = os.path.dirname(target_path)
+    if target_parent:
+        os.makedirs(target_parent, exist_ok=True)
+
+    if os.path.isdir(source_path):
+        shutil.copytree(source_path, target_path, dirs_exist_ok=True)
+    else:
+        shutil.copy2(source_path, target_path)
+
+    item["status"] = "harvested"
+    item["harvested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    item["target_path"] = target_rel
+    copied.append(target_rel)
+
+payload = {
+    "deliverables": deliverables,
+    "copied": copied,
+}
+if all((d.get("status") or "pending").lower() == "harvested" for d in deliverables):
+    payload["deliverables_status"] = "harvested"
+elif any((d.get("status") or "pending").lower() == "harvested" for d in deliverables):
+    payload["deliverables_status"] = "partial"
+else:
+    payload["deliverables_status"] = "pending"
+
+print(json.dumps(payload))
+PY
+  ) || return 1
+
+  local copied_targets
+  copied_targets=$(python3 - <<'PY' "$REGISTRY_FILE" "$entry_id" "$harvest_payload"
+import json
+import sys
+
+registry_path, entry_id, payload_json = sys.argv[1:4]
+payload = json.loads(payload_json)
+with open(registry_path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+for row in data:
+    if row.get("id") == entry_id:
+        row["deliverables"] = payload.get("deliverables", [])
+        status = payload.get("deliverables_status")
+        if status:
+            row["deliverables_status"] = status
+        break
+else:
+    raise SystemExit(f"subagent_manager harvest: unknown id {entry_id}")
+with open(registry_path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+
+copied = payload.get("copied", [])
+print("\n".join(copied))
+PY
+  ) || return 1
+
+  if [[ -n "$copied_targets" ]]; then
+    echo "Harvested deliverables:" >&2
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      echo "  - $line" >&2
+    done <<<"$copied_targets"
+  else
+    echo "No pending deliverables to harvest for $entry_id." >&2
+  fi
 }
 
 cmd_cleanup() {
@@ -935,6 +1175,7 @@ main() {
     launch) cmd_launch "$@" ;;
     status) cmd_status "$@" ;;
     verify) cmd_verify "$@" ;;
+    harvest) cmd_harvest "$@" ;;
     cleanup) cmd_cleanup "$@" ;;
     --help|-h) usage ;;
     *) usage; exit 1 ;;

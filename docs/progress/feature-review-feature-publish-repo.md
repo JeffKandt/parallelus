@@ -1,5 +1,93 @@
 # Branch Progress — feature/review-feature-publish-repo
 
+## 2025-10-16 04:56:39 UTC
+**Objectives**
+- Automate collection of senior-review artifacts and surface deliverable status in the tooling.
+
+**Work Performed**
+- Extended `subagent_manager.sh launch` with `--deliverable` support; registry entries now capture expected artifacts and expose a `Deliverables` status column.
+- Added `subagent_manager.sh harvest` to copy sandbox outputs into the repo and update registry metadata.
+- Taught `agents-monitor-loop.sh` to flag entries with pending deliverables and display the harvest command on exit.
+- Updated the subagent orchestration manual to document the new flow and inserted follow-up actions into the branch plan.
+
+**Next Actions**
+- Test the deliverable harvest workflow on the next senior-review run and capture the resulting review/log files via the new helper.
+- Continue working through remaining review follow-ups (CI auditor fixes, documentation refresh) before reattempting the senior architect review.
+
+## 2025-10-16 05:49:20 UTC
+**Objectives**
+- Prep for another senior architect review run after updating the orchestration flow.
+
+**Work Performed**
+- Re-read the updated `docs/agents/subagent-session-orchestration.md` to confirm the log-tail workflow and captured this acknowledgement prior to launching/monitoring new subagents.
+
+**Next Actions**
+- Launch the senior-review subagent with explicit deliverables and monitor it through completion.
+
+## 2025-10-16 06:21:11 UTC
+**Objectives**
+- Diagnose the stalled monitor loop after launching the senior-review subagent.
+
+**Work Performed**
+- Reviewed the subagent log snippet showing the expected write-permission warning (review-only sandbox).
+- Captured the registry state (`status=running`, deliverables pending) after the subagent completed, confirming the monitor loop never triggered the heartbeat threshold.
+- Identified the regression in `agents-monitor-loop.sh`: the new Deliverables column shifted field positions, so the AWK parser no longer read runtime/log columns, preventing the 10-minute timeout from firing.
+- Patched the monitor script to reference the updated column layout and avoid false negatives.
+- Logged follow-up TODOs in the branch plan, including adding a completion signal for the monitor.
+- Verified the fix by rerunning the loop (`make monitor_subagents ARGS="--id …"`), which now flags the heartbeat breach immediately.
+- Harvested only the review artifact (after briefly copying the transcript to satisfy the stale `docs/logs` deliverable) and removed the accidental `docs/docs/` duplication; noted the plan update to drop the log deliverable going forward.
+
+**Next Actions**
+- Re-run the monitor loop with the fixed script to verify it now exits when log age exceeds the threshold (keeping the existing subagent pane open for analysis).
+- Implement and test a sentinel-based completion signal so future loops can detect finished runs without relying solely on log age.
+
+## 2025-10-16 06:40:24 UTC
+**Objectives**
+- Address the senior-review findings (PyYAML dependency, override quoting/restoration) and tidy the harvested artifacts.
+
+**Work Performed**
+- Closed the idle senior-review tmux pane, removed the mistaken `docs/docs` duplication, and pruned the temporary log copy so only the review artifact remains.
+- Logged plan updates to drop the extra `docs/logs` deliverable and queued TODOs for the completion sentinel.
+
+**Next Actions**
+- Add `PyYAML` to the managed dependencies and verify role parsing works on a clean environment.
+- Fix scalar quoting/override restoration in `subagent_manager.sh`, then run smoke launches to confirm no bleed-through.
+
+## 2025-10-16 06:47:33 UTC
+**Objectives**
+- Relaunch the senior architect review with the monitoring fix and reduced deliverables.
+
+**Work Performed**
+- Confirmed `PyYAML` imports succeed after the dependency pin so role prompts load.
+- Prepared to relaunch the review with only the `docs/reviews/` deliverable.
+
+**Next Actions**
+- Fire the senior-review subagent and monitor via `make monitor_subagents` to validate the heartbeat exit/harvest flow end-to-end.
+
+## 2025-10-16 07:06:37 UTC
+**Objectives**
+- Validate the senior-review workflow end-to-end with the monitor fix in place.
+
+**Work Performed**
+- Launched the senior-review subagent (`20251016-064757-senior-review`) with only the `docs/reviews/` deliverable, monitored it, and confirmed the loop exits once the heartbeat exceeds the 3-minute threshold.
+- Harvested the review artifact, updated the registry entry, and cleaned the sandbox after ensuring no live pane remained.
+
+**Next Actions**
+- Fold the new review notes into the remediation plan and proceed with addressing the remaining TODOs before the next rerun.
+
+## 2025-10-16 07:15:22 UTC
+**Objectives**
+- Prevent future senior-review launches on dirty worktrees and refresh the manual.
+
+**Work Performed**
+- Added a clean-worktree guard in `subagent_manager.sh` that blocks senior architect launches when local edits exist, ensuring reviews always run against committed state.
+- Documented the requirement in the orchestration manual so operators know to commit or stash before requesting review.
+
+**Next Actions**
+- Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
+
+**Next Actions**
+- Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
 ## 2025-10-15 21:41:28 UTC
 **Objectives**
 - Reconfirm guardrails and capture the current branch/subagent context.
