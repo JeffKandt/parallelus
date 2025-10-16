@@ -450,15 +450,26 @@ create_prompt_file() {
         role_file="$ROLE_PROMPTS_DIR/$effective_role"
       fi
     fi
-    if [[ -f "$role_file" ]]; then
+  local role_read_only="false"
+  if [[ -f "$role_file" ]]; then
       role_config=$(parse_role_config "$role_file")
       role_text=$(print_role_body "$role_file")
       while IFS= read -r line; do
         eval "$line"
       done < <(role_config_to_env "$role_config")
-    else
+      role_read_only=$(python3 - <<'PY' "$role_config"
+import json, sys
+cfg = json.loads(sys.argv[1]) if sys.argv[1] else {}
+allowed = cfg.get("allowed_writes")
+if allowed in (None, [], "", {}):
+    print("true")
+else:
+    print("false")
+PY
+)
+  else
       echo "subagent_manager: role prompt '$role_prompt' not found under $ROLE_PROMPTS_DIR" >&2
-    fi
+  fi
   else
     effective_role=""
   fi
@@ -488,6 +499,14 @@ create_prompt_file() {
 3. Gather evidence without modifying the workspace: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
 4. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
 5. Stay read-only—do not run make bootstrap or alter files. Print the JSON report and exit.
+EOF
+  elif [[ "$role_read_only" == "true" ]]; then
+    read -r -d '' instructions <<EOF || true
+1. Read AGENTS.md and the role prompt to confirm constraints.
+2. Stay read-only: do not run make bootstrap or edit code/notebooks; your deliverable lives under docs/reviews/.
+3. Run 'make read_bootstrap' to capture context, then review the branch state (diffs, plan/progress notebooks, logs) for ${parent_branch}.
+4. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
+5. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
 EOF
   else
     read -r -d '' instructions <<EOF || true

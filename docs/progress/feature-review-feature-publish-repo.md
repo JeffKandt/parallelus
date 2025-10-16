@@ -119,6 +119,17 @@
 **Next Actions**
 - Re-run the senior architect review to verify the new guardrail wiring clears the blocker.
 
+## 2025-10-16 09:01:12 UTC
+**Objectives**
+- Ensure read-only roles receive read-only workflows.
+
+**Work Performed**
+- Updated `subagent_manager.sh` to detect empty `allowed_writes` and supply a read-only checklist (no bootstrap/notebook editing) for roles like `senior_architect`.
+- Captured the latest senior-review log (`docs/logs/senior-review-20251016T084647.txt`) after harvesting.
+
+**Next Actions**
+- Re-run the senior architect review to confirm the revised instructions clear the final blocker.
+
 **Next Actions**
 - Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
 ## 2025-10-15 21:41:28 UTC
