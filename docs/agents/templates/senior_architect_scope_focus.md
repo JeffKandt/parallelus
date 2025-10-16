@@ -7,7 +7,7 @@
 - **Focus:** Changes since the last approved commit (`db67706404e69a312a671f65fc8d62b2e162925d`) are limited to:
   1. Guardrail documentation/log updates describing the required `make monitor_subagents` workflow.
   2. Merge-time enforcement in `.agents/bin/agents-merge` and `.agents/hooks/pre-merge-commit` that blocks lingering review notebooks.
-  3. Supporting plan/progress and git-workflow documentation updates.
+  3. Supporting plan/progress and git-workflow documentation updates, including folding branch notebooks into the canonical `docs/PLAN.md` / `docs/PROGRESS.md` records.
   No other files have changed.
 
 ## Preconditions
@@ -25,8 +25,8 @@
 - `.agents/hooks/pre-merge-commit`
 - `docs/agents/subagent-session-orchestration.md`
 - `docs/agents/git-workflow.md`
-- `docs/plans/feature-publish-repo.md`
-- `docs/progress/feature-publish-repo.md`
+- `docs/PLAN.md`
+- `docs/PROGRESS.md`
 - Previous review: `docs/reviews/feature-publish-repo-2025-10-13.md`
 
 ## Review Deliverable
