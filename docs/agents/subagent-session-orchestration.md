@@ -103,9 +103,14 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     feature branch under review. Avoid spinning a throwaway “review” branch—the
     reviewer’s findings are anchored to a specific commit hash, and the merge
     gate already enforces a fresh review after new commits land.
-  - After launch, the CLI prints a reminder to run
+- After launch, the CLI prints a reminder to run
     `.agents/bin/agents-monitor-loop.sh --id <entry>`; treat this as mandatory
-    and wait for the loop to exit cleanly before attempting cleanup.
+    and wait for the loop to exit cleanly before attempting cleanup. Always
+    invoke the loop via `make monitor_subagents ARGS="--id <entry>"` so the
+    managed cadence, alerts, and cleanup hooks stay consistent. Calling the
+    shell script directly (especially with `--interval 0`) spams status output,
+    bypasses the guardrail cadence, and risks misinterpreting long-running
+    subagents as hung.
   - Launches now check whether a tmux session is available; if none is found,
     the helper prints the current Codex session ID and points to
     `.agents/bin/resume_in_tmux.sh` so you can resume the session inside the

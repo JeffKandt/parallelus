@@ -245,3 +245,14 @@
 
 **Next Actions**
 - Triage the low-severity follow-ups (duplicate `local` declarations and scope template path).
+
+## 2025-10-16 15:36:42 UTC
+**Objectives**
+- Capture the monitor-loop launch correction so the process artifact reflects the agreed practice.
+
+**Work Performed**
+- Updated `docs/agents/subagent-session-orchestration.md` to require `make monitor_subagents ARGS="--id <entry>"` when supervising subagents, documenting why invoking `.agents/bin/agents-monitor-loop.sh` directly (or with `--interval 0`) is unsafe.
+- Recorded this clarification here to acknowledge the guardrail update.
+
+**Next Actions**
+- None specific; follow the documented `make monitor_subagents` flow on future runs.
