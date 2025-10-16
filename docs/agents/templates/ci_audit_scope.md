@@ -1,8 +1,8 @@
 # Continuous Improvement Audit Scope
 
 ## Context
-- Parent branch: feature/publish-repo
-- Latest marker: docs/self-improvement/markers/feature-publish-repo.json
+- Parent branch: {{PARENT_BRANCH}}
+- Latest marker: {{MARKER_PATH}}
 - Goal: Produce a JSON retrospective report for the most recent turn before `make turn_end`.
 
 ## Objectives
@@ -17,4 +17,4 @@
 
 ## Notes
 - Remain read-only: do not run `make bootstrap`, install dependencies, or edit files.
-- Focus on the active branch `feature/publish-repo`; ignore unrelated historical entries.
+- Focus on the active branch `{{PARENT_BRANCH}}`; ignore unrelated historical entries.

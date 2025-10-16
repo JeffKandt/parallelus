@@ -86,6 +86,17 @@
 **Next Actions**
 - Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
 
+## 2025-10-16 08:06:51 UTC
+**Objectives**
+- Address the new CI auditor findings from the post-merge senior review.
+
+**Work Performed**
+- Parameterised `docs/agents/templates/ci_audit_scope.md` (branch/marker placeholders) so the template no longer hard-codes `feature/publish-repo`.
+- Corrected `subagent_manager.sh` to reference the auditor manual under `.agents/prompts/…`.
+
+**Next Actions**
+- Commit the CI auditor template/manual fixes and rerun the senior architect review on `feature/publish-repo` to validate the clean report.
+
 **Next Actions**
 - Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
 ## 2025-10-15 21:41:28 UTC
