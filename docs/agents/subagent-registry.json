@@ -1583,5 +1583,49 @@
       }
     ],
     "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251016-090313-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-RaAkSK",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-RaAkSK/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-RaAkSK/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-RaAkSK/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-090313",
+    "window_title": "20251016-090313-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251016-090313-senior-review",
+      "window_id": "@0",
+      "pane_id": "%8"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "pending"
+      }
+    ],
+    "deliverables_status": "pending"
+  },
+  {
+    "id": "20251016-141602-pytest-test_subagent_launch_without_r0",
+    "type": "throwaway",
+    "slug": "pytest-test_subagent_launch_without_r0",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-73njJw",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-73njJw/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-73njJw/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-73njJw/subagent.log",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20251016-141602",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null
   }
 ]

@@ -1,14 +1,14 @@
 Reviewed-Branch: feature/publish-repo
-Reviewed-Commit: d56535dfad1894fc1df1efca42e8cb4c2f99c7a0
+Reviewed-Commit: f3302c6d9946d4223f10b24b449ba6c3e558ece0
 Reviewed-On: 2025-10-16
 Decision: changes requested
 
 ## Findings
-- **Severity: High** – Guardrail toggles never engage. `.agents/agentrc:16-17` introduces `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW`, but the enforcement scripts still read the legacy keys. `docs/self-improvement` gating continues to check `REQUIRE_AGENT_CI_AUDITS` via `.agents/bin/verify-retrospective:8-46`, and `retro-marker` references the same constant at `.agents/bin/retro-marker:11-120`. Because the new knobs are ignored, operators cannot disable / switch auditors as documented, and future branches could silently bypass the retrospective requirement by setting the old key back to 0. Align the loader constants (and the senior-review hook, once it exists) with the new names, add regression coverage, and ensure both retro and review gates honour the documented configuration.
+- **Severity: Blocker** – Subagent launches without an explicit role prompt crash under `set -u`. `create_prompt_file` sets `role_read_only` only inside the `if [[ -n "$role_prompt" ]]` branch `.agents/bin/subagent_manager.sh:445-474`, but the subsequent dispatch unconditionally reads `role_read_only` in the `elif` branch `.agents/bin/subagent_manager.sh:503`. Launching a standard throwaway sandbox (`subagent_manager.sh launch --type throwaway --slug foo`) now raises `bash: role_read_only: unbound variable`, aborting orchestration before the scope/prompt land in the sandbox. This regresses every happy-path subagent launch that relied on default prompts. Move the `local role_read_only="false"` declaration outside the conditional (or guard the later read with `${role_read_only:-false}`) and add coverage to keep `set -u` compatible with no-role runs.
 
 ## Summary
-The tmux socket awareness, subagent orchestration improvements, CI-audit template fixes, and tooling docs look solid. However, the guardrail configuration shipped in `.agents/agentrc` is inert—the verification helpers still listen for the previous key names—so the most critical gating feature remains miswired. Ship is blocked until the configuration flag mismatch is resolved and covered by tests or automated checks.
+Most guardrail, tmux, and tooling updates look directionally correct, but the new role-normalization logic broke the default subagent workflow: we can no longer launch a sandbox unless `--role` is provided. Until the orchestration script handles that case safely, the branch cannot merge.
 
 ## Recommendations
-1. Update `verify-retrospective`, `retro-marker`, and any related hooks to consume `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW` (or rename the agentrc entries back to the legacy keys) and add a quick self-check that fails when the expected flag is missing.
-2. Add a follow-up to wire the senior-review requirement gate to `AGENTS_REQUIRE_SENIOR_REVIEW` so the documented flag actually controls the launch/merge guard.
+1. Initialize `role_read_only` to `"false"` before the `if [[ -n "$role_prompt" ]]` block (or use a `${role_read_only:-false}` read) so the variable is defined when no role is supplied.
+2. Add a smoke test for `subagent_manager.sh launch --type throwaway --slug <slug>` without `--role` to prevent regressions when extending the prompt-loader.

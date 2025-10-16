@@ -150,3 +150,36 @@
 - `cat docs/logs/ci-audit-20251013T015421.txt`
 - `cat docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json`
 - `make ci`
+
+## 2025-10-16 14:07:51 UTC
+**Objectives**
+- Harvest the completed senior architect review artifacts and log guardrail compliance for the follow-up work.
+
+**Work Performed**
+- Re-read the Parallelus Agent Core Guardrails instructions at session start and recorded the acknowledgement here before running additional project commands.
+- Started session `20251018-20251016140710-af725c` with prompt “Harvest Sr Architect review results” to capture today's work context.
+- Located the senior architect sandbox at `.parallelus/subagents/sandboxes/senior-review-RaAkSK` and inspected the generated review outputs.
+- Copied `docs/reviews/feature-publish-repo-2025-10-13.md` from the sandbox into the repository so the latest findings are available to the main branch team.
+
+**Artifacts**
+- docs/reviews/feature-publish-repo-2025-10-13.md
+
+**Next Actions**
+- Triage and address the reported `role_read_only` blocker before requesting another review cycle.
+
+## 2025-10-16 14:17:43 UTC
+**Objectives**
+- Clear the prior senior-review sandbox, fix the `role_read_only` regression, add coverage, and prep for a fresh review run.
+
+**Work Performed**
+- Closed the lingering senior-review tmux pane and force-cleaned registry entry `20251016-090313-senior-review`, then removed the stale sandbox directory.
+- Re-read `docs/agents/subagent-session-orchestration.md` ahead of launching new subagents and noted the acknowledgement here.
+- Patched `.agents/bin/subagent_manager.sh` to default `role_read_only="false"` before optional role loading so `set -u` environments survive no-role launches; updated logic now keeps the previous behaviour when a role prompt is supplied.
+- Added `tests/test_basic.py::test_subagent_launch_without_role_succeeds` to exercise `subagent_manager.sh launch --type throwaway --slug <slug> --launcher manual` without a role and ensure the new default prevents crashes; the test force-cleans the sandbox afterwards to leave the registry in a cleaned state.
+- Attempted `make ci`; the run tripped the existing monitor-loop timeout guardrail (`agents-monitor-loop` timed out after 5 s). Documenting here for follow-up while keeping the new smoke test passing under targeted pytest.
+
+**Validation**
+- `.venv/bin/pytest tests/test_basic.py -k subagent_launch_without_role_succeeds -q`
+
+**Next Actions**
+- Commit and push the fixes, then relaunch the senior architect review to confirm the blocker is resolved.

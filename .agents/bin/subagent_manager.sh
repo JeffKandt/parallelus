@@ -441,6 +441,7 @@ create_prompt_file() {
   local role_config=""
   local profile_display="default (danger-full-access)"
   local effective_role="$role_prompt"
+  local role_read_only="false"
 
   if [[ -n "$role_prompt" ]]; then
     local role_file="$ROLE_PROMPTS_DIR/$role_prompt"
@@ -450,8 +451,7 @@ create_prompt_file() {
         role_file="$ROLE_PROMPTS_DIR/$effective_role"
       fi
     fi
-  local role_read_only="false"
-  if [[ -f "$role_file" ]]; then
+    if [[ -f "$role_file" ]]; then
       role_config=$(parse_role_config "$role_file")
       role_text=$(print_role_body "$role_file")
       while IFS= read -r line; do
@@ -467,9 +467,9 @@ else:
     print("false")
 PY
 )
-  else
+    else
       echo "subagent_manager: role prompt '$role_prompt' not found under $ROLE_PROMPTS_DIR" >&2
-  fi
+    fi
   else
     effective_role=""
   fi
