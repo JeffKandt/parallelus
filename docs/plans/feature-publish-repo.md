@@ -25,3 +25,4 @@
 - Confirm the revised tmux overlay layout with operators and document the outcome.
 - Observe the new base worktree indicator in day-to-day use and record feedback.
 - Capture and archive the complete main-agent console transcript for every session (not just CI audits). At each turn end, perform a retrospective review of the transcript to log execution anomalies, reasoning faults, prompt-context conflicts, specification drift, and any deviations, then record mitigations or guardrail updates.
+- When relaunching the senior architect review, call out that only `docs/agents/subagent-session-orchestration.md` and the latest progress log entry changed after the prior approval so the reviewer can focus on that delta.
