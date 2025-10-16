@@ -283,6 +283,17 @@
 
 **Next Actions**
 - None specific; follow the guardrail on subsequent merges.
+
+## 2025-10-16 17:51:44 UTC
+**Objectives**
+- Run a focused senior architect review covering the latest guardrail commits.
+
+**Work Performed**
+- Updated the focused scope template to highlight the merge-tool changes, launched subagent `20251016-174029-senior-review`, and captured the reviewer’s feedback.
+- Reviewer flagged that allowing the active branch notebooks breaks the guardrail; reinstated the strict enforcement in `.agents/bin/agents-merge` and `.agents/hooks/pre-merge-commit`, refreshed `docs/agents/git-workflow.md`, and noted the outcome here.
+
+**Next Actions**
+- Re-run the senior architect review now that the guardrail enforcement is restored.
 ## 2025-10-16 15:36:42 UTC
 **Objectives**
 - Capture the monitor-loop launch correction so the process artifact reflects the agreed practice.
