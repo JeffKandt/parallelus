@@ -93,9 +93,12 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     the sandbox root; omit `:DEST` to copy back to the same location inside the
     main repo. The manager captures these in the registry so you can harvest
     them later without spelunking the sandbox.
-- Senior architect runs require a clean worktree. If `git status` reports
-  local edits, the launcher will refuse to start the review—commit/stash your
-  changes first so the subagent inspects the exact state under review.
+  - Senior architect runs require a clean worktree. If `git status` reports
+    local edits, the launcher will refuse to start the review—commit/stash your
+    changes first so the subagent inspects the exact state under review.
+  - Scope templates may include placeholders like `{{PARENT_BRANCH}}` or
+    `{{MARKER_PATH}}`; the launcher now fills these automatically so auditors
+    see the correct branch/marker without manual edits.
   - When a senior architect asks for revisions, apply fixes directly to the
     feature branch under review. Avoid spinning a throwaway “review” branch—the
     reviewer’s findings are anchored to a specific commit hash, and the merge
@@ -205,8 +208,10 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
    progress log. Leave the subagent pane untouched so it can continue working.
 5. When the subagent looks finished, harvest deliverables immediately (before sending
    interactive `/exit`/`Ctrl+C` prompts) so a stalled pane doesn’t reset the heartbeat.
-   After harvest, follow the verification checklist below, run any required CI/lint,
-   and then decide whether to request revisions, let the subagent continue, or proceed toward merge/cleanup.
+   If no deliverables were registered, note that outcome in the branch progress log and
+   proceed as if the harvest succeeded. Afterward, follow the verification checklist,
+   run any required CI/lint, and then decide whether to request revisions, let the
+   subagent continue, or proceed toward merge/cleanup.
 6. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
    remaining subagents stay covered.
 7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and

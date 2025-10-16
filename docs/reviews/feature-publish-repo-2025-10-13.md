@@ -1,15 +1,15 @@
 Reviewed-Branch: feature/publish-repo
-Reviewed-Commit: 6fdb91f7f97260492d73a4abbf53c0c368796322
-Reviewed-On: 2025-10-16
+Reviewed-Commit: 61aec4acdd976ca5d84721c201c7f86f0d4e455f
+Reviewed-On: 2025-10-17
 Decision: changes requested
 
 ## Findings
-- **Blocker:** Role prompt parsing now depends on PyYAML, but the runtime never installs it (`.agents/bin/subagent_manager.sh:282`, `requirements.txt:1`). Any launch that references a prompt with YAML front matter (e.g. the updated senior architect role) will raise `ModuleNotFoundError: No module named 'yaml'`, so the manager fails before opening the sandbox.
-- **Blocker:** Role metadata export JSON-encodes scalar values before exporting them (`.agents/bin/subagent_manager.sh:333-340`). Strings like the configured Codex model become `\"gpt-5-codex\"`, so we end up invoking `codex --model "\"gpt-5-codex\""`, which passes the quotes to Codex and breaks model selection.
+- **Severity: High** – Guardrail toggles are wired to the wrong agentrc keys (`.agents/agentrc:16`, `.agents/bin/verify-retrospective:8`, `.agents/bin/retro-marker:8`). The new config adds `AGENTS_REQUIRE_RETRO` / `AGENTS_REQUIRE_SENIOR_REVIEW`, but the enforcement scripts still read `REQUIRE_AGENT_CI_AUDITS` (and related knobs). As a result, the shipped settings never engage, so `make turn_end` / senior-review checks cannot be disabled or reconfigured as documented. Align the loaders with the new key names (or rename the keys back) and cover both retro and review guards.
+- **Severity: Medium** – The CI audit scope template promises branch/marker parameterisation, yet `create_scope_file` just copies it verbatim, leaving `{{PARENT_BRANCH}}` / `{{MARKER_PATH}}` placeholders in the generated scope (`docs/agents/templates/ci_audit_scope.md:3`, `.agents/bin/subagent_manager.sh:244`). Subagents still have to fill the values manually, so the template does not deliver the claimed automation. Render the template with actual branch and marker data at launch time (or rewrite it without placeholders) before handing it to the auditor.
 
 ## Summary
-The branch adds solid guardrail documentation, tmux awareness, and CI automation, but the new role front-matter plumbing currently bricks subagent launches by requiring an untracked dependency and mangling runtime overrides. Fix those blockers, re-run `make ci`, and I can take another look.
+Process guardrails, tmux work, and documentation look solid, but the new retrospective/review enforcement knobs are inert and the CI audit scope template is still manual, so ship is blocked until those are fixed.
 
 ## Recommendations
-1. Install PyYAML (either add it to `requirements.txt` or vendor a parser) before exercising the role front matter.
-2. Export scalar overrides verbatim—reserve JSON encoding for lists/dicts that truly need it—so Codex receives the intended `--model`, sandbox, and approval values.
+1. Fix the guardrail flag wiring and add coverage so configuration updates are exercised by tests/tooling.
+2. Populate the CI audit scope placeholders programmatically (or drop them) so auditors receive concrete branch/marker context out of the box.

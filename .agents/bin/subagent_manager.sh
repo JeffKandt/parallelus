@@ -785,6 +785,21 @@ USAGE
 
   scope_path="$sandbox/SUBAGENT_SCOPE.md"
   create_scope_file "$scope_path" "$scope_override"
+  python3 - <<'PY' "$scope_path" "$parent_branch"
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+parent_branch = sys.argv[2]
+marker_branch = parent_branch.replace('/', '-')
+marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
+
+text = path.read_text(encoding="utf-8")
+if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text:
+    text = text.replace("{{PARENT_BRANCH}}", parent_branch)
+    text = text.replace("{{MARKER_PATH}}", marker_path)
+    path.write_text(text, encoding="utf-8")
+PY
   prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
   create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch"
   log_path="$sandbox/subagent.log"

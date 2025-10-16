@@ -1505,5 +1505,31 @@
       }
     ],
     "deliverables_status": "pending"
+  },
+  {
+    "id": "20251016-080741-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-HM9sHd",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-HM9sHd/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-HM9sHd/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-HM9sHd/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-080741",
+    "window_title": "20251016-080741-senior-review",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T08:28:54Z",
+        "target_path": "docs/reviews"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]
