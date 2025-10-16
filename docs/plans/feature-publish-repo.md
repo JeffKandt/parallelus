@@ -26,3 +26,14 @@
 - Observe the new base worktree indicator in day-to-day use and record feedback.
 - Capture and archive the complete main-agent console transcript for every session (not just CI audits). At each turn end, perform a retrospective review of the transcript to log execution anomalies, reasoning faults, prompt-context conflicts, specification drift, and any deviations, then record mitigations or guardrail updates.
 - When relaunching the senior architect review, call out that only `docs/agents/subagent-session-orchestration.md` and the latest progress log entry changed after the prior approval so the reviewer can focus on that delta.
+- Resolve the CI auditor follow-ups (restore markers/notebooks on feature/publish-repo and ensure audits run from that branch) and document the plan.
+- Re-run targeted validation (`make ci` plus `make monitor_subagents`) to demonstrate the heartbeat fix and collect evidence for senior architect review.
+- Refresh `docs/agents/project/` to drop Interruptus references and log any remaining documentation TODOs.
+- Codify subagent launch write-permission rules (allowed_writes plus automated verification) and update tooling.
+- Exercise and document the deliverable harvest workflow during the next senior review run.
+- Expand the orchestration manual to cover multi-subagent coordination, parallel coding subagents, consolidated deliverable retrieval, and human-supervision expectations.
+- Define pruning/archival guidance for growing artifacts such as `docs/progress/*.md` and `docs/agents/subagent-registry.json`.
+- Evaluate whether the main agent should continue supervising interactive subagents or shift reviews to a non-interactive launch path.
+- Consider renaming “scope file” to “assignment file” across tooling/docs and determine the migration plan.
+- Prototype a subagent completion signal (sentinel file or equivalent) so the monitor loop detects finished runs without relying solely on log heartbeats.
+- Remove the unused `docs/logs` senior-review deliverable from launch templates and supporting docs.

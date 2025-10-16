@@ -262,6 +262,16 @@
 **Next Actions**
 - Address the low-severity recommendations (deduplicate `create_runner` locals and fix the scope template branch path).
 
+## 2025-10-16 16:00:45 UTC
+**Objectives**
+- Fold the review-branch notebooks into the main branch record and remove the extras.
+
+**Work Performed**
+- Migrated outstanding TODOs from `docs/plans/feature-review-feature-publish-repo.md` into the `feature/publish-repo` plan so future work happens off the canonical checklist.
+- Removed the review-branch plan/progress notebooks after confirming their content now lives in the primary records.
+
+**Next Actions**
+- Continue executing the consolidated plan items on `feature/publish-repo`.
 ## 2025-10-16 15:36:42 UTC
 **Objectives**
 - Capture the monitor-loop launch correction so the process artifact reflects the agreed practice.
