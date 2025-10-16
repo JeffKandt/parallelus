@@ -183,3 +183,34 @@
 
 **Next Actions**
 - Commit and push the fixes, then relaunch the senior architect review to confirm the blocker is resolved.
+
+## 2025-10-16 14:31:22 UTC
+**Objectives**
+- Relaunch the senior architect review against commit `956651c91218cf27b74350f5c0c540c2f899543f` and collect the updated findings.
+
+**Work Performed**
+- Pushed the latest fixes to `origin/feature-publish-repo`, launched `subagent_manager.sh` with the senior-architect scope/role, and monitored the session via `.agents/bin/agents-monitor-loop.sh --id 20251016-141935-senior-review` until the heartbeat threshold tripped.
+- Harvested deliverables and force-cleaned the sandbox once the reviewer confirmed completion, then closed the tmux pane and registry entry.
+- Captured the new review report in `docs/reviews/feature-publish-repo-2025-10-13.md`; the reviewer flagged a remaining High-severity issue in `.agents/bin/agents-monitor-loop.sh` where runtime/log-age columns are misindexed.
+
+**Artifacts**
+- docs/reviews/feature-publish-repo-2025-10-13.md
+
+**Next Actions**
+- Address the monitor-loop column parsing regression, add regression coverage, and request another senior architect pass.
+
+## 2025-10-16 14:37:40 UTC
+**Objectives**
+- Restore the monitor-loop guardrails and tests before requesting the follow-up review.
+
+**Work Performed**
+- Updated `.agents/bin/agents-monitor-loop.sh` to parse the status table via Python so runtime/log-age thresholds track the correct columns irrespective of spacing, emitting explicit metadata for exit conditions.
+- Refreshed `.agents/tests/monitor_loop.py` stubs to match the current `subagent_manager.sh status` layout (including the Deliverables and Handle columns) and verified the runtime, heartbeat, and stale guards trigger as expected.
+- Re-ran `make ci` to exercise the full lint/test suite and confirm the repaired monitor loop passes the self-test harness.
+
+**Validation**
+- `pytest .agents/tests/monitor_loop.py -q`
+- `make ci`
+
+**Next Actions**
+- Launch the senior architect subagent again so the reviewer can verify the monitor-loop fix.

@@ -1627,5 +1627,51 @@
     "window_title": "",
     "launcher_kind": "",
     "launcher_handle": null
+  },
+  {
+    "id": "20251016-141935-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CDO1Nm",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CDO1Nm/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CDO1Nm/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CDO1Nm/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251016-141935",
+    "window_title": "20251016-141935-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251016-141935-senior-review",
+      "window_id": "@0",
+      "pane_id": "%9"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews",
+        "target": "docs/reviews",
+        "status": "harvested",
+        "harvested_at": "2025-10-16T14:30:35Z",
+        "target_path": "docs/reviews"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251016-143731-pytest-test_subagent_launch_without_r0",
+    "type": "throwaway",
+    "slug": "pytest-test_subagent_launch_without_r0",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-4x3H3A",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-4x3H3A/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-4x3H3A/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-4x3H3A/subagent.log",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20251016-143731",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null
   }
 ]

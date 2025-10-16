@@ -103,54 +103,113 @@ PY
     echo "No running subagents detected. Exiting monitor loop."
     break
   fi
-formatted=$(awk -v threshold="$THRESHOLD" -v runtime_threshold="$RUNTIME_THRESHOLD" '
-  NR<=2 {print; next}
-  {
+formatted=$(MONITOR_TABLE="$output" python3 - "$THRESHOLD" "$RUNTIME_THRESHOLD" <<'PY'
+import json
+import os
+import sys
+
+threshold = int(sys.argv[1])
+runtime_threshold = int(sys.argv[2])
+table = os.environ.get("MONITOR_TABLE", "")
+lines = table.splitlines()
+
+if not lines:
+    print(table, end="")
+    print("@@MONITOR_FLAGS {}", end="")
+    sys.exit(0)
+
+header = lines[0]
+separator = lines[1] if len(lines) > 1 else ""
+rows = lines[2:]
+
+result = [header]
+if separator:
+    result.append(separator)
+
+log_alert = False
+runtime_alert = False
+stale_alert = False
+
+
+def parse_mmss(value: str):
+    value = value.strip()
+    if value in ("-", "", "NA"):
+        return None
+    if ":" not in value:
+        return None
+    minutes, seconds = value.split(":", 1)
+    if not (minutes.isdigit() and seconds.isdigit()):
+        return None
+    return int(minutes) * 60 + int(seconds)
+
+
+for row in rows:
+    if not row.strip():
+        result.append(row)
+        continue
+    parts = row.split(None, 8)
+    if len(parts) < 9:
+        result.append(row)
+        continue
+    status = parts[3]
+    runtime_str = parts[5]
+    log_str = parts[6]
     prefix = ""
-    run_seconds = -1
-    log_seconds = -1
-    stale = 0
-    status = $4
-    runtime_str = $6
-    log_str = $7
-    if (status == "running") {
-      if (runtime_str ~ /^[0-9]+:[0-9]{2}$/) {
-        split(runtime_str, rt, ":")
-        run_seconds = rt[1]*60 + rt[2]
-        if (run_seconds > runtime_threshold) {
-          prefix = prefix "^"
-        }
-      }
-      if (log_str == "-" || log_str == "" || log_str == "NA") {
-        stale = 1
-      } else if (log_str ~ /^[0-9]+:[0-9]{2}$/) {
-        split(log_str, lt, ":")
-        log_seconds = lt[1]*60 + lt[2]
-        if (log_seconds > threshold) {
-          prefix = prefix "!"
-        }
-      }
-    }
-    if (stale) {
-      prefix = "?" prefix
-    }
-    if (prefix != "") {
-      print prefix " " $0
-    } else {
-      print $0
-    }
-  }
-' <<<"$output")
+    stale = False
+    if status == "running":
+        runtime_seconds = parse_mmss(runtime_str)
+        if runtime_seconds is not None and runtime_seconds > runtime_threshold:
+            prefix += "^"
+            runtime_alert = True
+        log_seconds = parse_mmss(log_str)
+        if log_seconds is None:
+            stale = True
+            stale_alert = True
+        elif log_seconds > threshold:
+            prefix += "!"
+            log_alert = True
+    if stale:
+        prefix = "?" + prefix
+    if prefix:
+        result.append(f"{prefix} {row}")
+    else:
+        result.append(row)
+
+print("\n".join(result))
+print("@@MONITOR_FLAGS", json.dumps({"log": log_alert, "runtime": runtime_alert, "stale": stale_alert}))
+PY
+)
+
+flags_line=$(grep '^@@MONITOR_FLAGS ' <<<"$formatted" || true)
+formatted=$(grep -v '^@@MONITOR_FLAGS ' <<<"$formatted" || true)
 echo "$formatted"
-if grep -Eq '^(\?|\^)*! ' <<<"$formatted"; then
+
+log_trigger="false"
+runtime_trigger="false"
+stale_trigger="false"
+if [[ -n "$flags_line" ]]; then
+  flags_json=${flags_line#@@MONITOR_FLAGS }
+  read -r log_trigger runtime_trigger stale_trigger < <(python3 - "$flags_json" <<'PY'
+import json
+import sys
+
+data = json.loads(sys.argv[1])
+def to_flag(key):
+    return "true" if data.get(key) else "false"
+print(to_flag("log"), to_flag("runtime"), to_flag("stale"))
+PY
+  )
+fi
+
+if [[ "$log_trigger" == "true" ]]; then
   echo "Log heartbeat threshold exceeded for at least one subagent. Exiting monitor loop."
   break
 fi
-if grep -Eq '^\?*\^' <<<"$formatted"; then
+if [[ "$runtime_trigger" == "true" ]]; then
   echo "Runtime threshold exceeded (likely >$RUNTIME_THRESHOLD seconds) for at least one subagent. Exiting monitor loop."
   break
 fi
-if grep -q '^\?' <<<"$formatted"; then
+if [[ "$stale_trigger" == "true" ]]; then
   echo "Stale subagent entry detected (log missing or out of heartbeat scope). Exiting monitor loop."
   break
 fi
