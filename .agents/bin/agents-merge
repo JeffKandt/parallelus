@@ -270,6 +270,9 @@ if ! make ci; then
   exit 1
 fi
 
+# Clean up artifacts generated during CI runs (e.g., smoke test registry entries).
+git checkout -- docs/agents/subagent-registry.json >/dev/null 2>&1 || true
+
 export AGENTS_MERGE_SKIP_HOOK_CI=1
 export AGENTS_MERGE_BRANCH="$feature_branch"
 export AGENTS_MERGE_REVIEW_FILE="$review_file"
