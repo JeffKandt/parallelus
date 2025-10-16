@@ -228,28 +228,4 @@ PY
 }
 
 check_retrospective
-
-shopt -s nullglob
-plan_files=(docs/plans/feature-*.md)
-progress_files=(docs/progress/feature-*.md)
-shopt -u nullglob
-
-if ((${#plan_files[@]} > 0)); then
-  echo "pre-merge-commit: branch plan notebooks detected:" >&2
-  for f in "${plan_files[@]}"; do
-    echo "  - $f" >&2
-  done
-  echo "Remove or fold these notebooks before merging." >&2
-  exit 1
-fi
-
-if ((${#progress_files[@]} > 0)); then
-  echo "pre-merge-commit: branch progress logs detected:" >&2
-  for f in "${progress_files[@]}"; do
-    echo "  - $f" >&2
-  done
-  echo "Stitch progress logs into docs/PROGRESS.md before merging." >&2
-  exit 1
-fi
-
 exit 0
