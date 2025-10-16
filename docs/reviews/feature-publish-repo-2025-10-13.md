@@ -1,5 +1,5 @@
 Reviewed-Branch: feature/publish-repo
-Reviewed-Commit: d1c0ec21a4dea7583752326f13bfbb30b11f44f3
+Reviewed-Commit: db67706404e69a312a671f65fc8d62b2e162925d
 Reviewed-On: 2025-10-16
 Decision: approved
 
@@ -8,7 +8,7 @@ Decision: approved
 - **Severity: Low** – The senior-review scope template points operators at `origin/feature-publish-repo`, but the branch actually lives under `origin/feature/publish-repo` `docs/agents/templates/senior_architect_scope.md:5`. Anyone pasting the command as written will get a “unknown revision” error. Update the remote path to use the slash form.
 
 ## Summary
-The regression called out in the previous review is fixed: default subagent launches now succeed under `set -u`, and the new pytest smoke covers the scenario. The tmux socket hygiene, deliverable harvesting flow, and retrospective guardrail additions all look solid.
+The monitor-loop manual now directs operators to supervise subagents via `make monitor_subagents ARGS="--id <entry>"`, capturing the cadence and cleanup guards we agreed on. `docs/progress/feature-publish-repo.md` logs the 2025-10-16 15:36:42 UTC acknowledgement, and the branch plan highlights the narrow delta for future reviewers. No new regressions surfaced; the previously noted low-severity cleanups remain outstanding.
 
 ## Recommendations
 1. Clean up the duplicate `local` declarations in `create_runner` while the file is fresh.
