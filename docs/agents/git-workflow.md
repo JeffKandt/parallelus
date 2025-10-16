@@ -38,6 +38,20 @@ The helper:
 `slug` should be lower-case, dash-separated. Use `AUTO_BRANCH_SLUG` to pre-seed a
 slug across sessions if needed.
 
+During Recon on `main`, capture near-term ideas in the untracked queue:
+`make queue_init` creates `.agents/queue/next-branch.md`, `make queue_show`
+prints it, and `make queue_pull` (run immediately after bootstrapping) appends
+notes into the new branch plan and project backlog before clearing the scratch
+file. The queue template provides two sections:
+
+- `## Next Feature` — bullets earmarked for the upcoming branch plan.
+- `## Project Backlog` — bullets (including any `TODO:` notes) appended to
+  `docs/PLAN.md` under “Next Focus Areas”. Lines starting with `TODO:` are
+  stored verbatim, minus the prefix, so feel free to jot ideas quickly.
+
+Never keep long-term state in the queue; treat it as a temporary inbox and run
+`make queue_pull` as soon as the corresponding branch exists.
+
 ## 3. Branch Management & Archival
 When `agents-detect` lists unmerged branches, present them to the maintainer and
 ask whether to merge or archive. Two main flows:
@@ -61,9 +75,10 @@ ask whether to merge or archive. Two main flows:
   emergency (document the reason in the progress log), and optionally specify a
   different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
 - The helper refuses to run when any branch notebooks are still present (for
-  example `docs/plans/feature-*.md` or `docs/progress/feature-*.md`). Fold
-  their contents into the canonical docs and delete them before merging. It
-  also blocks on a dirty working tree.
+  example `docs/plans/feature-*.md` or `docs/progress/feature-*.md`). Before
+  deleting them, run `.agents/bin/fold-progress apply` so every timestamped
+  entry lands in the canonical docs verbatim—summaries or rewritten blurbs are
+  not allowed. The helper also blocks on a dirty working tree.
 
 Do **not** run `git merge` directly; the helper is the enforcement mechanism for
 the merge-and-close checklist. If someone tries it anyway, the managed
@@ -124,7 +139,7 @@ Recognised remote naming patterns include `origin/codex/*`, `origin/feature/*`,
 Run this checklist whenever the user requests a merge (even casually):
 1. Confirm plan/progress notebooks are up to date and committed.
 2. Fold notebook updates into canonical docs (`docs/PLAN.md`, `docs/PROGRESS.md`
-   via `scripts/stitch_progress_logs.py`) while still on the feature branch.
+   via `.agents/bin/fold-progress apply`) while still on the feature branch.
 3. Run validation inside the project venv (`pytest -m "not slow"`, `ruff
    check`, `black --check`).
 4. Align local branch name with PR slug before merging exported work.
@@ -140,6 +155,9 @@ Run this checklist whenever the user requests a merge (even casually):
   the feature branch.
 - If orphaned notebooks are detected on `main`, remove them immediately or fold
   them into canonical docs.
+- When folding progress logs, preserve every entry verbatim—run
+  `.agents/bin/fold-progress apply` and only edit notebook text before folding
+  (never summarise directly inside `docs/PROGRESS.md`).
 - Always commit branch notebooks and session logs before merging to prevent
   orphaned state.
 

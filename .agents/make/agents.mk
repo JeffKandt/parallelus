@@ -7,7 +7,7 @@ PLAN_DIR ?= docs/plans
 PROGRESS_DIR ?= docs/progress
 SESSION_DIR ?= sessions
 
-.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents
+.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path
 
 read_bootstrap:
 	@if [ -z "$${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ] && command -v tmux >/dev/null 2>&1; then \
@@ -70,6 +70,21 @@ ifdef ARGS
 else
 	@$(AGENTS_BIN)/agents-monitor-loop.sh --interval 45 --threshold 180 --runtime-threshold 600
 endif
+
+queue_init:
+	@$(AGENTS_BIN)/branch-queue init
+
+queue_show:
+	@$(AGENTS_BIN)/branch-queue show
+
+queue_pull:
+	@$(AGENTS_BIN)/branch-queue pull
+
+queue_clear:
+	@$(AGENTS_BIN)/branch-queue clear
+
+queue_path:
+	@$(AGENTS_BIN)/branch-queue path
 
 ifeq ($(strip $(LANG_ADAPTERS)),)
 .PHONY: ci
