@@ -37,3 +37,6 @@
 - Consider renaming “scope file” to “assignment file” across tooling/docs and determine the migration plan.
 - Prototype a subagent completion signal (sentinel file or equivalent) so the monitor loop detects finished runs without relying solely on log heartbeats.
 - Remove the unused `docs/logs` senior-review deliverable from launch templates and supporting docs.
+- Remove the duplicate `local` declarations in `.agents/bin/launch_subagent.sh:create_runner` noted by the senior architect.
+- Correct the branch reference in `docs/agents/templates/senior_architect_scope.md` to use `origin/feature/publish-repo`.
+- Rationalize the backlog flow (`docs/PLAN.md`, in-branch checklists, Next Actions) so TODOs aren’t split across multiple sections.
