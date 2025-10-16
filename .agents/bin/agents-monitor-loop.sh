@@ -46,7 +46,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 REGISTRY="docs/agents/subagent-registry.json"
-STATUS_CMD=("$(git rev-parse --show-toplevel)/.agents/bin/subagent_manager.sh" status)
+MANAGER_CMD="$(git rev-parse --show-toplevel)/.agents/bin/subagent_manager.sh"
+STATUS_CMD=("$MANAGER_CMD" status)
 if [[ -n "$FILTER_ID" ]]; then
   STATUS_CMD+=("--id" "$FILTER_ID")
 fi
@@ -67,6 +68,38 @@ while true; do
   output=$("${STATUS_CMD[@]}")
   if ! grep -q ' running ' <<<"$output"; then
     echo "$output"
+    pending_ids=$(python3 - <<'PY' "$REGISTRY" "$FILTER_ID"
+import json
+import sys
+
+registry_path, filter_id = sys.argv[1:3]
+try:
+    with open(registry_path, "r", encoding="utf-8") as fh:
+        entries = json.load(fh)
+except FileNotFoundError:
+    entries = []
+
+pending = []
+for row in entries:
+    if filter_id and row.get("id") != filter_id:
+        continue
+    deliverables = row.get("deliverables") or []
+    if not deliverables:
+        continue
+    if any((item.get("status") or "pending").lower() != "harvested" for item in deliverables):
+        pending.append(row.get("id"))
+
+if pending:
+    print("\n".join(pending))
+PY
+    )
+    if [[ -n "$pending_ids" ]]; then
+      echo "Deliverables awaiting harvest:"
+      while IFS= read -r pending_id; do
+        [[ -z "$pending_id" ]] && continue
+        echo "  - $pending_id (run: $MANAGER_CMD harvest --id $pending_id)"
+      done <<<"$pending_ids"
+    fi
     echo "No running subagents detected. Exiting monitor loop."
     break
   fi
@@ -77,18 +110,21 @@ formatted=$(awk -v threshold="$THRESHOLD" -v runtime_threshold="$RUNTIME_THRESHO
     run_seconds = -1
     log_seconds = -1
     stale = 0
-    if ($4 == "running") {
-      if ($5 ~ /^[0-9]+:[0-9]{2}$/) {
-        split($5, rt, ":")
+    status = $4
+    runtime_str = $6
+    log_str = $7
+    if (status == "running") {
+      if (runtime_str ~ /^[0-9]+:[0-9]{2}$/) {
+        split(runtime_str, rt, ":")
         run_seconds = rt[1]*60 + rt[2]
         if (run_seconds > runtime_threshold) {
           prefix = prefix "^"
         }
       }
-      if ($6 == "-" || $6 == "" || $6 == "NA") {
+      if (log_str == "-" || log_str == "" || log_str == "NA") {
         stale = 1
-      } else if ($6 ~ /^[0-9]+:[0-9]{2}$/) {
-        split($6, lt, ":")
+      } else if (log_str ~ /^[0-9]+:[0-9]{2}$/) {
+        split(log_str, lt, ":")
         log_seconds = lt[1]*60 + lt[2]
         if (log_seconds > threshold) {
           prefix = prefix "!"

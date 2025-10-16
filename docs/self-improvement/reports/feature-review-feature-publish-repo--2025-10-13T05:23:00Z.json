@@ -1,0 +1,33 @@
+{
+  "branch": "feature/publish-repo",
+  "marker_timestamp": null,
+  "summary": "Blocking: marker file missing and repo still on main, so the feature/publish-repo audit cannot proceed; branch notebooks are absent.",
+  "issues": [
+    {
+      "id": "missing-marker-file",
+      "root_cause": "The retrospective marker docs/self-improvement/markers/feature-review-feature-publish-repo.json is absent, so the audit lacks a timestamp and pointers to the correct plan/progress notebooks.",
+      "mitigation": "Restore or regenerate the marker (e.g., rerun make turn_end on the main branch workflow or recover it from history) before reattempting the audit.",
+      "prevention": "Add checks that fail turn_end or session wrap when the expected marker file is missing or untracked, ensuring markers remain committed.",
+      "evidence": "cat docs/self-improvement/markers/feature-review-feature-publish-repo.json -> No such file or directory; find . -name 'feature-publish-repo.json' returned no results."
+    },
+    {
+      "id": "wrong-branch-checked-out",
+      "root_cause": "Repository remains on main instead of the target feature/publish-repo branch, so branch-specific state (plan/progress, diffs) is unavailable.",
+      "mitigation": "Checkout feature/publish-repo (or the slug used for the review branch) before gathering audit evidence.",
+      "prevention": "Update the bootstrap/guard scripts to assert the expected branch before audits begin.",
+      "evidence": "git branch --show-current output: main."
+    },
+    {
+      "id": "missing-plan-progress-notebooks",
+      "root_cause": "No branch-specific plan or progress notebooks exist under docs/plans/ or docs/progress/, leaving the audit without recorded objectives or logs.",
+      "mitigation": "Recreate docs/plans/feature-publish-repo.md and docs/progress/feature-publish-repo.md (or the review-branch equivalents) with the latest updates before rerunning the audit.",
+      "prevention": "Ensure make bootstrap/start_session always commits the branch notebooks and add CI guards to block when they are absent.",
+      "evidence": "ls docs/plans -> README.md; ls docs/progress -> README.md (no feature/publish-repo notebooks present)."
+    }
+  ],
+  "follow_ups": [
+    "Restore the missing marker file for feature/publish-repo and capture its timestamp.",
+    "Checkout the feature/publish-repo branch before collecting retrospective evidence.",
+    "Recreate and update the branch plan/progress notebooks so the audit has context."
+  ]
+}

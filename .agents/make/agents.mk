@@ -16,7 +16,16 @@ read_bootstrap:
 			tmux_args="-S $${PARALLELUS_TMUX_SOCKET}"; \
 		fi; \
 		tmux $$tmux_args has-session >/dev/null 2>&1 && tmux $$tmux_args source-file .agents/tmux/parallelus-status.tmux >/dev/null 2>&1 || true; \
-		tmux_env="$$({ command -v tmux >/dev/null 2>&1 && tmux $$tmux_args display-message -p '#{socket_path},#{session_id},#{pane_id}' ; } 2>/dev/null)"; \
+		tmux_env=""; \
+		tmux_env_raw="$$(tmux $$tmux_args show-environment -g TMUX 2>/dev/null || true)"; \
+		if [ -n "$$tmux_env_raw" ] && [ "$$tmux_env_raw" != "no such variable" ]; then \
+			tmux_env="$${tmux_env_raw#TMUX=}"; \
+		else \
+			tmux_control="$$(tmux $$tmux_args -C display-message -p '#{socket_path},#{session_id},#{pane_id}' 2>/dev/null || true)"; \
+			if [ -n "$$tmux_control" ]; then \
+				tmux_env="$$(printf '%s\n' \"$$tmux_control\" | awk 'NR==2 {print; exit}')"; \
+			fi; \
+		fi; \
 		if [ -n "$$tmux_env" ]; then \
 			export TMUX="$$tmux_env"; \
 			tmux $$tmux_args set-environment -g TMUX "$$tmux_env" >/dev/null 2>&1 || true; \
