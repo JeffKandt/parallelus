@@ -4,10 +4,11 @@
 - **Branch:** feature/publish-repo
 - **Commit under review:** $(git rev-parse HEAD)
 - **Remote check:** ensure the commit exists on origin/feature/publish-repo before review begins.
-- **Focus:** Only two documentation updates landed after the last approval:
-  1. `docs/agents/subagent-session-orchestration.md` now mandates launching the monitor loop via `make monitor_subagents`.
-  2. `docs/progress/feature-publish-repo.md` records the guardrail acknowledgement.
-  Everything else matches commit d1c0ec21a4dea7583752326f13bfbb30b11f44f3.
+- **Focus:** Changes since the last approved commit (`db67706404e69a312a671f65fc8d62b2e162925d`) are limited to:
+  1. Guardrail documentation/log updates describing the required `make monitor_subagents` workflow.
+  2. Merge-time enforcement in `.agents/bin/agents-merge` and `.agents/hooks/pre-merge-commit` that blocks lingering review notebooks.
+  3. Supporting plan/progress and git-workflow documentation updates.
+  No other files have changed.
 
 ## Preconditions
 - Working tree is clean and matches the pushed commit.
@@ -15,14 +16,17 @@
 - No additional changes will be introduced until the review is complete.
 
 ## Objectives
-- [ ] Confirm the documentation change in `docs/agents/subagent-session-orchestration.md` accurately reflects the required `make monitor_subagents` workflow.
-- [ ] Verify the progress log update mirrors the guardrail change and references the correct timestamp (2025-10-16 15:36:42 UTC).
-- [ ] Spot-check prior high-risk areas only if something unexpected appears in the diff; otherwise, carry forward the previous approval context.
+- [ ] Confirm the documentation changes (subagent manual, git workflow, plan/progress notes) accurately describe the new guardrail.
+- [ ] Review the merge-time enforcement updates in `.agents/bin/agents-merge` and `.agents/hooks/pre-merge-commit`.
+- [ ] Spot-check prior high-risk areas only if additional diffs appear; otherwise, rely on the previous approval context.
 
 ## Key Artifacts
+- `.agents/bin/agents-merge`
+- `.agents/hooks/pre-merge-commit`
 - `docs/agents/subagent-session-orchestration.md`
-- `docs/progress/feature-publish-repo.md`
+- `docs/agents/git-workflow.md`
 - `docs/plans/feature-publish-repo.md`
+- `docs/progress/feature-publish-repo.md`
 - Previous review: `docs/reviews/feature-publish-repo-2025-10-13.md`
 
 ## Review Deliverable
