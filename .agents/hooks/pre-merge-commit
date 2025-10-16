@@ -9,6 +9,43 @@ if [[ -n "${AGENTS_MERGE_FORCE:-}" ]]; then
   exit 0
 fi
 
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+current_slug="${current_branch//\//-}"
+allowed_plan=""
+allowed_progress=""
+if [[ "$current_branch" == feature/* ]]; then
+  allowed_plan="docs/plans/${current_slug}.md"
+  allowed_progress="docs/progress/${current_slug}.md"
+fi
+
+shopt -s nullglob
+plan_files=("docs/plans/feature-"*.md)
+progress_files=("docs/progress/feature-"*.md)
+shopt -u nullglob
+
+extra_notebooks=()
+for f in "${plan_files[@]}"; do
+  if [[ -n "$allowed_plan" && "$f" == "$allowed_plan" ]]; then
+    continue
+  fi
+  extra_notebooks+=("$f")
+done
+for f in "${progress_files[@]}"; do
+  if [[ -n "$allowed_progress" && "$f" == "$allowed_progress" ]]; then
+    continue
+  fi
+  extra_notebooks+=("$f")
+done
+
+if ((${#extra_notebooks[@]} > 0)); then
+  echo "pre-merge-commit: notebooks from merged branches still exist:" >&2
+  for f in "${extra_notebooks[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Fold their contents into the active branch plan/progress and delete the extras (or override with AGENTS_MERGE_FORCE=1)." >&2
+  exit 1
+fi
+
 if [[ -z "${AGENTS_MERGE_SKIP_HOOK_CI:-}" ]]; then
   if ! make ci >/dev/null; then
     echo "pre-merge-commit: make ci failed; resolve issues before merging." >&2

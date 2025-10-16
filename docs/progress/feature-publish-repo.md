@@ -272,6 +272,17 @@
 
 **Next Actions**
 - Continue executing the consolidated plan items on `feature/publish-repo`.
+
+## 2025-10-16 16:28:01 UTC
+**Objectives**
+- Add guardrails so future merges fail when review notebooks haven’t been folded back.
+
+**Work Performed**
+- Updated `.agents/bin/agents-merge` and the managed `pre-merge-commit` hook to allow only the active branch’s notebooks (or none) and block when any other `docs/plans/feature-*.md` / `docs/progress/feature-*.md` files remain.
+- Documented the behaviour in `docs/agents/git-workflow.md`.
+
+**Next Actions**
+- None specific; follow the guardrail on subsequent merges.
 ## 2025-10-16 15:36:42 UTC
 **Objectives**
 - Capture the monitor-loop launch correction so the process artifact reflects the agreed practice.

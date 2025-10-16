@@ -74,21 +74,39 @@ plan_files=("docs/plans/feature-"*.md)
 progress_files=("docs/progress/feature-"*.md)
 shopt -u nullglob
 
-if ((${#plan_files[@]} > 0)); then
-  echo "agents-merge: branch plan notebooks still present:" >&2
-  for f in "${plan_files[@]}"; do
-    echo "  - $f" >&2
-  done
-  echo "Please fold plan updates into docs/PLAN.md and remove branch notebooks before merging." >&2
-  exit 1
+current_slug="${current_branch//\//-}"
+allowed_plan=""
+allowed_progress=""
+if [[ "$current_branch" == feature/* ]]; then
+  allowed_plan="docs/plans/${current_slug}.md"
+  allowed_progress="docs/progress/${current_slug}.md"
 fi
 
-if ((${#progress_files[@]} > 0)); then
-  echo "agents-merge: branch progress logs still present:" >&2
-  for f in "${progress_files[@]}"; do
+extra_plans=()
+for f in "${plan_files[@]}"; do
+  if [[ -n "$allowed_plan" && "$f" == "$allowed_plan" ]]; then
+    continue
+  fi
+  extra_plans+=("$f")
+done
+
+extra_progress=()
+for f in "${progress_files[@]}"; do
+  if [[ -n "$allowed_progress" && "$f" == "$allowed_progress" ]]; then
+    continue
+  fi
+  extra_progress+=("$f")
+done
+
+if ((${#extra_plans[@]} > 0 || ${#extra_progress[@]} > 0)); then
+  echo "agents-merge: found notebooks from merged branches that still need folding:" >&2
+  for f in "${extra_plans[@]}"; do
     echo "  - $f" >&2
   done
-  echo "Please stitch progress logs into docs/PROGRESS.md before merging." >&2
+  for f in "${extra_progress[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Reconcile these into the active branch notebooks (or docs/PLAN.md / docs/PROGRESS.md) and delete the extras before merging." >&2
   exit 1
 fi
 

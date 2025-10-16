@@ -60,8 +60,10 @@ ask whether to merge or archive. Two main flows:
 - Set `AGENTS_MERGE_FORCE=1` when you must override the guardrail in an
   emergency (document the reason in the progress log), and optionally specify a
   different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
-- The helper refuses to run if branch notebooks or progress logs still exist,
-  or if the working tree is dirty.
+- The helper refuses to run when notebooks from other branches linger (e.g.
+  `docs/plans/feature-review-*.md`); fold their content into the active branch
+  plan/progress first so only the canonical files remain. It also blocks on a
+  dirty working tree.
 
 Do **not** run `git merge` directly; the helper is the enforcement mechanism for
 the merge-and-close checklist. If someone tries it anyway, the managed
@@ -82,8 +84,8 @@ Consider merging when:
 - `pre-commit` blocks direct commits to the base branch (override with
   `AGENTS_ALLOW_MAIN_COMMIT=1`) and reminds feature-branch contributors to
   update plan/progress notebooks whenever other files are staged.
-- `pre-merge-commit` blocks merges when branch notebooks linger, CI fails, the
-  senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
+- `pre-merge-commit` blocks merges when notebooks from other branches linger,
+  CI fails, the senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
   and optionally `AGENTS_MERGE_REVIEW_FILE=...`; acknowledge lower-severity
   findings with `AGENTS_MERGE_ACK_REVIEW=1`), or the latest retrospective report
   for the branch marker has not been committed.
