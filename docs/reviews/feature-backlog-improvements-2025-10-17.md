@@ -1,7 +1,7 @@
 # Senior Architect Review – feature/backlog-improvements
 
 Reviewed-Branch: feature/backlog-improvements
-Reviewed-Commit: 58f9f28425d965ae72fc4678d4e3d740d9ae101f
+Reviewed-Commit: 45118e64df28a00f299e9ab146eaabf0591cf99a
 Reviewed-On: 2025-10-17
 Decision: approved
 Reviewer: jeff/manual-self-review
