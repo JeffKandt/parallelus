@@ -55,4 +55,23 @@ EOF
   fi
 fi
 
+# Ensure branch progress notebooks are folded losslessly before deletion.
+progress_deleted=()
+while IFS=$'\t' read -r status path new_path; do
+  case "$status" in
+    D)
+      progress_deleted+=("$path")
+      ;;
+    R*)
+      progress_deleted+=("$path")
+      ;;
+  esac
+done < <(git diff --cached --name-status -- 'docs/progress/feature-*.md')
+
+if ((${#progress_deleted[@]} > 0)); then
+  if ! .agents/bin/fold-progress verify --target docs/PROGRESS.md --ref HEAD --deleted "${progress_deleted[@]}"; then
+    exit 1
+  fi
+fi
+
 exit 0

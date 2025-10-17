@@ -1,225 +1,135 @@
 # Parallelus Agent Process
 
-Parallelus is a guardrailed automation framework that keeps human operators and
-AI agents aligned while they collaborate on a shared codebase. It wraps your
-repository with lightweight checklists, notebooks, and tooling so every turn is
-auditable, reproducible, and easy to continue—whether you are working solo,
-pairing with an assistant, or delegating to fully automated subagents.
+Parallelus is a guardrailed collaboration system where a human owner sets the direction and an AI agent operates the repository on their behalf. The agent handles branches, tooling, documentation, and compliance steps; the human stays focused on intent, priorities, and decisions. Every interaction happens in plain language, with the agent translating requests into the underlying automation.
+
+---
+
+## Philosophy
+Parallelus is designed around a clear division of labour:
+
+- **You steer; the agent drives.** The human partner articulates goals, success criteria, and trade-offs. The agent executes the mechanical work--editing code, running tests, updating logs, and enforcing guardrails.
+- **Dialogue over commands.** Instead of memorising scripts, you describe what should happen: "Create a feature branch for the dashboard uplift" or "Merge the notifications work once the review is green." The agent interprets and carries out the request.
+- **Process without burden.** Guardrails, retrospectives, and review gates are agent responsibilities. You only need to know they exist, why they matter, and how to invoke them. The agent keeps notebooks current, runs audits, and confirms every step in the progress log.
+- **Shared situational awareness.** Documentation is written so humans can understand the state of the project at a glance, even if they never touch the shell. Notebook updates, backlog queues, and review reports keep the narrative flowing between turns.
+- **Portable playbook.** When Parallelus is embedded into another repository, its human-facing guidance moves with it (typically under `.agents/`). The project's own README remains focused on the product; this guide explains how to work with the agent.
+
+With these principles, you can treat the agent as a dedicated developer who never forgets the process and always documents what happened.
 
 ---
 
 ## Why Teams Use Parallelus
-- **Repeatable delivery** – Enforces a Recon → Planning → Execution cadence so
-  every task starts with context gathering and ends with documented outcomes.
-- **Built-in governance** – Senior review gates, retrospective prompts, and
-  audible alerts keep compliance needs visible without slowing contributors
-  down.
-- **Onboarding in minutes** – `make bootstrap` scaffolds feature branches with
-  ready-to-edit plan/progress notebooks and managed git hooks.
-- **AI-native collaboration** – Session logs, guardrails, and adapter configs
-  make it safe to hand off work to Codex-based agents or other automated
-  contributors.
-- **Portable playbook** – Copy the `.agents/` directory and docs into any
-  repository to standardise process expectations across projects.
+- **Predictable sessions.** Each turn follows Recon → Planning → Execution → Wrap-Up, so context is gathered before work begins and outcomes are recorded before moving on.
+- **Built-in governance.** Senior reviews, retrospectives, and compliance checks are mandatory steps the agent manages automatically.
+- **Lower cognitive load.** You ask for outcomes; the agent translates them into implementation details, updates notebooks, and keeps the repo clean.
+- **AI-native delegation.** Parallelus assumes the agent (and any subagents) are the hands on the keyboard, so all instructions, logs, and safeguards are ready for automated execution.
 
 ---
 
 ## Core Capabilities
-- **Guardrail Checklists** – `AGENTS.md` plus detailed manuals capture the
-  minimum viable process; helpers such as `make read_bootstrap`, `make bootstrap`
-  and `make turn_end` enforce them automatically.
-- **Branch Notebooks** – Each feature branch receives `docs/plans/<branch>.md`
-  and `docs/progress/<branch>.md`, keeping objectives, checkpoints, and session
-  notes co-located with the code.
-- **Session Logging** – `make start_session` records turn metadata inside
-  `sessions/` so you can audit past work or resume after interruptions.
-- **Managed Git Hooks** – Bootstrap installs hooks that block risky actions
-  (committing on `main`, merging without a senior review, skipping retrospectives).
-- **Adapter-aware Tooling** – Python and Swift adapters ship by default; extend
-  `docs/agents/adapters/` to codify language-specific lint, test, or packaging
-  flows for your stack.
-- **Retrospective Automation** – The Retrospective Auditor prompt produces JSON
-  reports stored under `docs/self-improvement/`, closing the loop on process
-  improvements.
-- **Profile-aware Subagents** – Launch subagents with alternative Codex
-  profiles (for example, `gpt-oss`) without editing scripts; non-default
-  profiles display in the generated prompt and skip the `--dangerously-bypass`
-  sandbox flags when required. Role prompts declare overrides via YAML
-  front matter, so model/sandbox/approval tweaks stay alongside human
-  instructions.
+- **Process guardrails.** Parallelus ships with documented gates--for branching, reviews, retrospectives, and CI--that the agent enforces.
+- **Structured notebooks.** Every feature branch collects its plan, progress, and outcomes in the repository so human reviewers can skim "what changed" in a few minutes.
+- **Session history.** Work blocks are timestamped and linked to session logs, making it easy to pause, resume, or audit long-running efforts.
+- **Backlog management.** A shared queue lets you jot ideas during Recon and decide whether they belong in the next feature branch or the long-term plan.
+- **Subagent orchestration.** The agent can launch specialised helpers (for audits, reviews, parallel feature work in dedicated worktrees, etc.) while keeping you informed about their status and deliverables.
 
 ---
 
 ## Workflow at a Glance
-1. **Recon & Planning (read-only)**  
-   Run `make read_bootstrap`, open branch notebooks, list recent sessions, and
-   confirm you are ready to continue.
-2. **Transition to Editing**  
-   Execute `make bootstrap slug=<slug>` to enter a feature branch, set a
-   `SESSION_PROMPT`, and update plan/progress notebooks with current goals.
-3. **Active Execution**  
-   Implement changes, fire `.agents/bin/agents-alert` before/after work blocks,
-   run verification (`make ci`, language-specific adapters), and log checkpoints.
-4. **Turn-End & Session Wrap**  
-   Launch the Retrospective Auditor, record the output under
-   `docs/self-improvement/reports/`, then run `make turn_end m="summary"` to
-   sync plan/progress docs and session metadata.
+Use conversational prompts to steer the agent through each phase:
 
-Every stage references the manuals in `docs/agents/` for deeper context when a
-gate (merge, diagnostics, subagents, etc.) triggers.
+1. **Recon & Planning**  
+   - Ask the agent to "Review the current plan and tell me what's pending."  
+   - Capture new ideas in the scratch queue ("Add these items to the backlog queue for our next branch.")  
+   - Decide on the next objective and name for the work.
+
+2. **Transition to Editing**  
+   - Say "Create a feature branch called …"  
+   - Provide a short mission brief the agent will log in the plan/progress files.
+
+3. **Active Execution**  
+   - Direct the agent with outcomes: "Implement X," "Refactor Y," "Investigate this failing test."  
+   - Request validation: "Run the full check suite," "Confirm linting is clean," "What's the status of the CI audit?"  
+   - Delegate parallel work: "Spin up a worktree for the API tweaks and have a subagent handle it while we continue here."
+
+4. **Turn-End & Session Wrap**  
+   - Tell the agent "Prepare the turn-end summary" or "Run the retrospective and capture the report."  
+   - Review the agent's recap and agree on next steps before ending the session.
+
+5. **Merge & Release**  
+   - When work is ready, instruct "Initiate the senior architect review," then "Merge back to main once the review is approved and everything is documented."
+
+Throughout, speak in high-level directives. The agent will translate those into the necessary scripts, hooks, and documentation updates.
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- macOS or Linux shell with `make`, Python 3.11+, and Swift toolchain (if you
-  plan to use the Swift adapter).
-- Access to the LLM or automation platform that will run the Codex agent (e.g.,
-  OpenAI’s Codex CLI).
-- tmux 3.x or newer. Parallelus relies on tmux to multiplex the main agent and
-  subagents; if tmux is missing you can still launch subagents manually, but the
-  automated panes/windows and status overlays will not be available.
-  - `make read_bootstrap` automatically sources `.agents/tmux/parallelus-status.tmux`
-    whenever tmux is available. Set `PARALLELUS_SUPPRESS_TMUX_EXPORT=1` before running
-    the command to skip this if you prefer a neutral tmux config.
-  - To keep Parallelus panes isolated from personal tmux sessions, launch Codex on
-    a dedicated socket (e.g. `tmux -L parallelus …`) or add a conditional
-    `if-shell` to your own `~/.tmux.conf` that only loads the overlay when
-    `.agents/tmux/parallelus-status.tmux` exists in the current repository.
-  - When tmux truly isn’t an option, launch subagents with
-    `subagent_manager.sh launch --launcher manual …` and follow the printed
-    command in a regular terminal.
-- Optional: GitHub or another Git remote for publishing.
+- A development environment (macOS or Linux) where the agent can run shells, manage Git, and install dependencies.
+- Access to your AI orchestration platform (e.g., the Codex CLI) so the agent can reason about tasks and run subagents.
+- tmux is recommended so the agent can manage multiple panes/sessions when launching subagents.
+- Optional: a remote Git service if you plan to publish the work.
 
-### New Project Setup
-1. **Create the repository** – Initialise an empty git repo and copy this
-   project (or add it as a template) to inherit the Parallelus scaffolding.
-2. **Install dependencies** – Run `python -m venv .venv && source .venv/bin/activate`
-   followed by `pip install -r requirements.txt`. Add Swift package dependencies
-   if the Swift adapter is enabled.
-3. **Bootstrap your first branch** – From a clean tree, run
-   `make bootstrap slug=intro` to create `feature/intro`, seed notebooks,
-   and install managed hooks.
-4. **Start a session** – `SESSION_PROMPT="Initial setup" make start_session`
-   records the work context under `sessions/`.
-5. **Log your objectives** – Update
-   `docs/plans/feature-intro.md` and `docs/progress/feature-intro.md` with the
-   goals outlined in AGENTS.md.
-6. **Wire your tmux session (optional)** – The status bar overlay is applied
-   automatically by `make read_bootstrap`, but you can scope it to Parallelus
-   sessions by launching Codex on a dedicated socket and/or sourcing the file
-   conditionally in `~/.tmux.conf`. Example:
-   ```tmux
-   if-shell '[ -f .agents/tmux/parallelus-status.tmux ]' \
-     "source-file .agents/tmux/parallelus-status.tmux"
-   ```
+As the human collaborator, ensure the agent has these capabilities. You do not need to install or configure them personally--the agent can do it once given access.
 
-### Adopting Parallelus in an Existing Repository
-1. **Bring in the framework** – Copy the `.agents/` directory, `Makefile`
-   targets (`read_bootstrap`, `bootstrap`, `turn_end`, `ci`), and top-level docs
-   (`AGENTS.md`, `docs/agents/`, `docs/self-improvement/`) into your repo.
-   Committing these scaffolds creates the baseline process. The helper
-   `.agents/bin/deploy_agents_process.sh` automates this copy/sync step across
-   multiple repositories if you prefer a scripted workflow.
-2. **Wire command aliases** – Ensure project-specific scripts referenced in
-   the manuals exist (e.g., environment diagnostics, CI entry points). Update
-   adapter configs whenever your tooling differs.
-3. **Run `make read_bootstrap`** – Verify detection paths and adjust
-   `.agents/agentrc` if the base branch or remote naming conventions differ.
-4. **Train contributors** – Walk the team through Recon → Planning → Execution,
-   highlight the guardrails (audible alerts, plan/progress updates, senior
-   reviews), and capture buy-in in your progress logs.
-5. **Backfill retrospectives (optional)** – If you want historical coverage,
-   run the Retrospective Auditor on recent features and store the JSON reports
-   alongside new work.
+### Introducing Parallelus to a Project
+1. **Assess fit.** Ask the agent to audit the repo and confirm Parallelus can be layered on top (existing guardrails, expectations, etc.).
+2. **Install the playbook.** Instruct the agent to "Adopt the Parallelus process in this repository," which prompts it to copy the `.agents/` directory, documentation, and hooks.
+3. **Align on cadence.** Discuss how you'd like to work (session length, review cadence, release cadence). The agent will note this in the plan.
+4. **Confirm guardrails.** Request a walkthrough: "Explain the key guardrails and how they impact our workflow."
+5. **Start small.** Begin with a single feature branch to experience the Recon → Planning → Execution flow before scaling up.
 
-### Daily Cadence
-- Start each session in Recon, review the plan, and seed a session directory.
-- Update notebooks whenever you complete a meaningful work unit; the managed
-  `pre-commit` hook will remind you if you forget.
-- Use `make ci` (or adapter-specific equivalents) before requesting review.
-- When work is ready, follow the merge gate: senior architect review,
-  retrospective report, plan/progress cleanup, then `make merge slug=<slug>`.
-
-### Codex Launch Helpers
-- Many teams wrap the Codex CLI in shell helpers so every session starts inside
-  tmux with a clean environment. To isolate Parallelus panes, run those helpers
-  on a dedicated socket (here `parallelus`) and let the notebook bootstrap load
-  the status overlay automatically:
-  ```sh
-  cx() {
-    local CLEAN_PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
-    TMUX= tmux -L parallelus -f /dev/null \
-      new-session -As codex-$(basename "$PWD") \
-      -e PATH="$CLEAN_PATH" \
-      -- codex --dangerously-bypass-approvals-and-sandbox --search "$@"
-  }
-  ```
-  A companion `cxr()` can call `codex resume` inside the same tmux session.
-  With Parallelus installed, these helpers keep the main agent and subagents
-  in predictable panes, ensure the tmux status overlay is active, and avoid
-  environment drift between runs. Feel free to adapt the example above to your
-  local shell configuration.
-
-### Role Prompts & Front Matter
-- Each subagent role prompt starts with YAML front matter describing runtime
-  overrides (model, sandbox mode, approval policy, profile, etc.). Leave
-  values as `~` (null) or the string `default` to inherit the main-agent
-  configuration; set explicit values to override.
-- Use the `config_overrides` map to pass Codex `-c key=value` options (values
-  are JSON encoded automatically) for extra knobs such as
-  `reasoning_effort`.
-- Launch subagents with `--role <prompt-name>` to apply the front-matter
-  overrides automatically. Example: `subagent_manager.sh launch --role
-  senior_architect --profile gpt-oss ...`.
-- Front-matter overrides appear at the top of `SUBAGENT_PROMPT.txt` so humans
-  can confirm the effective model/sandbox, and the registry records the chosen
-  profile for later verification.
-
-### Guardrail Configuration (`.agents/agentrc`)
-- `REQUIRE_CODE_REVIEWS` (default `1`) enforces senior architect review; the
-  specific prompt is defined by `CODE_REVIEW_AGENT_ROLE` (default
-  `senior_architect`).
-- `REQUIRE_AGENT_CI_AUDITS` (default `1`) enforces the continuous improvement
-  audit; the prompt is selected via `AGENT_CI_AGENT_ROLE` (default
-  `continuous_improvement_auditor`). Temporarily export
-  `AGENTS_RETRO_SKIP_VALIDATE=1` if you must bypass the check (document the
-  rationale in the progress log).
-- `AUDIBLE_ALERT_VOICE` and `AUDIBLE_ALERT_REQUIRE_TTY` control how
-  `.agents/bin/agents-alert` emits notifications when running in a tmux/non-TTY
-  session.
+### Daily Rhythm for Humans
+- Begin each session by asking "What's the current status and what do you recommend tackling next?"  
+- Add ideas on the spot: "Queue these two ideas for the next branch," or "Park this improvement in the long-term backlog."  
+- Use clear requests for actions ("Archive branch X," "Coordinate a review for branch Y," "Spin up an audit focused on the CI configuration").  
+- Expect the agent to describe what it did, what changed, and any follow-up recommendations at the end of the turn.
 
 ---
 
-## Directory Overview
-- `AGENTS.md` – Core guardrails that govern every session.
-- `.agents/` – Automation helpers, managed git hooks, adapter configs, and
-  process prompts.
-- `docs/agents/` – Manuals covering core workflow, git guardrails, runtime
-  expectations, integrations, and project-specific context.
-- `docs/plans/` & `docs/progress/` – Branch notebooks created by `make bootstrap`
-  and updated at every checkpoint.
-- `docs/self-improvement/` – Retrospective markers and JSON reports produced by
-  the auditor prompt.
-- `sessions/` – Turn-by-turn session metadata generated by `make start_session`.
-- `src/`, `tests/` – Example application code (Interruptus) showcasing how the
-  process applies to a real project.
+## Working Vocabulary
+Here are phrases Parallelus recognises and the behaviours the agent performs:
+
+| Phrase you say | What the agent does |
+| --- | --- |
+| "Create a feature branch for …" | Names the branch, bootstraps notebooks, records the mission brief. |
+| "Merge back to main when ready." | Runs required audits, confirms senior review, completes the merge, and documents the outcome. |
+| "Initiate a code review." | Launches the senior architect subagent, tracks deliverables, and reports back when the review artifact is saved. |
+| "Assign two subagents to work on these features in parallel." | Creates temporary worktrees, launches dedicated subagents per task, maintains the monitor loop, and gathers their outputs. |
+| "Archive branch X, merge branch Y." | Uses the appropriate guardrails to retire one branch while closing out another. |
+| "What do you recommend we do with branch Z?" | Summarises outstanding work, risks, and options, then proposes next steps. |
+| "Add this to the backlog for later." | Places the item in the queue under "Project Backlog" and, on the next branch, files it into `docs/PLAN.md`. |
+
+Feel free to paraphrase; the agent is trained to map intent to the underlying process.
 
 ---
 
-## Documentation & Support
-- **Start here:** [AGENTS.md](./AGENTS.md)  
-  Summary of mandatory guardrails; read at the beginning of every session.
-- **Manuals:** [docs/agents/](./docs/agents/)  
-  Detailed guides for core workflow, git operations, adapters, integrations,
-  and domain-specific context.
-- **Project roadmap:** [docs/PLAN.md](./docs/PLAN.md)  
-  Maintainer-owned, updated after each merge to capture long-term direction.
-- **Progress log:** [docs/PROGRESS.md](./docs/PROGRESS.md)  
-  Aggregated history stitched from branch notebooks at feature completion.
+## Understanding the Guardrails
+- **Recon discipline.** Every work session starts with context gathering. The agent reviews plans and progress logs, reports status, and only proceeds once you confirm the focus.
+- **Documented execution.** Plans, progress notes, and retrospectives live in the repo. When you ask "What changed today?" the agent points to those docs.
+- **Mandatory reviews.** No merge happens without an approved senior architect report. You can trust that code entering `main` has both human-readable justification and logged outcomes.
+- **Continuous improvement.** The agent runs retrospective audits and pushes follow-up items into the backlog, so process gaps are addressed rather than forgotten.
+- **Clean hand-offs.** At the end of each turn the agent confirms the working tree state, outstanding tasks, and next steps so another session (human or automated) can pick up seamlessly.
 
-Have questions or want to contribute improvements to the process? Open an issue
-or start a discussion once the repository is published, and document any
-changes to the guardrails inside the plan/progress notebooks so future
-contributors inherit the updates.
+---
+
+## Directory Overview (Human-Oriented)
+- `README.md` -- This guide for humans using Parallelus.
+- `AGENTS.md` -- The definitive guardrail checklist the agent follows. Skim it if you want deeper governance detail.
+- `.agents/` -- Implementation details the agent relies on (scripts, hooks, prompts). Humans rarely need to touch these directly.
+- `docs/PLAN.md` -- The global backlog and priorities, updated by the agent.
+- `docs/PROGRESS.md` -- The consolidated work log across branches.
+- `docs/agents/` -- Manuals referenced when special gates (merges, diagnostics, subagent orchestration) are triggered.
+- `docs/agents/project/` -- Maintainer notes about the Parallelus toolkit. When adopting Parallelus in another repo, replace this directory with the host project's guidance (see docs/agents/project/README.md).
+- `docs/plans/` & `docs/progress/` -- Per-branch notebooks created when new work begins; useful if you want to review the history of a specific feature.
+- `docs/self-improvement/` -- Retrospective markers and reports maintained by the agent.
+
+---
+
+## Next Steps
+If you're evaluating Parallelus:
+1. Discuss your priorities with the agent and ask for a recommended adoption plan.
+2. Pilot the workflow on a single feature branch.
+3. Review the resulting notebooks and progress logs to confirm they meet your expectations.
+
+Parallelus thrives when humans stay focused on intent and the agent handles the mechanics. Speak in outcomes, review the narrative the agent produces, and enjoy working with a partner who never forgets the process.

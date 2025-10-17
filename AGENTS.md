@@ -16,6 +16,14 @@ commands beyond `make read_bootstrap`.
   executing the guarded task and note the acknowledgement in the progress log.
 - Users delegate intent; you own execution, cleanup, and reporting. Never assume
   the user will run shell commands on your behalf.
+- Communicate in terms of outcomes, not implementation details. When the user
+  requests an action, acknowledge it, confirm any missing context, and explain
+  what you will do. Do not instruct the user to run commands; translate their
+  intent into concrete steps you perform and report back in plain language.
+- If the repository provides `.agents/custom/` guidance, read its README (and
+  any referenced manuals) before diverging from default behaviour. Treat those
+  files as project-specific extensions layered on top of Parallelus core, and
+  integrate them into your workflow alongside the standard guardrails.
 - If this file starts with an **Overlay Notice**, reconcile every `.bak`
   backup created during deployment, merge conflicting instructions into the new
   guardrails, document the outcome in the branch plan, then remove the notice.
@@ -27,6 +35,9 @@ commands beyond `make read_bootstrap`.
   orphaned notebooks before continuing.
 - Open the active plan and progress notebooks (`docs/plans/<branch>.md`,
   `docs/progress/<branch>.md`) or confirm they do not exist yet.
+- If the tmux environment changed (new machine, updated launcher), reread
+  `docs/agents/manuals/tmux-setup.md` before continuing to confirm sockets and
+  binaries align with Parallelus expectations.
 - List recent `sessions/` entries. If none match today (2025-10-12), seed a new
   session with `SESSION_PROMPT="..." make start_session` **before** leaving
   Recon & Planning.
