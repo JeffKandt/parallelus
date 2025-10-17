@@ -4,10 +4,12 @@
 - Synchronous retrospective workflow enforced (marker validation, auditor prompt).
 - Senior architect review guardrails updated (config defaults, review commit checks).
 - Deployment safety and CI flow hardened (hook backups, Python-only adapter).
+- Parallelus-specific documentation realigned (README philosophy, project domain/structure notes, continuous-improvement playbook, tmux setup manual).
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
-- Refresh `docs/agents/project/` so it reflects the Parallelus repo (remove lingering Interruptus references) and fold any new guidance into the guardrail docs.
+- Socialise the updated folding workflow and communication philosophy with maintainers; gather feedback for the next iteration.
+- Pilot the Recon queue split (next-feature vs backlog) on upcoming branches and capture friction points for tooling tweaks.
 - Harden subagent launch permissions by codifying allowed write paths (e.g., add review-specific `allowed_writes` entries and automated verification).
 - Confirm published repository metadata (branch protections, README prerequisites) once main is updated.
 - Monitor tmux helper behaviour in day-to-day use (socket awareness, status indicators) and capture operator feedback.
