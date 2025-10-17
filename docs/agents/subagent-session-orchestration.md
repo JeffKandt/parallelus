@@ -10,6 +10,12 @@ interactive "subagent" while maintaining traceability. Use this flow when
 non-interactive execution is unavailable or when you want a human-supervised
 agent to take ownership of a scoped task.
 
+**Human communication:** When proposing or running subagents, describe the
+intent and expected outcomes to the user ("I'll launch a dedicated worktree
+subagent to handle the API tweaks and keep you posted"). Never ask the user to
+run helper commands; you own the launch, monitoring, and harvest steps and only
+report progress or decisions back in plain language.
+
 > **Senior architect reviews:** Launch them as **synchronous subagents** so the
 > primary agent stays focused on review findings. Populate the configuration
 > header in `.agents/prompts/agent_roles/senior_architect.md` (defaults in

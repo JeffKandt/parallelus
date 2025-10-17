@@ -3,6 +3,16 @@
 This guide covers repository detection, feature-branch guardrails, archival, and
 merge closure workflows.
 
+## Communication Principles
+- Relay outcomes, not commands. When the user asks for work, confirm the intent
+  and respond with what you will do ("I'll open a feature branch named ..."),
+  not the shell commands that implement it.
+- Proactively offer status recaps in plain language so the user can make
+  decisions without touching the CLI.
+- If the user explicitly requests command-level insight, confirm that they want
+  to execute it themselves; otherwise assume you own the operation and simply
+  describe progress and results.
+
 ## 1. Repository Mode Detection
 Run `make read_bootstrap` (or `.agents/bin/agents-detect`) from the repo root.
 The helper emits `KEY=VAL` pairs suitable for `eval`, plus guidance on stderr.
@@ -21,6 +31,8 @@ Outputs include:
 - `ORPHANED_NOTEBOOKS` — plan/progress files lingering outside active work.
 
 Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so your status summary reflects the latest objectives, TODOs, and blockers noted by previous turns. List the most recent session directories (`ls -1 sessions/ | tail -5`) and seed a fresh `make start_session` if the top entry predates today.
+
+If the repository includes `.agents/custom/README.md`, read it now and incorporate any project-specific expectations (extra checks, restricted paths, custom adapters) into your plan. Treat those instructions as an extension of this manual.
 
 When unmerged branches are reported, pause and choose whether to merge, archive,
 prune, or leave as-is. Do not auto-resolve without user direction.

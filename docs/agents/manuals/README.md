@@ -11,6 +11,9 @@ guardrails, then document that acknowledgement in the branch progress log.
   triage. Pair with `make merge`/`make archive` helper usage.
 - `runtime-matrix.md` – consult when troubleshooting environment differences or
   running in CI/headless shells.
+- `tmux-setup.md` – reference when configuring operator machines or codex
+  launchers; details the required tmux build, socket strategy, and clean shell
+  expectations for Parallelus.
 - `integrations/` – adapter and platform overlays (Codex, Python, Node). Read
   the relevant integration manual the first time you enable that tooling or
   whenever the environment changes.

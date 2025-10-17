@@ -1,15 +1,15 @@
-# Interruptus Domain Notes ## Interruption Taxonomy
-- **Mechanical Interruption (MI)** – overlap/gap-grab events detected from raw diarization + ASR timing.
-- **Semantic Interruption (SI)** – LLM-classified events once Semantic pipeline lands.
-- **Supportive Overlap (SO)** – non-adversarial overlaps; still tracked for equity metrics. ## Diarization & Transcription
-- Pyannote diarization is the default; see `docs/diarizer_tuning_workflow.md` and `docs/interactive_diarization_testing.md` for parameter sweeps.
-- Whisper transcription merges with diarization turns prior to MI/SI/SO classification.
-- Speaker roster resolution lives in `speakers.py`; prefer pure functions for ID → name mapping. ## Reporting & Metrics
-- Export speaking-time percentages alongside event candidates (`events_candidates.jsonl`).
-- Markdown/JSON reports (Deterministic pipeline deterministic) are generated before LLM embellishments.
-- Future Semantic pipeline metrics include pertinence scoring, lost duration, and equity indices. ## Feed Sync & Workspace Layout
-- Feed metadata lives in `feed.yaml`; helpers in `scripts/fetch_feed.py` and `interruptus.feed_sync` manage episode mirroring.
-- Human-readable symlinks accompany hashed episode directories after feed sync to ease CLI discovery. ## Deployment Notes
-- Remote automation flows target `m4-mac-mini`; ensure env parity (torch, torchaudio, numpy, huggingface-hub) between local and remote hosts.
-- `make check-deps` validates remote PATH coverage. These domain notes complement the process docs so contributors understand the
-underlying audio-analysis context while following the portable agent workflow.
+# Parallelus Domain Notes
+
+Parallelus exists to give human operators confidence that an AI agent can work inside their repositories without compromising quality, auditability, or pace. When we improve Parallelus itself, keep these pillars front of mind:
+
+- **Guardrails before cleverness.** Every new capability must respect the core cadence (Recon, Planning, Execution, Wrap-up) and protect the invariants codified in `AGENTS.md`.
+- **Automation plus narrative.** The system automates notebooks, retrospectives, and reviews so humans stay informed even if they never touch the shell.
+- **Continuous improvement as a discipline.** Every failure mode becomes a root-cause investigation, with mitigations captured as durable artifacts (scripts, manuals, prompts). The goal is that each class of error is addressed once—permanently.
+
+### Current Focus Areas
+- Expand adapter coverage beyond Python/Swift while keeping guardrail parity.
+- Reduce friction in multi-subagent workflows (launch ergonomics, monitor feedback, deliverable harvesting).
+- Improve retrospective insights (better heuristics, richer metrics, automation for carrying actions into the backlog).
+- Simplify adoption in downstream projects by offering templated onboarding conversations and generated branch plans.
+
+Document process experiments, lessons learned, and approved patterns here so future contributors understand the rationale behind each guardrail.

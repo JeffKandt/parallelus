@@ -39,3 +39,28 @@
 
 **Next Actions**
 - Socialise the guardrail changes and run through an end-to-end fold on the next feature branch to confirm ergonomics.
+
+## 2025-10-17 02:45:29 UTC
+**Objectives**
+- Align agent-facing documentation with the human/agent partnership philosophy.
+
+**Work Performed**
+- Reinforced the core guardrails in `AGENTS.md` with guidance on outcome-focused communication.
+- Updated `docs/agents/git-workflow.md` and `docs/agents/subagent-session-orchestration.md` to clarify how the agent reports activities without asking the user to run commands.
+- Added additional examples in `README.md` covering worktree-based subagent usage and refined user directives.
+- Refilled `docs/agents/project/` with Parallelus-focused domain, structure, continuous-improvement, and customisation guidance.
+- Authored `docs/agents/manuals/tmux-setup.md` and linked it from the guardrails so operators know how to provision the required tmux environment and use `.agents/bin/tmux-safe`.
+
+**Artifacts**
+- AGENTS.md
+- README.md
+- docs/agents/git-workflow.md
+- docs/agents/subagent-session-orchestration.md
+- docs/agents/project/domain.md
+- docs/agents/project/structure.md
+- docs/agents/project/continuous_improvement.md
+- docs/agents/project/README.md
+- docs/agents/manuals/tmux-setup.md
+
+**Next Actions**
+- Review other manuals for similar communication adjustments as new workflows are introduced.
