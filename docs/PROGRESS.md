@@ -469,3 +469,20 @@
 
 **Next Actions**
 - Stage and commit the PyYAML/override fixes so the next senior-review run sees the updated environment.
+## 2025-10-17
+
+### 02:45:29 UTC — feature/backlog-improvements
+
+**Objectives**
+- Align user- and agent-facing documentation with the clarified partnership philosophy and reinforce tmux setup guidance.
+
+**Work Performed**
+- Rewrote the human-facing README to emphasise outcome-based dialogue and examples for parallel subagent work.
+- Updated guardrail manuals (`AGENTS.md`, git workflow, subagent orchestration) to remind the agent to communicate in outcomes and absorb project-specific overrides from `.agents/custom/`.
+- Replaced `docs/agents/project/` with Parallelus-focused domain, structure, and continuous-improvement notes plus guidance for downstream adopters.
+- Authored a tmux setup manual describing the required compiled build, per-repo sockets, and use of `.agents/bin/tmux-safe`; added a sidecar area for host project customisations.
+
+**Next Actions**
+- Share the updated docs with maintainers and gather feedback on the folding workflow and queue improvements.
+- Monitor tmux helper behaviour in daily use and refine the codex launcher recommendations as needed.
+
