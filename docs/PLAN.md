@@ -19,6 +19,7 @@
 - Document subagent-session guardrails before each launch, including the updated `make monitor_subagents` requirement.
 - Finish CI auditor follow-ups (restore markers/notebooks on feature branches and validate audits run from the correct branch).
 - Extend the orchestration manual for multi-subagent coordination, consolidated deliverable retrieval, and human supervision expectations.
+- Reinforce that senior architect reviews must be captured after the final commit (or regenerated) to avoid stale hash loops during merge.
 - Define pruning/archival guidance for long-lived artefacts like `docs/progress/*.md` and `docs/agents/subagent-registry.json`.
 - Prototype a subagent completion sentinel so the monitor loop no longer relies solely on log heartbeats.
 - Remove the unused `docs/logs` deliverable from senior-review templates and scripts.
