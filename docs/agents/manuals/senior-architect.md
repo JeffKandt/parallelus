@@ -4,11 +4,6 @@ Senior architect reviews **must** be executed via the provided subagent launcher
 This ensures the canonical prompt, constraints, and audit logging run in an
 isolated tmux pane.
 
-> Baseline: the last formally approved subagent review on `main` is commit
-> `c2eab8b0c9d86b01a14b4c0e7073cddffb010e70` (feature/process-review-gate,
-> 2025-10-12). Use that commit when you need to diff against the most recent
-> subagent-reviewed state.
-
 ## Launch Command
 
 ```bash
