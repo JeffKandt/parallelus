@@ -1,0 +1,7 @@
+{
+  "branch": "feature/sa-review-sequencing-guardrail",
+  "marker_timestamp": "2025-10-19T16:23:00.209129+00:00",
+  "summary": "No issues detected; added review sequencing guardrail to AGENTS.md and archived notebooks pre-merge.",
+  "issues": [],
+  "follow_ups": []
+}
