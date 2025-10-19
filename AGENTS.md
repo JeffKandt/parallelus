@@ -81,6 +81,9 @@ commands beyond `make read_bootstrap`.
 - Launch the senior architect review subagent **only after** staging/committing
   the work under review and pushing it to the feature branch; reviews operate on
   the committed state, not local working tree changes.
+- Run the senior architect review via the provided subagent launcher (see
+  `docs/agents/manuals/senior-architect.md`) so the canonical prompt executes
+  in an isolated tmux pane.
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run
