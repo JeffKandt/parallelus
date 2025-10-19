@@ -1,35 +1,27 @@
 # Senior Architect Review – feature/fix-it-forever-guardrail
 
 Reviewed-Branch: feature/fix-it-forever-guardrail
-Reviewed-Commit: d55afbdbf975e22ac2d8b8426f51fb31a17a3a02
+Reviewed-Commit: 0208b0a10e34692f1afb13c9d70fe7955a4e3ef8
 Reviewed-On: 2025-10-19
-Decision: changes requested
-Reviewer: codex-agent
+Decision: changes-required
+Reviewer: Codex Senior Architect (senior-review subagent)
 
 ## Summary
-- Verified AGENTS.md now routes every operational gate to the manuals under `docs/agents/manuals/`.
-- Confirmed `docs/agents/manuals/git-workflow.md` documents merge, archive, and unmerged-branch triage expectations in line with guardrails.
-- Cross-checked branch plan/progress notebooks to ensure the recorded work matches the relocation scope.
+- Broken manual links in `docs/agents/README.md` block operators from reaching required manuals.
 
 ## Findings
-- Severity: Medium | Area: Documentation | Summary: `docs/agents/README.md` still points to the pre-move file paths (`runtime-matrix.md`, `integrations/`) that no longer exist at the repo root.
-  - Evidence: `docs/agents/README.md` references `runtime-matrix.md` and `integrations/`, but those files now live under `docs/agents/manuals/`.
-  - Recommendation: Update `docs/agents/README.md` to link to `docs/agents/manuals/runtime-matrix.md` and `docs/agents/manuals/integrations/` so the index matches the new layout.
+- Severity: Blocker | Area: Documentation | Summary: Manual index links now point to non-existent paths
+  - Evidence: `docs/agents/README.md:6` references `docs/agents/manuals/...` from within `docs/agents/README.md`, which resolves to `docs/agents/docs/agents/...` on GitHub and local Markdown renderers, returning 404.
+  - Recommendation: Revert to relative paths (`manuals/runtime-matrix.md`, `manuals/integrations/`, `manuals/README.md`) so the links resolve correctly.
 
 ## Tests & Evidence Reviewed
-- AGENTS.md
-- docs/agents/manuals/git-workflow.md
-- docs/agents/manuals/runtime-matrix.md
-- docs/agents/manuals/subagent-session-orchestration.md
-- docs/agents/manuals/integrations/codex.md
-- docs/agents/README.md
-- Branch notebooks (`docs/plans/feature-fix-it-forever-guardrail.md`, `docs/progress/feature-fix-it-forever-guardrail.md`)
+- Static inspection of documentation changes; no automated tests run (doc-only review).
 
 ## Follow-Ups / Tickets
-- [ ] None.
+- [ ] Restore working manual links and rerun senior architect review once fixed.
 
 ## Provenance
-- Model: gpt-5-codex
-- Sandbox Mode: throwaway (danger-full-access)
+- Model: GPT-5 Codex (default)
+- Sandbox Mode: danger-full-access
 - Approval Policy: never
 - Session Mode: synchronous subagent

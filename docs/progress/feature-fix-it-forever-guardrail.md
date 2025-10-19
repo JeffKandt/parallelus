@@ -148,3 +148,46 @@
 
 **Next Actions**
 - Launch the review via `.agents/bin/subagent_manager.sh` using the documented checklist.
+
+## 2025-10-19 21:32:22 UTC
+**Objectives**
+- Launch the senior architect review subagent with scope `20251019-213222-senior-review`.
+
+**Work Performed**
+- Ran `.agents/bin/subagent_manager.sh launch --type throwaway --slug senior-review --scope /tmp/SUBAGENT_SCOPE_senior_review.md`.
+- Logged registry handle `%1/@0` and immediately started `make monitor_subagents ARGS="--id 20251019-213222-senior-review"` per the tmux checklist.
+
+**Next Actions**
+- Continue monitoring until the review completes and harvest deliverables.
+
+## 2025-10-19 21:37:30 UTC
+**Objectives**
+- Capture senior architect review findings and harvest the report.
+
+**Work Performed**
+- Monitored the subagent loop; collected `docs/reviews/feature-fix-it-forever-guardrail-2025-10-19.md` from the sandbox (Decision: changes-required, blocker on README manual links).
+- Copied the review artifact into the main repo and noted the guardrail failure requiring link fixes.
+
+**Next Actions**
+- Clean up the subagent sandbox once idle and update plan/progress to address the finding.
+
+## 2025-10-19 21:42:10 UTC
+**Objectives**
+- Close out the senior-review subagent session.
+
+**Work Performed**
+- Sent `Ctrl+C` through `tmux-safe` to terminate the idle review pane, confirmed status via `make monitor_subagents`, and forced cleanup with `.agents/bin/subagent_manager.sh cleanup --id 20251019-213222-senior-review --force`.
+
+**Next Actions**
+- Restore README manual links to relative paths and prepare for a review rerun.
+
+## 2025-10-19 21:44:00 UTC
+**Objectives**
+- Resolve the README manual link blocker flagged by the senior architect review.
+
+**Work Performed**
+- Reverted `docs/agents/README.md` manual entries to relative `manuals/...` paths so they render correctly from the docs directory and GitHub UI.
+- Updated the branch plan to focus next on rerunning the review and preparing the PR.
+
+**Next Actions**
+- Stage the documentation updates, rerun `make monitor_subagents` checklist for the next senior review pass.
