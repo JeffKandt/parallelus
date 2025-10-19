@@ -4,6 +4,11 @@ Senior architect reviews **must** be executed via the provided subagent launcher
 This ensures the canonical prompt, constraints, and audit logging run in an
 isolated tmux pane.
 
+> Baseline: the last formally approved subagent review on `main` is commit
+> `c2eab8b0c9d86b01a14b4c0e7073cddffb010e70` (feature/process-review-gate,
+> 2025-10-12). Use that commit when you need to diff against the most recent
+> subagent-reviewed state.
+
 ## Launch Command
 
 ```bash
@@ -13,15 +18,16 @@ subagent_manager.sh launch \
   --role senior_architect
 ```
 
-The helper lives under `.agents/bin/`; `make run_senior_review` is a convenient
-wrapper if available. The subagent window will generate the markdown review and
+The helper lives under `.agents/bin/`; `make run_senior_review` (if available)
+wraps this command. The subagent window will generate the markdown review and
 save it to `docs/reviews/<branch>-<date>.md`.
 
 ## Operator Expectations
 
 1. Stage and commit the work under review before launching the subagent.
-2. Run the command above; keep the tmux pane open until the agent says the
-   review is complete.
-3. Inspect the generated review, ensure findings are addressed, and commit it.
-4. Do not hand-write review markdowns; merges will be blocked unless the review
-   provenance indicates a subagent run.
+2. Run the launcher above; keep the tmux pane open until the agent reports
+   completion.
+3. Inspect the generated `docs/reviews/<branch>-<date>.md`, ensure findings are
+   addressed, and commit it alongside any doc housekeeping.
+4. Do not hand-write review markdowns. Merges are blocked unless the review
+   shows `Session Mode: synchronous subagent` in its provenance.
