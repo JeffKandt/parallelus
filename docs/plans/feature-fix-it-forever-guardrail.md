@@ -18,6 +18,6 @@
 - [x] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
 
 ## Next Actions
-- Restore the README manual links to use relative `manuals/...` paths so navigation works from the docs directory and GitHub renderer.
-- Rerun the senior architect review via the subagent launcher after the link fix and capture the updated decision.
-- Package the branch for a pull request to `main` (push branch, draft PR summary, note guardrail compliance) once review approval is recorded.
+- [ ] Rerun the senior architect review via the subagent launcher using the corrected README links.
+- [ ] Capture the approved review artifact and update notebooks/checklists once the review passes.
+- [ ] Package the branch for a pull request to `main` (push branch, draft PR summary, document guardrail compliance) after approval.
