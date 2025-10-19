@@ -193,6 +193,11 @@ check_review() {
       exit 1
     fi
   fi
+  if ! grep -qi 'Session Mode:[[:space:]]*synchronous subagent' "$file"; then
+    echo "agents-merge: review $file is missing the subagent provenance line (Session Mode: synchronous subagent)." >&2
+    echo "Run the senior architect review via the subagent launcher before merging." >&2
+    exit 1
+  fi
   if grep -Eqi 'Severity:\s*(Blocker|High)' "$file"; then
     echo "agents-merge: review $file still lists Severity: Blocker/High items." >&2
     exit 1
