@@ -97,3 +97,13 @@
 
 **Next Actions**
 - Await maintainer go-ahead before attempting the senior architect review again.
+
+## 2025-10-19 21:22:15 UTC
+**Objectives**
+- Generalise the launch checklist so every tmux-spawned subagent follows the same guardrail.
+
+**Work Performed**
+- Updated `docs/agents/manuals/subagent-session-orchestration.md` checklist to apply to all tmux launches, with senior-review specifics called out separately.
+
+**Next Actions**
+- Continue to hold until maintainer approves rerunning the senior architect review.

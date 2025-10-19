@@ -133,12 +133,13 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     manager records the effective profile in the registry and surfaces the
     overrides inside `SUBAGENT_PROMPT.txt` for human review.
 
-#### Senior Architect Review Launch Checklist
-Follow this sequence every time you launch the senior architect role. Capture
-the registry ID, scope file path, and tmux pane in the branch progress log so
-future turns can audit the run.
+#### Tmux-Spawned Subagent Launch Checklist
+Follow this sequence whenever `subagent_manager.sh` opens a tmux pane (senior
+architect reviews, auditors, smoke tests, etc.). Capture the registry ID, scope
+file path, and tmux pane in the branch progress log so future turns can audit
+the run.
 
-1. Record the target branch, commit hash, and review focus in the progress notebook.
+1. Record the target branch (or context), commit hash, and subagent mission in the progress notebook.
 2. Populate a scope file (temporary is fine) with branch/commit/objectives and pass
    it explicitly via `--scope <file>`.
 3. Launch with `subagent_manager.sh` and note the emitted registry ID plus tmux
@@ -164,6 +165,9 @@ text = re.sub(r"\x1b\][^\x07]*\x07", "", text)
 print(text)
 PY
 ```
+> For senior architect reviews specifically, ensure the scope captures approval
+> criteria (commit hash, objectives, deliverables) and that the review artifact
+> is harvested into `docs/reviews/` before cleanup.
 - `status`
   - Reads the registry and reports the state of each subagent (running, awaiting
     verification, completed, abandoned). It runs `make read_bootstrap`, inspects
