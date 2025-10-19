@@ -21,7 +21,9 @@ save it to `docs/reviews/<branch>-<date>.md`.
 
 1. Stage and commit the work under review before launching the subagent.
 2. Update `SUBAGENT_SCOPE.md` in the sandbox (or template copy) so the branch
-   name, objectives, and artifacts match the feature you are reviewing.
+   name, objectives, and artifacts match the feature you are reviewing. Replace
+   the placeholders (`{{BRANCH_NAME}}`, etc.) and remove the template note
+   `(Add branch-specific objectives here.)`.
 3. Run the launcher above; keep the tmux pane open until the agent reports
    completion. To monitor progress, run `make monitor_subagents --id
    <subagent-id>`.

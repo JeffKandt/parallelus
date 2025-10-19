@@ -11,7 +11,7 @@
 - Updated `docs/agents/project/domain.md` to highlight the playbook for downstream repos.
 - Added guidance in the continuous-improvement manual to upstream generalisable fixes after capturing them downstream.
 - Authored `docs/agents/manuals/git-workflow.md` to document both direct merge and PR-based integration paths, and pointed AGENTS.md at the manual.
-- Added scope-validation guards in `subagent_manager.sh` so senior reviews fail fast if the scope still references the template branch, and updated the senior architect manual to require scope refresh + `make monitor_subagents`.
+- Added scope-validation guards in `subagent_manager.sh` (placeholders must be replaced, branch must match, objectives filled), and updated the senior architect manual to call out placeholder replacement plus `make monitor_subagents`.
 
 **Artifacts**
 - .agents/bin/subagent_manager.sh
