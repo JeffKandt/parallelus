@@ -18,5 +18,6 @@
 - [x] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
 
 ## Next Actions
-- Rerun the senior architect review now that manual index links point at the relocated files.
-- Prepare combined branch for senior architect approval before merging to `main`.
+- Validate the updated manual links (README and notebooks) then rerun the senior architect review via the subagent launcher once cleared.
+- Capture the approved review artifact and update notebooks/checklists to reflect the outcome.
+- Package the branch for a pull request to `main` (push branch, draft PR summary, note guardrail compliance) instead of performing a local merge.

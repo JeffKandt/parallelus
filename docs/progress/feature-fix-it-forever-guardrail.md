@@ -107,3 +107,34 @@
 
 **Next Actions**
 - Continue to hold until maintainer approves rerunning the senior architect review.
+
+## 2025-10-19 21:27:20 UTC
+**Objectives**
+- Confirm session guardrails before continuing recon.
+
+**Work Performed**
+- Re-read `AGENTS.md` for this session and logged the acknowledgement here.
+
+**Next Actions**
+- Proceed with Recon & Planning checklist.
+
+## 2025-10-19 21:30:09 UTC
+**Objectives**
+- Apply review feedback and align the plan with the pull-request workflow.
+
+**Work Performed**
+- Updated `docs/agents/README.md` links to use the relocated `docs/agents/manuals/` paths per the senior review finding.
+- Revised `docs/plans/feature-fix-it-forever-guardrail.md` next actions to go through senior architect review and submit a PR instead of a local merge.
+
+**Next Actions**
+- Verify readiness for the senior architect review rerun.
+
+## 2025-10-19 21:31:02 UTC
+**Objectives**
+- Reconfirm subagent orchestration guardrails before relaunching the senior architect review.
+
+**Work Performed**
+- Re-read `docs/agents/manuals/subagent-session-orchestration.md` to refresh the launch checklist requirements.
+
+**Next Actions**
+- Run through the senior architect review relaunch workflow using the documented checklist.
