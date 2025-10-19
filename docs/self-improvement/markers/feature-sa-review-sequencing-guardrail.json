@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-19T16:23:00.209129+00:00",
+  "branch": "feature/sa-review-sequencing-guardrail",
+  "head": "4ed4e42d25f968045f0406c697a1fb1e7dc8c1c5",
+  "plan_path": "docs/plans/feature-sa-review-sequencing-guardrail.md",
+  "plan_lines": 14,
+  "progress_path": "docs/progress/feature-sa-review-sequencing-guardrail.md",
+  "progress_lines": 27,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}
