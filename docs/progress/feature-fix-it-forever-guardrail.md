@@ -74,3 +74,26 @@
 
 **Next Actions**
 - Correct README references and rerun senior architect review.
+
+## 2025-10-19 21:08:58 UTC
+**Objectives**
+- Address reviewer concerns about repeated subagent orchestration errors.
+
+**Work Performed**
+- Confirmed the second senior-review subagent (`20251019-205333-senior-review`) was interrupted; captured logs, then ran `make monitor_subagents ARGS="--id ..."` followed by forced cleanup to avoid lingering registry entries.
+- Noted failure points: manual reminder to launch the monitor loop via `make monitor_subagents`, ANSI escape noise when tailing sandbox logs, stray `.vscode/settings.json`, and tmux pane cleanup gaps.
+
+**Next Actions**
+- Document remediation plan with maintainer before resuming review.
+
+## 2025-10-19 21:16:46 UTC
+**Objectives**
+- Implement remediation artifacts for review orchestration issues.
+
+**Work Performed**
+- Added a senior-review launch checklist, ANSI log scrubbing helper, and explicit tmux cleanup step to `docs/agents/manuals/subagent-session-orchestration.md`.
+- Removed the stray `.vscode` directory and confirmed no additional copies remain under `.parallelus/`.
+- Closed residual tmux panes from interrupted reviews; recorded state for future reference.
+
+**Next Actions**
+- Await maintainer go-ahead before attempting the senior architect review again.

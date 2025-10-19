@@ -132,6 +132,38 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
     automatically when you pass `--role ROLE_PROMPT` during launch. The
     manager records the effective profile in the registry and surfaces the
     overrides inside `SUBAGENT_PROMPT.txt` for human review.
+
+#### Senior Architect Review Launch Checklist
+Follow this sequence every time you launch the senior architect role. Capture
+the registry ID, scope file path, and tmux pane in the branch progress log so
+future turns can audit the run.
+
+1. Record the target branch, commit hash, and review focus in the progress notebook.
+2. Populate a scope file (temporary is fine) with branch/commit/objectives and pass
+   it explicitly via `--scope <file>`.
+3. Launch with `subagent_manager.sh` and note the emitted registry ID plus tmux
+   pane handle.
+4. Immediately start the monitor loop with  
+   `make monitor_subagents ARGS="--id <registry-id>"`. Do **not** invoke
+   `.agents/bin/agents-monitor-loop.sh` directly; the make helper enforces cadence,
+   audible alerts, and cleanup hooks.
+5. Observe progress from the main pane only. Use point-in-time log snapshots such as  
+   `tail -n 120 .parallelus/subagents/sandboxes/<registry-id>/subagent.log`, then
+   restart the monitor loop after each intervention.
+6. When finished, harvest deliverables, decode ANSI-heavy logs with the helper
+   snippet below, update notebooks, and proceed through verification before cleanup.
+
+Log decoding helper:
+
+```bash
+python3 - <<'PY' .parallelus/subagents/sandboxes/<registry-id>/subagent.log
+import re, sys
+text = open(sys.argv[1], encoding="utf-8", errors="ignore").read()
+text = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text)
+text = re.sub(r"\x1b\][^\x07]*\x07", "", text)
+print(text)
+PY
+```
 - `status`
   - Reads the registry and reports the state of each subagent (running, awaiting
     verification, completed, abandoned). It runs `make read_bootstrap`, inspects
@@ -228,6 +260,8 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
 7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
    `status` no longer reports the entry as `running`. The helper enforces this guard; use
    `--force` solely for confirmed-aborted sessions.
+8. After cleanup, close the associated tmux pane (for example `tmux kill-pane -t %1`)
+   and log the action so orphaned panes do not accumulate between retries.
 
 ### 4.4 Completion & Verification
 

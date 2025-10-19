@@ -1894,5 +1894,26 @@
       "pane_id": "%1"
     },
     "role_prompt": "senior_architect.md"
+  },
+  {
+    "id": "20251019-205333-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-205333",
+    "window_title": "20251019-205333-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-205333-senior-review",
+      "window_id": "@0",
+      "pane_id": "%2"
+    },
+    "role_prompt": "senior_architect.md"
   }
 ]
