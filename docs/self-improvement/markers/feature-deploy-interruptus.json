@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-19T16:07:53.410603+00:00",
+  "branch": "feature/deploy-interruptus",
+  "head": "d74f0370eca0c84069248b99ce4fb66d3481673a",
+  "plan_path": "docs/plans/feature-deploy-interruptus.md",
+  "plan_lines": 29,
+  "progress_path": "docs/progress/feature-deploy-interruptus.md",
+  "progress_lines": 48,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}

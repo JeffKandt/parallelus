@@ -5,6 +5,7 @@
 - Senior architect review guardrails updated (config defaults, review commit checks).
 - Deployment safety and CI flow hardened (hook backups, Python-only adapter).
 - Parallelus-specific documentation realigned (README philosophy, project domain/structure notes, continuous-improvement playbook, tmux setup manual).
+- Overlay deployment workflow refined (preserve project docs, optional backup suppression, shared senior review template).
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
