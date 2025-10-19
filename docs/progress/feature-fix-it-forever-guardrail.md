@@ -10,6 +10,7 @@
 - Documented senior-review baseline separately, archived manual reviews, and removed the temporary baseline callout.
 - Updated `docs/agents/project/domain.md` to highlight the playbook for downstream repos.
 - Added guidance in the continuous-improvement manual to upstream generalisable fixes after capturing them downstream.
+- Authored `docs/agents/manuals/git-workflow.md` to document both direct merge and PR-based integration paths, and pointed AGENTS.md at the manual.
 
 **Artifacts**
 - .agents/bin/agents-turn-end

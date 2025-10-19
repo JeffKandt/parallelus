@@ -120,10 +120,10 @@ commands beyond `make read_bootstrap`.
 - **Subagents:** Before launching or monitoring subagents (e.g.
   `make monitor_subagents`, `subagent_manager ...`), read
   `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
-- **Merge / Archive / Remote triage:** Prior to running `make merge`,
-  `make archive`, or evaluating unmerged branches, revisit
-  `docs/agents/git-workflow.md`. Merge requests now require an approved senior
-  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
+- **Merge / Archive / Remote triage:** Prior to running `make merge`, opening a
+  PR, `make archive`, or evaluating unmerged branches, revisit
+  `docs/agents/manuals/git-workflow.md`. Merge requests now require an approved
+  senior architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
   committed retrospective report covering the latest marker; overrides use
   `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
   must be documented in the progress log.

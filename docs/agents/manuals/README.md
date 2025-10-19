@@ -9,8 +9,8 @@ guardrails, then document that acknowledgement in the branch progress log.
 - `subagent-session-orchestration.md` – required **before** launching or
   monitoring subagents. Covers scope prep, monitor loop usage, verification,
   and cleanup procedures.
-- `git-workflow.md` – revisit when planning merges, archival, or remote
-  triage. Pair with `make merge`/`make archive` helper usage.
+- `git-workflow.md` – revisit when planning direct merges or PR-based merges.
+  Covers `make merge`, GitHub PR flow, and follow-up steps.
 - `runtime-matrix.md` – consult when troubleshooting environment differences or
   running in CI/headless shells.
 - `tmux-setup.md` – reference when configuring operator machines or codex
