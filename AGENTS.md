@@ -12,7 +12,8 @@ commands beyond `make read_bootstrap`.
   tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
   not acceptable mitigations.
 - When a guardrail slips, document the permanent remediation and land the
-  artifact before continuing (fix it once, fix it forever).
+  artifact before continuing (fix it once, fix it forever). See
+  `docs/agents/manuals/continuous-improvement.md` for the full playbook.
 - Operational manuals live under `docs/agents/manuals/`. Only consult them when
   a gate below fires, but you **must** read the relevant manual *before*
   executing the guarded task and note the acknowledgement in the progress log.

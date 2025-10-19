@@ -4,7 +4,7 @@ Parallelus exists to give human operators confidence that an AI agent can work i
 
 - **Guardrails before cleverness.** Every new capability must respect the core cadence (Recon, Planning, Execution, Wrap-up) and protect the invariants codified in `AGENTS.md`.
 - **Automation plus narrative.** The system automates notebooks, retrospectives, and reviews so humans stay informed even if they never touch the shell.
-- **Continuous improvement as a discipline.** Every failure mode becomes a root-cause investigation, with mitigations captured as durable artifacts (scripts, manuals, prompts). The goal is that each class of error is addressed once—permanently. See `docs/agents/project/continuous_improvement.md` for the playbook and remember: fix it once, fix it forever.
+- **Continuous improvement as a discipline.** Every failure mode becomes a root-cause investigation, with mitigations captured as durable artifacts (scripts, manuals, prompts). The goal is that each class of error is addressed once—permanently. See `docs/agents/manuals/continuous-improvement.md` for the playbook and remember: fix it once, fix it forever.
 
 ### Current Focus Areas
 - Expand adapter coverage beyond Python/Swift while keeping guardrail parity.

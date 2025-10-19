@@ -4,6 +4,8 @@ This directory collects task-specific manuals referenced from `AGENTS.md`.
 Agents only read a manual when they reach the matching gate in the core
 guardrails, then document that acknowledgement in the branch progress log.
 
+- `continuous-improvement.md` – fix-it-forever playbook; revisit whenever you
+  root-cause an incident.
 - `subagent-session-orchestration.md` – required **before** launching or
   monitoring subagents. Covers scope prep, monitor loop usage, verification,
   and cleanup procedures.
