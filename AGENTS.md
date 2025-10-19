@@ -80,6 +80,9 @@ commands beyond `make read_bootstrap`.
 - Capture or refresh the senior architect review *after* the final commit on
   the feature branch; if additional commits are required, regenerate the review
   so `Reviewed-Commit` matches `HEAD` before attempting to merge.
+- Post-review commits must be limited to documentation housekeeping (review
+  file, branch notebook cleanup, canonical plan/progress updates, or
+  retrospective artifacts). Any other change requires rerunning the review.
 - Launch the senior architect review subagent **only after** staging/committing
   the work under review and pushing it to the feature branch; reviews operate on
   the committed state, not local working tree changes.
