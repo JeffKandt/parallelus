@@ -23,9 +23,11 @@ Key flags:
 - `--lang LANG` – add one or more language overlays (`python`, `swift`). Repeat the flag to include several overlays; the script updates `.agents/agentrc` and the Makefile snippet accordingly.
 - `--verify` – (scaffold only) run a bootstrap + smoke drill and clean up the generated artifacts; skips by default to leave the tree pristine.
 - `--force` – allow scaffolding into a non-empty directory or overlaying onto a dirty worktree. Use with care.
+- `--overlay-no-backup` – overlay only; skip creating `.bak` files and rely on git history when you already have clean recovery points.
+- `--overlay-upgrade` – convenience flag for clean upgrades: implies overlay mode, asserts the target working tree is clean, sets `--overlay-no-backup`, and auto-consents to the overwrite warning.
 - `--remote URL` – configure the `origin` remote after initialization.
 
-The script copies the canonical assets (`AGENTS.md`, `.agents/`, `docs/agents/`), wires the Makefile snippet, updates `.agents/agentrc`, and (for scaffold mode) creates an initial commit.
+The script copies the canonical assets (`AGENTS.md`, `.agents/`, `docs/agents/`), wires the Makefile snippet, updates `.agents/agentrc`, and (for scaffold mode) creates an initial commit. During overlay deployments, any existing `docs/agents/project/` content is preserved so project-specific narratives stay intact; copy new template material in manually if you want to adopt the updates. Overlay mode emits a notice in `AGENTS.md` only when backups are generated; when you opt out of backups (`--overlay-no-backup` or `--overlay-upgrade`), no notice is added. Likewise, overlays refresh only `docs/reviews/README.md` so historical project reviews remain untouched.
 
 ### Exporting a reusable template repository
 
