@@ -4,6 +4,7 @@
 - Enforce fix-it-forever philosophy across docs and tooling.
 - Require senior architect reviews to run via the subagent launcher.
 - Consolidate review baseline guidance and archive manual reviews.
+- Validate that no regressions slipped in (README, manuals, CI deps/tests).
 
 ## Checklist
 - [x] Document objectives.
@@ -12,6 +13,10 @@
 - [x] Tighten agents-turn-end to block note-only updates.
 - [x] Enhance agents-merge for doc-only allowances and subagent provenance.
 - [x] Archive manual senior reviews and document baseline tag.
+- [ ] Confirm README next-steps section still points operators correctly.
+- [ ] Verify shared manuals (continuous improvement, etc.) exist in new location and references resolve.
+- [ ] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
 
 ## Next Actions
+- Validate README, manual references, and CI coverage before rerunning senior review.
 - Prepare combined branch for senior architect review before merging to `main`.
