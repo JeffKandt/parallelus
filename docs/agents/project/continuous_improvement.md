@@ -23,4 +23,4 @@ Continuous improvement is the heartbeat of Parallelus. When the agent falls shor
 - Time from issue detection to permanent mitigation.
 - Adoption rate of new guardrails across downstream projects.
 
-Treat every unexpected behaviour as an opportunity to harden the system. The bar is "fix it once, fix it forever."
+Treat every unexpected behaviour as an opportunity to harden the system. The bar is "fix it once, fix it forever." Capture the durable artifact (code, doc, test, tooling) immediately so future deployments inherit the fix by default.
