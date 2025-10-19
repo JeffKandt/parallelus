@@ -1,4 +1,4 @@
-# Senior Architect Review – feature/<slug>
+# Senior Architect Review Template
 
 Reviewed-Branch: feature/<slug>
 Reviewed-Commit: <commit-sha>
@@ -29,4 +29,3 @@ Reviewer: <name or session id>
 - Sandbox Mode: <mode>
 - Approval Policy: <policy>
 - Session Mode: synchronous subagent
-

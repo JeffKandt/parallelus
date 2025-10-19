@@ -25,6 +25,8 @@ LANGS=""
 MODE="scaffold"
 VERIFY=0
 FORCE=0
+OVERLAY_BACKUP=1
+OVERLAY_UPGRADE=0
 
 usage() {
     cat <<'USAGE'
@@ -38,6 +40,9 @@ Options:
       --mode MODE        Deployment mode: scaffold (default) or overlay
       --verify           Run bootstrap + smoke verification (scaffold only)
       --force            Allow non-empty targets (scaffold) or dirty trees (overlay)
+      --overlay-no-backup
+                         Skip creating .bak backups during overlay (use with caution)
+      --overlay-upgrade  Overlay shortcut: implies --mode overlay, enforces clean target, and disables .bak backups
   -h, --help             Show this message
 
 Examples:
@@ -128,6 +133,17 @@ parse_args() {
                 FORCE=1
                 shift
                 ;;
+            --overlay-no-backup)
+                OVERLAY_BACKUP=0
+                shift
+                ;;
+            --overlay-upgrade)
+                MODE="overlay"
+                OVERLAY_BACKUP=0
+                OVERLAY_UPGRADE=1
+                FORCE=1
+                shift
+                ;;
             -h|--help)
                 usage
                 exit 0
@@ -166,6 +182,10 @@ parse_args() {
 
     if [[ -z "$TARGET_DIR" ]]; then
         fail "TARGET_DIRECTORY is required"
+    fi
+
+    if [[ $OVERLAY_BACKUP -eq 0 && "$MODE" != "overlay" ]]; then
+        fail "--overlay-no-backup is only supported when --mode overlay is set"
     fi
 
     if [[ -z "$LANGS" ]]; then
@@ -208,6 +228,11 @@ prepare_destination() {
         if [[ ! -d "$TARGET_DIR/.git" ]]; then
             fail "Overlay mode requires TARGET_DIRECTORY to be an existing git repository"
         fi
+        if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+            if [[ -n "$(cd "$TARGET_DIR" && git status --porcelain)" ]]; then
+                fail "--overlay-upgrade requires a clean working tree in the target repository"
+            fi
+        fi
         if [[ $FORCE -eq 0 ]]; then
             if [[ -n "$(cd "$TARGET_DIR" && git status --porcelain)" ]]; then
                 fail "Overlay target has uncommitted changes (use --force to continue)"
@@ -246,7 +271,11 @@ warn_overlay_overwrites() {
         return
     fi
     warn "Overlay will refresh existing paths: ${collisions[*]}"
-    warn "Backups will be written with the .bak suffix. Merge prior guidance before deleting them."
+    if [[ $OVERLAY_BACKUP -eq 1 ]]; then
+        warn "Backups will be written with the .bak suffix. Merge prior guidance before deleting them."
+    else
+        warn "Backups are disabled for this run; ensure you have commits or other recovery points before proceeding."
+    fi
     if [[ $FORCE -eq 0 ]]; then
         fail "Re-run with --force after reviewing the warning above"
     fi
@@ -262,11 +291,16 @@ backup_existing_git_hooks() {
     local ts
     ts=$(date -u '+%Y%m%d%H%M%S')
     local backed_up=0
-    local hook_path hook_name dest
+    local hook_path hook_name dest source_hook
     for hook_path in "$git_hooks"/*; do
         [[ -f "$hook_path" ]] || continue
         hook_name=$(basename "$hook_path")
         [[ "$hook_name" == *.sample ]] && continue
+        [[ "$hook_name" == *.predeploy.*.bak ]] && continue
+        source_hook="$SOURCE_REPO/.agents/hooks/$hook_name"
+        if [[ -f "$source_hook" ]] && cmp -s "$hook_path" "$source_hook"; then
+            continue
+        fi
         dest="$agents_hooks/${hook_name}.predeploy.$ts.bak"
         cp "$hook_path" "$dest"
         backed_up=1
@@ -279,17 +313,30 @@ backup_existing_git_hooks() {
 rsync_copy() {
     local src="$1"
     local dest="$2"
+    shift 2 || true
+    local extra=()
+    if [[ $# -gt 0 ]]; then
+        extra=("$@")
+    fi
     local opts=(-a --no-perms --no-group --no-owner)
-    if [[ "$MODE" == "overlay" ]]; then
+    if [[ "$MODE" == "overlay" && $OVERLAY_BACKUP -eq 1 ]]; then
         opts+=(--backup --suffix=.bak)
     fi
 
     if [[ -d "$src" ]]; then
         mkdir -p "$dest"
-        rsync "${opts[@]}" --exclude '.git' "$src" "$dest"
+        if [[ ${#extra[@]} -gt 0 ]]; then
+            rsync "${opts[@]}" --exclude '.git' "${extra[@]}" "$src" "$dest"
+        else
+            rsync "${opts[@]}" --exclude '.git' "$src" "$dest"
+        fi
     else
         mkdir -p "$(dirname "$dest")"
-        rsync "${opts[@]}" "$src" "$dest"
+        if [[ ${#extra[@]} -gt 0 ]]; then
+            rsync "${opts[@]}" "${extra[@]}" "$src" "$dest"
+        else
+            rsync "${opts[@]}" "$src" "$dest"
+        fi
     fi
 }
 
@@ -315,11 +362,26 @@ copy_base_assets() {
     backup_existing_git_hooks
     rsync_copy "$SOURCE_REPO/AGENTS.md" "$TARGET_DIR/AGENTS.md"
     rsync_copy "$SOURCE_REPO/.agents/" "$TARGET_DIR/.agents/"
-    rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"
-    rsync_copy "$SOURCE_REPO/docs/reviews/" "$TARGET_DIR/docs/reviews/"
+
+    local project_preserved=0
+    if [[ "$MODE" == "overlay" && -d "$TARGET_DIR/docs/agents/project" ]]; then
+        project_preserved=1
+        rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/" --exclude 'project/'
+    else
+        rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"
+    fi
+    if [[ "$MODE" == "overlay" ]]; then
+        rsync_copy "$SOURCE_REPO/docs/reviews/README.md" "$TARGET_DIR/docs/reviews/README.md"
+    else
+        rsync_copy "$SOURCE_REPO/docs/reviews/" "$TARGET_DIR/docs/reviews/"
+    fi
     mkdir -p "$TARGET_DIR/sessions"
     ensure_dir_with_readme "$TARGET_DIR/docs/plans" "Branch Plans" "feature/my-feature.md" "plan"
     ensure_dir_with_readme "$TARGET_DIR/docs/progress" "Branch Progress" "feature/my-feature.md" "progress"
+
+    if [[ $project_preserved -eq 1 ]]; then
+        warn "Preserved existing docs/agents/project/ content (merge templates manually if desired)."
+    fi
 }
 
 install_hooks_into_repo() {
@@ -332,6 +394,9 @@ install_hooks_into_repo() {
 
 annotate_agents_overlay() {
     if [[ "$MODE" != "overlay" ]]; then
+        return
+    fi
+    if [[ $OVERLAY_BACKUP -eq 0 ]]; then
         return
     fi
     local agents_file="$TARGET_DIR/AGENTS.md"
@@ -701,6 +766,9 @@ main() {
     echo " Mode: $MODE"
     echo " Target: $TARGET_DIR"
     echo " Languages: $LANGS"
+    if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+        echo " Overlay upgrade: true (backups disabled)"
+    fi
     prepare_destination
     warn_overlay_overwrites
     copy_base_assets

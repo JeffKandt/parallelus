@@ -19,4 +19,4 @@ copy lives in this directory so it becomes a permanent artifact on the base
 branch after merging. When a branch slug is reused in the future, create a new
 dated review file instead of overwriting the earlier record.
 
-Use `docs/reviews/template.md` as the starting point for new reviews to ensure all required metadata and findings are recorded.
+Use `docs/agents/templates/review_report_template.md` as the starting point for new reviews to ensure all required metadata and findings are recorded.
