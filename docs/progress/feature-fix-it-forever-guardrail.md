@@ -1,4 +1,4 @@
-# Branch Progress — feature/fix-it-forever-guardrail
+# Branch Progress — feature-fix-it-forever-guardrail
 
 ## 2025-10-19 18:40:00 UTC
 **Objectives**
@@ -9,6 +9,7 @@
 - Moved the continuous-improvement playbook into `docs/agents/manuals/` and refreshed the manuals index.
 - Documented senior-review baseline separately, archived manual reviews, and removed the temporary baseline callout.
 - Updated `docs/agents/project/domain.md` to highlight the playbook for downstream repos.
+- Added guidance in the continuous-improvement manual to upstream generalisable fixes after capturing them downstream.
 
 **Artifacts**
 - .agents/bin/agents-turn-end
