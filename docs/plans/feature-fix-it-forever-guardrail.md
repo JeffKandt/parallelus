@@ -20,4 +20,4 @@
 ## Next Actions
 - [x] Rerun the senior architect review via the subagent launcher using the corrected README links.
 - [x] Capture the approved review artifact and update notebooks/checklists once the review passes.
-- [ ] Package the branch for a pull request to `main` (push branch, draft PR summary, document guardrail compliance) after approval.
+- [x] Package the branch for a pull request to `main` (push branch, draft PR summary, document guardrail compliance) after approval.
