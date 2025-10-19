@@ -1,22 +1,35 @@
+# Senior Architect Review – feature/fix-it-forever-guardrail
+
 Reviewed-Branch: feature/fix-it-forever-guardrail
-Reviewed-Commit: 7cd40ad4a1e944d7d4a245b8ae347bd383f2163d
+Reviewed-Commit: d55afbdbf975e22ac2d8b8426f51fb31a17a3a02
 Reviewed-On: 2025-10-19
-Decision: approved
+Decision: changes requested
 Reviewer: codex-agent
 
+## Summary
+- Verified AGENTS.md now routes every operational gate to the manuals under `docs/agents/manuals/`.
+- Confirmed `docs/agents/manuals/git-workflow.md` documents merge, archive, and unmerged-branch triage expectations in line with guardrails.
+- Cross-checked branch plan/progress notebooks to ensure the recorded work matches the relocation scope.
+
 ## Findings
-- Severity: Info – Verified AGENTS.md and continuous improvement manual now explicitly require permanent fixes.
-- Severity: Info – Confirmed `.agents/bin/agents-turn-end` enforces durable artifacts, with override only via `AGENTS_ALLOW_NOTE_ONLY`.
-- Severity: Info – Checked `.agents/bin/agents-merge` diff to ensure doc-only post-review commits are accepted while code changes still require a fresh review.
+- Severity: Medium | Area: Documentation | Summary: `docs/agents/README.md` still points to the pre-move file paths (`runtime-matrix.md`, `integrations/`) that no longer exist at the repo root.
+  - Evidence: `docs/agents/README.md` references `runtime-matrix.md` and `integrations/`, but those files now live under `docs/agents/manuals/`.
+  - Recommendation: Update `docs/agents/README.md` to link to `docs/agents/manuals/runtime-matrix.md` and `docs/agents/manuals/integrations/` so the index matches the new layout.
 
 ## Tests & Evidence Reviewed
-- Manual inspection of AGENTS.md, continuous_improvement.md, agents-turn-end, and agents-merge diffs.
+- AGENTS.md
+- docs/agents/manuals/git-workflow.md
+- docs/agents/manuals/runtime-matrix.md
+- docs/agents/manuals/subagent-session-orchestration.md
+- docs/agents/manuals/integrations/codex.md
+- docs/agents/README.md
+- Branch notebooks (`docs/plans/feature-fix-it-forever-guardrail.md`, `docs/progress/feature-fix-it-forever-guardrail.md`)
 
 ## Follow-Ups / Tickets
 - [ ] None.
 
 ## Provenance
 - Model: gpt-5-codex
-- Sandbox Mode: enabled (danger-full-access)
+- Sandbox Mode: throwaway (danger-full-access)
 - Approval Policy: never
-- Session Mode: synchronous primary agent
+- Session Mode: synchronous subagent

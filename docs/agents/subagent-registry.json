@@ -1873,5 +1873,26 @@
       }
     ],
     "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251019-203919-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-203919",
+    "window_title": "20251019-203919-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-203919-senior-review",
+      "window_id": "@0",
+      "pane_id": "%1"
+    },
+    "role_prompt": "senior_architect.md"
   }
 ]
