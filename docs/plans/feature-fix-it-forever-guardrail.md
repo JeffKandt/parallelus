@@ -18,5 +18,5 @@
 - [x] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
 
 ## Next Actions
-- Validate README, manual references, and CI coverage before rerunning senior review.
-- Prepare combined branch for senior architect review before merging to `main`.
+- Rerun the senior architect review now that manual index links point at the relocated files.
+- Prepare combined branch for senior architect approval before merging to `main`.
