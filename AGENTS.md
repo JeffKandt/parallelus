@@ -119,7 +119,7 @@ commands beyond `make read_bootstrap`.
 ## 4. Operational Gates (Read-on-Trigger Manuals)
 - **Subagents:** Before launching or monitoring subagents (e.g.
   `make monitor_subagents`, `subagent_manager ...`), read
-  `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
+  `docs/agents/manuals/subagent-session-orchestration.md` and log the acknowledgement.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`, opening a
   PR, `make archive`, or evaluating unmerged branches, revisit
   `docs/agents/manuals/git-workflow.md`. Merge requests now require an approved
@@ -128,11 +128,12 @@ commands beyond `make read_bootstrap`.
   `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
   must be documented in the progress log.
 - **Environment & Platform diagnostics:** If environment parity is in question
-  (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
+  (CI, Codex Cloud, headless shells), review
+  `docs/agents/manuals/runtime-matrix.md` and
   run the diagnostics described there.
 - **Language adapters & integrations:** When enabling or maintaining Python or
   Node tooling—or when Codex integration behaviour changes—consult the manuals
-  under `docs/agents/adapters/` and `docs/agents/integrations/`.
+  under `docs/agents/adapters/` and `docs/agents/manuals/integrations/`.
 - A directory index lives at `docs/agents/manuals/README.md`; update it when new
   manuals are introduced.
 

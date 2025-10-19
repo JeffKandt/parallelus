@@ -36,7 +36,7 @@
 - Set `AUDIBLE_ALERT_REQUIRE_TTY=0` default in `.agents/agentrc` to align with the new behaviour.
 - Expanded the README prerequisites and workflow notes to cover tmux requirements, status-bar config, Codex shell helpers, and the deploy script for reusable rollouts.
 - Added Codex profile support to subagent launches (including the `--profile` flag, registry tracking, and prompt visibility) for hosted models like `gpt-oss`.
-- Updated materials (README and `docs/agents/subagent-session-orchestration.md`) so humans see the new profile/tmux behaviour without digging into the code.
+- Updated materials (README and `docs/agents/manuals/subagent-session-orchestration.md`) so humans see the new profile/tmux behaviour without digging into the code.
 - Moved senior architect and auditor role configuration into YAML front matter within their prompts, removed the legacy `.agents/config/*.yaml`, and wired `subagent_manager` to parse/validate overrides (model, sandbox, approval, profile, allowed writes).
 - Added the `--role` launch option plus prompt override summaries so operators know which runtime adjustments are in effect.
 - Plumbed `config_overrides` through front matter so roles can inject Codex `-c key=value` settings (e.g., reasoning effort) without relying on named profiles and ensured dangerous sandbox flags are only skipped when a sandbox override is supplied.
@@ -50,7 +50,7 @@
 - .agents/bin/launch_subagent.sh
 - .agents/agentrc
 - .agents/bin/subagent_manager.sh
-- docs/agents/subagent-session-orchestration.md
+- docs/agents/manuals/subagent-session-orchestration.md
 
 **Next Actions**
 - Verify the GitHub repo lists expected branches and files.
@@ -155,7 +155,7 @@
 - Added `docs/agents/templates/ci_audit_scope.md` as a reusable scope and enhanced `subagent_manager.sh` to normalize role prompts, pass the parent branch into CI-auditor instructions, and avoid bootstrap steps for that role.
 - Updated the tmux prompt generator and related helpers to respect `PARALLELUS_TMUX_SOCKET`, then launched `subagent_manager.sh launch --type throwaway --slug ci-audit --scope ... --role continuous_improvement_auditor.md` via tmux.
 - Captured the auditor's JSON findings and wrote them to `docs/self-improvement/reports/feature-publish-repo--2025-10-12T16:11:06+00:00.json`, then cleaned the sandbox registry entry and deleted `.parallelus/` artifacts.
-- Re-read `docs/agents/subagent-session-orchestration.md` and recorded this acknowledgement here so future subagent launches meet the guardrail expectation.
+- Re-read `docs/agents/manuals/subagent-session-orchestration.md` and recorded this acknowledgement here so future subagent launches meet the guardrail expectation.
 
 **Validation**
 - Verified the parsed JSON report contents before saving and confirmed `subagent_manager.sh status` reports no running entries.
@@ -224,7 +224,7 @@
 - Validate the role front-matter exports by running the CI agent audit subagent.
 
 **Work Performed**
-- Reviewed `docs/agents/subagent-session-orchestration.md` in full per the subagent launch gate.
+- Reviewed `docs/agents/manuals/subagent-session-orchestration.md` in full per the subagent launch gate.
 - Confirmed the branch plan still reflects the outstanding remediation tasks.
 
 **Next Actions**
@@ -279,7 +279,7 @@
 **Work Performed**
 - Added `.agents/bin/tmux-safe` and updated `subagent_manager.sh` to route every tmux call through it, including launch hints and cleanup teardown.
 - Hardened `subagent_manager.sh cleanup` to refuse live sessions unless `--force` is passed and surfaced `.agents/bin/agents-monitor-loop.sh --id <entry>` as the canonical way to decide when cleanup is safe.
-- Logged the new guidance in `docs/agents/subagent-session-orchestration.md`.
+- Logged the new guidance in `docs/agents/manuals/subagent-session-orchestration.md`.
 
 **Next Actions**
 - Incorporate the CI auditor follow-ups into the remediation summary and plan.
@@ -398,7 +398,7 @@
 - Prep for another senior architect review run after updating the orchestration flow.
 
 **Work Performed**
-- Re-read the updated `docs/agents/subagent-session-orchestration.md` to confirm the log-tail workflow and captured this acknowledgement prior to launching/monitoring new subagents.
+- Re-read the updated `docs/agents/manuals/subagent-session-orchestration.md` to confirm the log-tail workflow and captured this acknowledgement prior to launching/monitoring new subagents.
 
 **Next Actions**
 - Launch the senior-review subagent with explicit deliverables and monitor it through completion.
@@ -485,4 +485,3 @@
 **Next Actions**
 - Share the updated docs with maintainers and gather feedback on the folding workflow and queue improvements.
 - Monitor tmux helper behaviour in daily use and refine the codex launcher recommendations as needed.
-

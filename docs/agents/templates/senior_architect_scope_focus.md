@@ -23,7 +23,7 @@
 ## Key Artifacts
 - `.agents/bin/agents-merge`
 - `.agents/hooks/pre-merge-commit`
-- `docs/agents/subagent-session-orchestration.md`
+- `docs/agents/manuals/subagent-session-orchestration.md`
 - `docs/agents/git-workflow.md`
 - `docs/PLAN.md`
 - `docs/PROGRESS.md`

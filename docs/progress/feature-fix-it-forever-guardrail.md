@@ -27,3 +27,38 @@
 
 **Next Actions**
 - Run subagent senior review when ready to merge into `main`.
+
+## 2025-10-19 20:31:27 UTC
+**Objectives**
+- Validate outstanding checklist items before reattempting reviews.
+
+**Work Performed**
+- Re-read `AGENTS.md` to confirm guardrails for this session.
+- Reviewed README “Next Steps” guidance; no changes required.
+- Relocated subagent, runtime matrix, and integrations manuals into `docs/agents/manuals/` and updated references (AGENTS, templates, progress logs).
+- Ran `make ci` to confirm requirements and `tests/test_basic.py` still pass; cleaned up incidental registry noise from the smoke sandbox entry.
+
+**Next Actions**
+- Stage when ready for senior architect review rerun.
+
+## 2025-10-19 20:33:55 UTC
+**Objectives**
+- Investigate senior architect finding regarding git workflow manual coverage.
+
+**Work Performed**
+- Compared `docs/agents/manuals/git-workflow.md` with the legacy `docs/agents/git-workflow.md`.
+- Restored archive and unmerged-branch triage guidance inside the manuals copy so the guardrail reference is accurate.
+
+**Next Actions**
+- Re-run focused review once requested.
+
+## 2025-10-19 20:37:20 UTC
+**Objectives**
+- Prepare for senior architect review relaunch.
+
+**Work Performed**
+- Re-read `docs/agents/manuals/subagent-session-orchestration.md` as required before launching review subagents.
+- Confirmed branch notebooks and docs are up to date for review.
+
+**Next Actions**
+- Launch senior architect review via subagent manager.

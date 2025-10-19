@@ -13,9 +13,9 @@
 - [x] Tighten agents-turn-end to block note-only updates.
 - [x] Enhance agents-merge for doc-only allowances and subagent provenance.
 - [x] Archive manual senior reviews and document baseline tag.
-- [ ] Confirm README next-steps section still points operators correctly.
-- [ ] Verify shared manuals (continuous improvement, etc.) exist in new location and references resolve.
-- [ ] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
+- [x] Confirm README next-steps section still points operators correctly.
+- [x] Verify shared manuals (continuous improvement, etc.) exist in new location and references resolve.
+- [x] Reconfirm CI dependencies/tests (requirements.txt, tests/test_basic.py) intact so `make ci` passes.
 
 ## Next Actions
 - Validate README, manual references, and CI coverage before rerunning senior review.
