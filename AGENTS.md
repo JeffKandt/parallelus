@@ -11,6 +11,9 @@ commands beyond `make read_bootstrap`.
   repository (e.g. `.agents` tooling, docs/agents runbooks, automated setup,
   tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
   not acceptable mitigations.
+- When a guardrail slips, document the permanent remediation and land the
+  artifact before continuing (fix it once, fix it forever). See
+  `docs/agents/manuals/continuous-improvement.md` for the full playbook.
 - Operational manuals live under `docs/agents/manuals/`. Only consult them when
   a gate below fires, but you **must** read the relevant manual *before*
   executing the guarded task and note the acknowledgement in the progress log.
@@ -78,9 +81,15 @@ commands beyond `make read_bootstrap`.
 - Capture or refresh the senior architect review *after* the final commit on
   the feature branch; if additional commits are required, regenerate the review
   so `Reviewed-Commit` matches `HEAD` before attempting to merge.
+- Post-review commits must be limited to documentation housekeeping (review
+  file, branch notebook cleanup, canonical plan/progress updates, or
+  retrospective artifacts). Any other change requires rerunning the review.
 - Launch the senior architect review subagent **only after** staging/committing
   the work under review and pushing it to the feature branch; reviews operate on
   the committed state, not local working tree changes.
+- Run the senior architect review via the provided subagent launcher (see
+  `docs/agents/manuals/senior-architect.md`) so the canonical prompt executes
+  in an isolated tmux pane.
 
 ### Turn-End & Session Wrap
 - If a new request arrives after the previous conversation has been idle, run
@@ -110,20 +119,21 @@ commands beyond `make read_bootstrap`.
 ## 4. Operational Gates (Read-on-Trigger Manuals)
 - **Subagents:** Before launching or monitoring subagents (e.g.
   `make monitor_subagents`, `subagent_manager ...`), read
-  `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
-- **Merge / Archive / Remote triage:** Prior to running `make merge`,
-  `make archive`, or evaluating unmerged branches, revisit
-  `docs/agents/git-workflow.md`. Merge requests now require an approved senior
-  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
+  `docs/agents/manuals/subagent-session-orchestration.md` and log the acknowledgement.
+- **Merge / Archive / Remote triage:** Prior to running `make merge`, opening a
+  PR, `make archive`, or evaluating unmerged branches, revisit
+  `docs/agents/manuals/git-workflow.md`. Merge requests now require an approved
+  senior architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
   committed retrospective report covering the latest marker; overrides use
   `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
   must be documented in the progress log.
 - **Environment & Platform diagnostics:** If environment parity is in question
-  (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
+  (CI, Codex Cloud, headless shells), review
+  `docs/agents/manuals/runtime-matrix.md` and
   run the diagnostics described there.
 - **Language adapters & integrations:** When enabling or maintaining Python or
   Node tooling—or when Codex integration behaviour changes—consult the manuals
-  under `docs/agents/adapters/` and `docs/agents/integrations/`.
+  under `docs/agents/adapters/` and `docs/agents/manuals/integrations/`.
 - A directory index lives at `docs/agents/manuals/README.md`; update it when new
   manuals are introduced.
 

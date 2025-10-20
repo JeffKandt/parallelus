@@ -1873,5 +1873,99 @@
       }
     ],
     "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251019-203919-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-BJZZNM/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-203919",
+    "window_title": "20251019-203919-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-203919-senior-review",
+      "window_id": "@0",
+      "pane_id": "%1"
+    },
+    "role_prompt": "senior_architect.md"
+  },
+  {
+    "id": "20251019-205333-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-YGycG9/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-205333",
+    "window_title": "20251019-205333-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-205333-senior-review",
+      "window_id": "@0",
+      "pane_id": "%2"
+    },
+    "role_prompt": "senior_architect.md"
+  },
+  {
+    "id": "20251019-213222-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-2HDv38",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-2HDv38/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-2HDv38/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-2HDv38/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-213222",
+    "window_title": "20251019-213222-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-213222-senior-review",
+      "window_id": "@0",
+      "pane_id": "%1"
+    },
+    "role_prompt": ".agents/prompts/agent_roles/senior_architect.md"
+  },
+  {
+    "id": "20251019-214549-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-gjg7eC",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-gjg7eC/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-gjg7eC/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-gjg7eC/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251019-214549",
+    "window_title": "20251019-214549-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251019-214549-senior-review",
+      "window_id": "@0",
+      "pane_id": "%2"
+    },
+    "role_prompt": ".agents/prompts/agent_roles/senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews/feature-fix-it-forever-guardrail-2025-10-19.md",
+        "target": "docs/reviews/feature-fix-it-forever-guardrail-2025-10-19.md",
+        "status": "harvested",
+        "harvested_at": "2025-10-19T21:57:06Z",
+        "target_path": "docs/reviews/feature-fix-it-forever-guardrail-2025-10-19.md"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]

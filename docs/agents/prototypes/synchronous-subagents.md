@@ -126,7 +126,7 @@ that flow without abandoning existing guardrails.
 ## Recommended Next Steps
 1. Prototype `subagent_manager launch --mode sync` with tmux pane blocking and teardown,
    plus registry metadata updates.
-2. Add a synchronous scope template and update `docs/agents/subagent-session-orchestration.md`
+2. Add a synchronous scope template and update `docs/agents/manuals/subagent-session-orchestration.md`
    with usage guidance, including audible alert conventions.
 3. Extend the monitor loop helper to recognise synchronous sessions and allow manual
   acknowledgments or adjusted heartbeat timers when requested.

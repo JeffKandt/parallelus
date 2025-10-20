@@ -4,8 +4,8 @@ This directory hosts the reorganised agent guidance referenced from `AGENTS.md`.
 
 - `core.md` – phases, guardrails, audible alerts, checkpoint cadence (manual; read when you need elaboration beyond `AGENTS.md`).
 - `git-workflow.md` – repository detection, branching, archival, merge closure.
-- `runtime-matrix.md` – environment support (macOS, Codex, CI/headless).
-- `integrations/` – platform-specific notes (Codex CLI/Cloud, others later).
+- `manuals/runtime-matrix.md` – environment support (macOS, Codex, CI/headless).
+- `manuals/integrations/` – platform-specific notes (Codex CLI/Cloud, others later).
 - `adapters/` – language/tooling adapters (Python implemented, Node stub).
 - `manuals/` – index of operational manuals and their trigger conditions.
 - `project/` – repository-specific domain context (this repo: Interruptus).

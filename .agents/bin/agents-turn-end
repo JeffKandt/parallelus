@@ -49,6 +49,23 @@ fi
 
 message="${*:-Updated progress}"
 
+if [[ -z "${AGENTS_ALLOW_NOTE_ONLY:-}" ]]; then
+  status_entries=$(git status --porcelain)
+  if [[ -n "$status_entries" ]]; then
+    durable_changes=$(printf '%s\n' "$status_entries" \
+      | cut -c4- \
+      | sed 's/^.* -> //' \
+      | grep -Ev '^(docs/(plans|progress)/|docs/self-improvement/(markers|reports)/|sessions/)' || true)
+    if [[ -z "$durable_changes" ]]; then
+      cat <<'ERR' >&2
+agents-turn-end: Detected only plan/progress/self-improvement log changes.
+Fix it once, fix it forever—capture a durable artifact (code, doc, test, tooling) before logging progress, or set AGENTS_ALLOW_NOTE_ONLY=1 to override.
+ERR
+      exit 1
+    fi
+  fi
+fi
+
 timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
 
 cat <<PROGRESS >> "$progress_file"

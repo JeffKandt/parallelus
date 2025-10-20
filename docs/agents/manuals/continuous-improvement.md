@@ -10,6 +10,7 @@ Continuous improvement is the heartbeat of Parallelus. When the agent falls shor
 ## Durable Mitigations
 - Add or update automated guardrails (scripts, hooks, prompts) rather than relying on memory or progress-log notes.
 - If the fix is specific to a downstream project, capture it in that project's sidecar config (e.g., `.agents/custom/`, project-specific manuals) so Parallelus updates can be applied without merge conflicts.
+- If the mitigation generalises to the Parallelus core, upstream it promptly (open an issue/PR against the Parallelus repository you pulled the process from) and remove the downstream override once the change lands.
 - When introducing configuration knobs or optional behaviour, keep defaults aligned with Parallelus best practices and document how operators can opt in/out safely.
 
 ## Feedback Loop
@@ -23,4 +24,4 @@ Continuous improvement is the heartbeat of Parallelus. When the agent falls shor
 - Time from issue detection to permanent mitigation.
 - Adoption rate of new guardrails across downstream projects.
 
-Treat every unexpected behaviour as an opportunity to harden the system. The bar is "fix it once, fix it forever."
+Treat every unexpected behaviour as an opportunity to harden the system. The bar is "fix it once, fix it forever." Capture the durable artifact (code, doc, test, tooling) immediately so future deployments inherit the fix by default.

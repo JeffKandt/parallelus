@@ -822,6 +822,26 @@ if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text:
     text = text.replace("{{MARKER_PATH}}", marker_path)
     path.write_text(text, encoding="utf-8")
 PY
+  if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
+    python3 - <<'PY' "$scope_path" "$parent_branch"
+import sys
+from pathlib import Path
+
+scope_path, branch = sys.argv[1:3]
+text = Path(scope_path).read_text(encoding="utf-8")
+errors = []
+if "{{" in text or "}}" in text:
+    errors.append("scope still contains placeholders ({{...}})")
+if branch not in text:
+    errors.append(f"scope does not reference current branch '{branch}'")
+if "(Add branch-specific objectives here.)" in text:
+    errors.append("branch-specific objectives not filled in")
+if errors:
+    for error in errors:
+        print(f"subagent_manager: {error}", file=sys.stderr)
+    sys.exit(1)
+PY
+  fi
   prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
   create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch"
   log_path="$sandbox/subagent.log"
