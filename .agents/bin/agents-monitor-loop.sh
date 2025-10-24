@@ -18,11 +18,225 @@ Options:
 EOF
 }
 
-INTERVAL=45
-THRESHOLD=180
-RUNTIME_THRESHOLD=600
+INTERVAL=30
+THRESHOLD=90
+RUNTIME_THRESHOLD=240
 FILTER_ID=""
 ITERATIONS=""
+RECHECK_DELAY=${MONITOR_RECHECK_DELAY:-15}
+NUDGE_DELAY=${MONITOR_NUDGE_DELAY:-10}
+NUDGE_MESSAGE=${MONITOR_NUDGE_MESSAGE:-"Proceed"}
+KNOWN_STUCK=""
+TMUX_BIN=$(command -v tmux || true)
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+SNAPSHOT_DIR=${MONITOR_SNAPSHOT_DIR:-"$REPO_ROOT/.parallelus/monitor-snapshots"}
+MONITOR_DEBUG=${MONITOR_DEBUG:-0}
+mkdir -p "$SNAPSHOT_DIR"
+
+capture_snapshot() {
+  local id="$1"
+  local reason="$2"
+  local stage="$3"
+  local target="$4"
+  [[ -z "$TMUX_BIN" || -z "$target" ]] && return 0
+  local timestamp
+  timestamp=$(date -u '+%Y%m%dT%H%M%SZ')
+  local safe_reason=${reason//[^A-Za-z0-9_-]/-}
+  local safe_stage=${stage//[^A-Za-z0-9_-]/-}
+  local file="$SNAPSHOT_DIR/${id}--${safe_reason}--${safe_stage}--${timestamp}.log"
+  "$TMUX_BIN" capture-pane -p -t "$target" >"$file" 2>/dev/null || true
+}
+
+mark_stuck() {
+  local id="$1"
+  case " $KNOWN_STUCK " in
+    *" $id "*) return 0 ;;
+  esac
+  KNOWN_STUCK="$KNOWN_STUCK $id"
+}
+
+clear_stuck() {
+  local id="$1"
+  local next=""
+  for existing in $KNOWN_STUCK; do
+    [[ "$existing" == "$id" ]] && continue
+    next+=" $existing"
+  done
+  KNOWN_STUCK="${next# }"
+}
+
+is_stuck() {
+  local id="$1"
+  case " $KNOWN_STUCK " in
+    *" $id "*) return 0 ;;
+  esac
+  return 1
+}
+
+get_mtime() {
+  local path="$1"
+  python3 - "$path" <<'PY'
+import os, sys
+path = sys.argv[1]
+if not path or not os.path.exists(path):
+    print(-1)
+else:
+    print(int(os.path.getmtime(path)))
+PY
+}
+
+investigate_alerts() {
+  local alerts_json="$1"
+  local rows_json="$2"
+  local unresolved=""
+  local field_sep=$'\x1f'
+
+  if [[ -z "$alerts_json" || "$alerts_json" == "{}" ]]; then
+    return 0
+  fi
+
+  local entry
+  local investigations=()
+  local investigations_output
+  investigations_output=$(python3 - <<'PY' "$alerts_json" "$rows_json"
+import json
+import sys
+
+alerts = json.loads(sys.argv[1] or "{}")
+rows = {row.get("id"): row for row in json.loads(sys.argv[2] or "[]")}
+seen = set()
+for reason, ids in alerts.items():
+    if reason not in {"log", "runtime", "stale"}:
+        continue
+    for id_ in ids:
+        if not id_ or (id_, reason) in seen:
+            continue
+        seen.add((id_, reason))
+        row = rows.get(id_) or {}
+        handle = row.get("launcher_handle") or {}
+        try:
+            parts = [
+                id_,
+                reason,
+                (row.get("log_path") or ""),
+                str(row.get("log_seconds") if row.get("log_seconds") is not None else ""),
+                str(row.get("runtime_seconds") if row.get("runtime_seconds") is not None else ""),
+                (row.get("launcher_kind") or ""),
+                (handle.get("pane_id") or ""),
+                (handle.get("window_id") or ""),
+                (row.get("title") or ""),
+            ]
+        except Exception:
+            continue
+        print("\x1f".join(str(part).replace("\x1f", " ") for part in parts))
+PY
+  ) || true
+  if (( MONITOR_DEBUG == 1 )); then
+    printf '[monitor-debug] alerts_json=%s\n' "$alerts_json" >&2
+    printf '[monitor-debug] investigations_output=%s\n' "$investigations_output" >&2
+  fi
+  if [[ -n "$investigations_output" ]]; then
+    while IFS= read -r entry; do
+      [[ -z "$entry" ]] && continue
+      investigations+=("$entry")
+    done <<<"$investigations_output"
+  fi
+
+  ((${#investigations[@]} == 0)) && return 0
+
+  local id reason log_path log_seconds runtime_seconds launcher_kind pane_id window_id title
+  for entry in "${investigations[@]}"; do
+    IFS=$'\x1f' read -r id reason log_path log_seconds runtime_seconds launcher_kind pane_id window_id title <<<"$entry"
+    [[ -z "$id" ]] && continue
+
+    local tmux_target=""
+    if [[ -n "$TMUX_BIN" ]]; then
+      if [[ "$launcher_kind" == "tmux-pane" && -n "$pane_id" ]]; then
+        tmux_target="$pane_id"
+      elif [[ "$launcher_kind" == "tmux-window" && -n "$window_id" ]]; then
+        tmux_target="$window_id"
+      fi
+    fi
+    if (( MONITOR_DEBUG == 1 )); then
+      printf '[monitor-debug] evaluate id=%s reason=%s target=%s\n' "$id" "$reason" "$tmux_target" >&2
+    fi
+
+    capture_snapshot "$id" "$reason" "pre-check" "$tmux_target"
+
+    local skip_recheck=0
+    local rechecked=0
+    local before after
+    if [[ -n "$log_path" ]]; then
+      before=$(get_mtime "$log_path")
+      if [[ "$before" -ge 0 ]]; then
+        sleep "$RECHECK_DELAY"
+        rechecked=1
+        after=$(get_mtime "$log_path")
+        if [[ "$after" -gt "$before" ]]; then
+          echo "[monitor] $id heartbeat recovered after recheck ($reason)."
+          clear_stuck "$id"
+          skip_recheck=1
+        fi
+      fi
+    fi
+
+    if [[ $skip_recheck -eq 1 ]]; then
+      continue
+    fi
+
+    local nudged=0
+    if [[ -z "$log_path" && "$reason" == "runtime" ]]; then
+      # Long runtime without log path; nothing to do besides warn.
+      :
+    elif [[ -n "$log_path" && $rechecked -eq 0 ]]; then
+      # No log file available to recheck; nothing else to do here.
+      :
+    fi
+
+    if [[ -n "$TMUX_BIN" && "$launcher_kind" == "tmux-pane" && -n "$pane_id" ]]; then
+      if is_stuck "$id"; then
+        echo "[monitor] $id still flagged ($reason); already nudged."
+      else
+        capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
+        (( MONITOR_DEBUG == 1 )) && printf '[monitor-debug] sending nudge to %s via %s\n' "$id" "$pane_id" >&2
+        echo "[monitor] $id attempting nudge via tmux pane $pane_id"
+        "$TMUX_BIN" send-keys -t "$pane_id" "$NUDGE_MESSAGE" C-m >/dev/null 2>&1 || true
+        nudged=1
+      fi
+    elif [[ -n "$TMUX_BIN" && "$launcher_kind" == "tmux-window" && -n "$window_id" ]]; then
+      if is_stuck "$id"; then
+        echo "[monitor] $id still flagged ($reason); already nudged."
+      else
+        capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
+        echo "[monitor] Attempting nudge for $id via tmux window $window_id"
+        "$TMUX_BIN" send-keys -t "$window_id" "$NUDGE_MESSAGE" C-m >/dev/null 2>&1 || true
+        nudged=1
+      fi
+    fi
+
+    if [[ $nudged -eq 1 && -n "$log_path" ]]; then
+      sleep "$NUDGE_DELAY"
+      after=$(get_mtime "$log_path")
+      if [[ "$after" -gt "$before" ]]; then
+        echo "[monitor] $id responded after nudge ($reason)."
+        clear_stuck "$id"
+        capture_snapshot "$id" "$reason" "post-nudge-success" "$tmux_target"
+        continue
+      fi
+    fi
+
+    mark_stuck "$id"
+    unresolved+=" $id"
+    echo "[monitor] $id requires manual attention (reason: $reason)."
+    capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
+  done
+
+  if [[ -n "$unresolved" ]]; then
+    echo "[monitor] Outstanding subagents:$unresolved"
+    return 1
+  fi
+  return 0
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -103,7 +317,7 @@ PY
     echo "No running subagents detected. Exiting monitor loop."
     break
   fi
-formatted=$(MONITOR_TABLE="$output" python3 - "$THRESHOLD" "$RUNTIME_THRESHOLD" <<'PY'
+formatted=$(MONITOR_TABLE="$output" MONITOR_REGISTRY="$REGISTRY" python3 - "$THRESHOLD" "$RUNTIME_THRESHOLD" <<'PY'
 import json
 import os
 import sys
@@ -111,11 +325,22 @@ import sys
 threshold = int(sys.argv[1])
 runtime_threshold = int(sys.argv[2])
 table = os.environ.get("MONITOR_TABLE", "")
+registry_path = os.environ.get("MONITOR_REGISTRY")
+registry_entries = []
+if registry_path and os.path.exists(registry_path):
+    try:
+        with open(registry_path, "r", encoding="utf-8") as fh:
+            registry_entries = json.load(fh)
+    except Exception:
+        registry_entries = []
+entry_map = {row.get("id"): row for row in registry_entries if isinstance(row, dict)}
 lines = table.splitlines()
 
 if not lines:
     print(table, end="")
     print("@@MONITOR_FLAGS {}", end="")
+    print("@@MONITOR_ROWS []", end="")
+    print("@@MONITOR_ALERTS {}", end="")
     sys.exit(0)
 
 header = lines[0]
@@ -129,6 +354,8 @@ if separator:
 log_alert = False
 runtime_alert = False
 stale_alert = False
+rows_payload = []
+alerts = {"log": [], "runtime": [], "stale": []}
 
 
 def parse_mmss(value: str):
@@ -147,27 +374,48 @@ for row in rows:
     if not row.strip():
         result.append(row)
         continue
-    parts = row.split(None, 8)
+    parts = row.split(None, 9)
+    if parts and set(parts[0]) <= {"!", "^", "?"}:
+        parts = parts[1:]
     if len(parts) < 9:
         result.append(row)
         continue
+    ident = parts[0]
     status = parts[3]
     runtime_str = parts[5]
     log_str = parts[6]
     prefix = ""
     stale = False
+    runtime_seconds = parse_mmss(runtime_str)
+    log_seconds = parse_mmss(log_str)
+    entry = entry_map.get(ident, {})
+    rows_payload.append({
+        "id": ident,
+        "status": status,
+        "runtime_seconds": runtime_seconds,
+        "log_seconds": log_seconds,
+        "log_path": entry.get("log_path"),
+        "launcher_kind": entry.get("launcher_kind"),
+        "launcher_handle": entry.get("launcher_handle"),
+        "deliverables_status": entry.get("deliverables_status"),
+        "title": entry.get("window_title"),
+    })
     if status == "running":
-        runtime_seconds = parse_mmss(runtime_str)
         if runtime_seconds is not None and runtime_seconds > runtime_threshold:
             prefix += "^"
             runtime_alert = True
-        log_seconds = parse_mmss(log_str)
+            if ident not in alerts["runtime"]:
+                alerts["runtime"].append(ident)
         if log_seconds is None:
             stale = True
             stale_alert = True
+            if ident not in alerts["stale"]:
+                alerts["stale"].append(ident)
         elif log_seconds > threshold:
             prefix += "!"
             log_alert = True
+            if ident not in alerts["log"]:
+                alerts["log"].append(ident)
     if stale:
         prefix = "?" + prefix
     if prefix:
@@ -177,42 +425,22 @@ for row in rows:
 
 print("\n".join(result))
 print("@@MONITOR_FLAGS", json.dumps({"log": log_alert, "runtime": runtime_alert, "stale": stale_alert}))
+print("@@MONITOR_ROWS", json.dumps(rows_payload))
+print("@@MONITOR_ALERTS", json.dumps(alerts))
 PY
 )
 
-flags_line=$(grep '^@@MONITOR_FLAGS ' <<<"$formatted" || true)
-formatted=$(grep -v '^@@MONITOR_FLAGS ' <<<"$formatted" || true)
+rows_line=$(grep '^@@MONITOR_ROWS ' <<<"$formatted" || true)
+alerts_line=$(grep '^@@MONITOR_ALERTS ' <<<"$formatted" || true)
+formatted=$(grep -v '^@@MONITOR_\(FLAGS\|ROWS\|ALERTS\) ' <<<"$formatted" || true)
 echo "$formatted"
 
-log_trigger="false"
-runtime_trigger="false"
-stale_trigger="false"
-if [[ -n "$flags_line" ]]; then
-  flags_json=${flags_line#@@MONITOR_FLAGS }
-  read -r log_trigger runtime_trigger stale_trigger < <(python3 - "$flags_json" <<'PY'
-import json
-import sys
+alerts_json="{}"
+rows_json="[]"
+[[ -n "$alerts_line" ]] && alerts_json=${alerts_line#@@MONITOR_ALERTS }
+[[ -n "$rows_line" ]] && rows_json=${rows_line#@@MONITOR_ROWS }
 
-data = json.loads(sys.argv[1])
-def to_flag(key):
-    return "true" if data.get(key) else "false"
-print(to_flag("log"), to_flag("runtime"), to_flag("stale"))
-PY
-  )
-fi
-
-if [[ "$log_trigger" == "true" ]]; then
-  echo "Log heartbeat threshold exceeded for at least one subagent. Exiting monitor loop."
-  break
-fi
-if [[ "$runtime_trigger" == "true" ]]; then
-  echo "Runtime threshold exceeded (likely >$RUNTIME_THRESHOLD seconds) for at least one subagent. Exiting monitor loop."
-  break
-fi
-if [[ "$stale_trigger" == "true" ]]; then
-  echo "Stale subagent entry detected (log missing or out of heartbeat scope). Exiting monitor loop."
-  break
-fi
+investigate_alerts "$alerts_json" "$rows_json" || true
 if [[ -n "$ITERATIONS" && poll_count -ge $ITERATIONS ]]; then
   break
 fi

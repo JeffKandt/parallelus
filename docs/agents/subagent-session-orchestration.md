@@ -185,8 +185,10 @@ Start the looping monitor immediately after launching a subagent:
 make monitor_subagents
 ```
 
-The helper runs `agents-monitor-loop.sh` with a 45 s poll interval, a 180 s log-heartbeat
-threshold, and a 600 s runtime threshold.
+By default the helper runs `agents-monitor-loop.sh` with a 45 s poll interval, a 180 s log-heartbeat
+threshold, and a 600 s runtime threshold. For fast-feedback sessions you may export shorter values
+before invoking the loop (the real-mode harness uses 15 s / 30 s / 300 s) as long as you are prepared
+to restart the monitor whenever it exits early.
 
 - `--interval` controls how often the registry is polled (seconds).
 - `--threshold` is the maximum age (seconds) of the subagent’s most recent log update
@@ -214,20 +216,19 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
    whether the subagent is still emitting output. This works for any launch mode (tmux,
    Terminal, worktree) because every subagent writes the same sandbox log. Avoid
    long-running tails—grab a snapshot, review it, and return to command mode immediately.
-4. If the snapshot shows continued progress, restart the monitor loop right away
-   (`make monitor_subagents ARGS="--id <registry-id>"`) and note the intervention in the branch
-   progress log. Leave the subagent pane untouched so it can continue working.
-5. When the subagent looks finished, harvest deliverables immediately (before sending
-   interactive `/exit`/`Ctrl+C` prompts) so a stalled pane doesn’t reset the heartbeat.
-   If no deliverables were registered, note that outcome in the branch progress log and
-   proceed as if the harvest succeeded. Afterward, follow the verification checklist,
-   run any required CI/lint, and then decide whether to request revisions, let the
-   subagent continue, or proceed toward merge/cleanup.
+4. Inspect the tail of `subagent.log` to decide the next step:
+   - If the transcript shows a prompt waiting for input (e.g., “waiting for instructions”), decide whether to nudge. Craft the nudge manually so it reflects the latest output.
+   - If the transcript shows ongoing work, restart the monitor loop immediately (`make monitor_subagents ARGS="--id <registry-id>"`) and record the intervention in the progress log.
+   - If the transcript is silent and no progress is apparent, investigate before restarting; capture the state in the progress log.
+5. Harvest deliverables as soon as they are ready. Subagents must only create `deliverables/.manifest` and `deliverables/.complete` after all files are final, so the presence of those markers is your signal that outputs can be copied back. Use `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` for throwaway sandboxes. Worktree sessions may not register deliverables at all—review their diffs manually.
 6. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
    remaining subagents stay covered.
 7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
    `status` no longer reports the entry as `running`. The helper enforces this guard; use
    `--force` solely for confirmed-aborted sessions.
+
+The same flow applies when you launch the real-mode harness (`HARNESS_MODE=real tests/guardrails/manual_monitor_real_scenario.sh`);
+that wrapper simply automates the launch and monitoring steps but leaves the nudging/cleanup decisions to you.
 
 ### 4.4 Completion & Verification
 

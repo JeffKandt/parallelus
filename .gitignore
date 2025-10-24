@@ -8,3 +8,4 @@ out/
 *.log
 .DS_Store
 .agents/queue/next-branch.md
+.parallelus/
