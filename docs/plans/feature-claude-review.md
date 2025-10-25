@@ -25,3 +25,5 @@
 - Scope automated testing for guardrail tooling per improvement suggestion #1.
 - Design shared path pattern configuration to unify documentation-only checks (suggestion #2).
 - Draft remaining timeout/recovery enhancements (deliverable manifests, recovery adapter) per suggestion #3.
+
+- [ ] summary

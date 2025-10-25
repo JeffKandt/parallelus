@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-25T12:29:03.448029+00:00",
+  "branch": "feature/claude-review",
+  "head": "292401ab815893fe2b848ec04c4d2f29ccc85256",
+  "plan_path": "docs/plans/feature-claude-review.md",
+  "plan_lines": 29,
+  "progress_path": "docs/progress/feature-claude-review.md",
+  "progress_lines": 155,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}
