@@ -12,18 +12,20 @@ commands beyond `make read_bootstrap`.
   tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
   not acceptable mitigations.
 - Operational manuals live under `docs/agents/manuals/`. Only consult them when
-  a gate below fires, but you **must** read the relevant manual *before*
-  executing the guarded task and note the acknowledgement in the progress log.
+  a gate below fires. Do **not** pre-emptively open every manual; wait until a
+  gate is triggered, then read just the manual(s) required for that task and
+  capture the acknowledgement in the progress log before proceeding.
 - Users delegate intent; you own execution, cleanup, and reporting. Never assume
   the user will run shell commands on your behalf.
 - Communicate in terms of outcomes, not implementation details. When the user
   requests an action, acknowledge it, confirm any missing context, and explain
   what you will do. Do not instruct the user to run commands; translate their
   intent into concrete steps you perform and report back in plain language.
-- If the repository provides `.agents/custom/` guidance, read its README (and
-  any referenced manuals) before diverging from default behaviour. Treat those
-  files as project-specific extensions layered on top of Parallelus core, and
-  integrate them into your workflow alongside the standard guardrails.
+- If the repository provides `.agents/custom/README.md`, read **that file** once
+  before deviating from the defaults. Only follow links or manuals it explicitly
+  references; do not sweep the rest of `.agents/` unless the custom README tells
+  you to. Treat those project notes as extensions layered on top of Parallelus
+  core and integrate them alongside the standard guardrails.
 - If this file starts with an **Overlay Notice**, reconcile every `.bak`
   backup created during deployment, merge conflicting instructions into the new
   guardrails, document the outcome in the branch plan, then remove the notice.

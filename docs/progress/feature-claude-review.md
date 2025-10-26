@@ -298,3 +298,13 @@
 **Next Actions**
 - Re-run the interactive real-mode scenario to validate the new 60 s buffers and capture the longer idle window in the progress log.
 - Share the shutdown guidance with maintainers reviewing ongoing monitor runs so pane cleanup stays consistent across operators.
+
+## 2025-10-26 23:12:57 UTC
+**Objectives**
+- Reduce unnecessary document reads during bootstrap so subagents conserve context.
+
+**Work Performed**
+- Updated `AGENTS.md` to emphasise that read-on-trigger manuals must only be opened after their gate fires and to narrow `.agents` scanning to the project’s custom README unless it explicitly calls for more material.
+
+**Next Actions**
+- Monitor upcoming subagent runs to confirm the tightened guidance prevents redundant manual reads without breaking guardrail coverage.
