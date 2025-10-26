@@ -308,3 +308,25 @@
 
 **Next Actions**
 - Monitor upcoming subagent runs to confirm the tightened guidance prevents redundant manual reads without breaking guardrail coverage.
+
+## 2025-10-26 23:20:10 UTC
+**Objectives**
+- Validate the revised guidance during a fresh interactive run and automate transcript capture for future audits.
+
+**Work Performed**
+- Re-ran the interactive real-mode scenario (`HARNESS_MODE=real … --scenario interactive-success --reconcile`), injected `ACK`, and harvested the deliverable plus session artefacts under `docs/guardrails/runs/20251026-231429-real-interactive-success/`.
+- Enhanced `tests/guardrails/real_monitor/scripts/interactive_success.sh` to emit heartbeats during both 60-second buffers and updated the scope so subagents call the helper instead of idling with raw sleeps.
+- Authored `.agents/bin/subagent_session_to_transcript.py` and documented it in `docs/agents/subagent-session-orchestration.md` so every run now produces a human-readable Markdown transcript alongside `session.jsonl`.
+
+**Next Actions**
+- Exercise the slow-progress and hung-failure scenarios to verify their scripts still meet the updated guardrail expectations.
+
+## 2025-10-26 23:33:46 UTC
+**Objectives**
+- Confirm the updated scope actually drives the helper script (and heartbeats) during a live interactive run.
+
+**Work Performed**
+- Launched another `HARNESS_MODE=real … --scenario interactive-success --reconcile`; since the script changes were still uncommitted, the sandbox pulled the previous helper (no streaming heartbeats). Run artefacts captured under `docs/guardrails/runs/20251026-232622-real-interactive-success/` plus the generated transcript for baseline comparison.
+
+**Next Actions**
+- Commit the helper/script updates, then re-run the scenario once more to confirm the new heartbeat behaviour surfaces in-session.

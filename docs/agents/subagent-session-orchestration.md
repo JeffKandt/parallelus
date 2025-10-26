@@ -241,6 +241,10 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
    to tear down the pane cleanly. If a pane lingers after cleanup (rare), retrieve its
    handle from `subagent_manager.sh status` and remove it explicitly with
    `tmux kill-pane -t <handle>` after you have captured all evidence.
+9. Generate a human-readable transcript for archives by running
+   `./.agents/bin/subagent_session_to_transcript.py docs/guardrails/runs/<id>/session.jsonl`
+   (override `--output` if you need a different filename). Keep the Markdown transcript
+   alongside the session artifacts so reviewers do not have to read ANSI-heavy logs.
 
 The same flow applies when you launch the real-mode harness (`HARNESS_MODE=real tests/guardrails/manual_monitor_real_scenario.sh`);
 that wrapper simply automates the launch and monitoring steps but leaves the nudging/cleanup decisions to you.

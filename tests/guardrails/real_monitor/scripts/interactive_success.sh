@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
-printf '[interactive] starting long job at %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-for i in 1 2 3; do
-  printf '[interactive] heartbeat %d %s\n' "$i" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-  sleep 6
-done
-printf '[interactive] Ready for reviewer confirmation (type EXACT ACK to continue)\n'
-read -r response
-printf '[interactive] received response: %s\n' "$response"
-if [[ "$response" != "ACK" ]]; then
-  printf '[interactive] unexpected reply; exiting with error\n' >&2
-  exit 42
-fi
-printf '[interactive] delaying deliverable creation for 60s\n'
-sleep 60
+printf '[interactive] helper launched at %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+emit_heartbeats() {
+  local phase=$1
+  python3 - "$phase" <<'PY'
+import sys, time, datetime
+phase = sys.argv[1]
+for idx in range(6):
+    time.sleep(10)
+    ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    print(f"[interactive] {phase} heartbeat {idx + 1} {ts}", flush=True)
+PY
+}
+
+printf '[interactive] entering pre-deliverable heartbeat window\n'
+emit_heartbeats "pre-deliverable"
 mkdir -p deliverables
 printf 'interactive-success\n' > deliverables/result.txt
 printf '{"files":["deliverables/result.txt"]}\n' > deliverables/.manifest
 touch deliverables/.complete
 printf '[interactive] deliverable recorded at %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-printf '[interactive] holding session open for 60s before completion\n'
-sleep 60
+printf '[interactive] entering post-deliverable heartbeat window\n'
+emit_heartbeats "post-deliverable"
 printf '[interactive] ready for maintainer harvest/cleanup\n'
