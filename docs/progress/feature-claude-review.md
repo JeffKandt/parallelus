@@ -188,3 +188,113 @@
 
 **Next Actions**
 - Explain duplicate `real-interactive-success` launches and capture log tail findings for the maintainer before making any further adjustments.
+
+## 2025-10-26 18:55:41 UTC
+**Objectives**
+- Re-run the real-mode monitor harness, confirm stuck registry entries are cleared, and capture why runtime/log thresholds are not meeting expectations.
+
+**Work Performed**
+- Reviewed `AGENTS.md` and `docs/agents/subagent-session-orchestration.md` at session start, then launched session `20251024-20251026182015-c79434` (`SESSION_PROMPT="real-mode monitor validation 2025-10-26"`).
+- Ran `HARNESS_MODE=real tests/guardrails/manual_monitor_real_scenario.sh`; launch aborted on the pre-existing `20251026-023914-real-hung-failure` registry entry, so I inspected its sandbox (`real-hung-failure-nAPbCO`) and confirmed the Codex process was gone while the pane handle `%282/@66` remained.
+- Forced cleanup via `subagent_manager.sh cleanup --id 20251026-023914-real-hung-failure --force`, documenting that the sandbox already contained logs and plan/progress artefacts for post-mortem review.
+- Relaunched the harness which spawned `20251026-182021-real-interactive-success` and `20251026-182023-real-slow-progress`; monitored their panes (`%290`/`%291`) and collected JSON tail output with `subagent_tail.sh`.
+- Observed the interactive scenario pause awaiting `ACK`; runtime alerts fired at ~6m45s but log-age remained <90s until the script stopped printing heartbeats. Manually injected `ACK` with `subagent_send_keys.sh --id … --text "ACK"` to let the script create `deliverables/.complete` before shutdown.
+- Verified the slow-progress script completed its ten iterations and left a clean working tree; noted that spinner repaint noise keeps `subagent.log` mtimes fresh, delaying the log-age alarm long past the final command output.
+- Harvest step was skipped because the harness exiting early left entries marked `pending`; per your instruction to proceed with cleanup I ran `subagent_manager.sh cleanup --force` for both new sandboxes, which removed the panes but also eliminated the deliverable for later inspection.
+- Confirmed the registry now shows only historical entries plus older synthetic fixtures; captured monitor output demonstrating runtime alerts firing but log alerts lagging.
+
+**Next Actions**
+- Patch the harness workflow so we can launch a single scenario (interactive, slow-progress, or hung) independently and leave the sandbox intact until a post-mortem is recorded.
+- Adjust the log-age heuristic to read the structured `subagent.session.jsonl` transcript (or tmux snapshot mtimes) instead of `subagent.log`, whose spinner repaint traffic masks inactivity.
+- Add an explicit harvest/verify gating step before cleanup so deliverables are copied into the repo (or archived) prior to tearing down the sandbox.
+- Update the branch plan to reflect the sequential scenario/post-mortem workflow and capture the follow-up defects (log-threshold blind spot, spinner noise, premature cleanup).
+
+## 2025-10-26 19:45:32 UTC
+**Objectives**
+- Investigate lingering subagent panes, correct the interactive ACK flow, and harden the real-mode harness/monitor logic.
+
+**Work Performed**
+- Captured pane transcripts and session logs for `20251026-192220-real-interactive-success` and the aborted rerun (`20251026-193931`), storing them under `docs/guardrails/runs/...` for post-mortem analysis.
+- Terminated the two live panes (`%297`, `%298`) via `tmux-safe kill-pane` only after harvesting logs and forcing registry cleanup (`subagent_manager.sh cleanup --force`), leaving no sandboxes under `.parallelus/subagents/sandboxes`.
+- Updated the interactive scope to stop using the helper script; operators now print the ready line and call `read -r response` manually, leaving the prompt blocked until the parent injects `ACK`.
+- Extended the real harness evaluation to flag any session command that types `ACK` directly and to run in single-scenario mode with optional autoreconcile/cleanup flags; signal handling now leaves launched IDs listed instead of silently nuking them.
+- Reworked `subagent_manager status` and the monitor loop to derive log ages from `subagent.session.jsonl`, ignoring Codex spinner `CommitTick` noise so stale prompts trigger the log threshold.
+
+**Next Actions**
+- Re-run the interactive scenario end-to-end (single-scenario mode) to confirm the parent-injected `ACK` is required and that log alerts fire using the new transcript-based timestamps.
+- Patch evaluation to record the post-injection `deliverable recorded` line as proof of success once the parent acknowledgement path is validated.
+- Document the redesigned workflow in the branch plan and guardrail manuals so reviewers understand the manual ACK handshake and new harness flags.
+
+## 2025-10-26 20:15:18 UTC
+**Objectives**
+- Diagnose the instant-ACK behaviour and confirm why log-threshold alerts still failed during the latest interactive run.
+
+**Work Performed**
+- Kopied all artefacts from sandbox `real-interactive-success-PgdP47` into `docs/guardrails/runs/20251026-195718-real-interactive-success/` before forcing cleanup, ensuring we have the transcript that shows the immediate ACK and later idle prompt.
+- Reviewed the transcript: the subagent streamed the “Ready…” line and full status report in a single message, then the harness’ auto-ACK helper fired immediately because `REAL_AUTO_ACK` was still enabled. After the summary finished the pane sat idle, proving the prompt really was waiting even though no log alert fired.
+- Confirmed the log-age calculation still fell back to `subagent.log`, whose tmux repaint noise kept the mtime fresh; patched the monitor and manager helpers so the presence of `subagent.session.jsonl` completely overrides the raw log.
+- Removed the auto-ACK helper from `agents-monitor-real.sh`, ensuring future runs require an explicit `subagent_send_keys` call (triggered by the monitor or operator) once the idle prompt is detected.
+
+**Next Actions**
+- Re-run the interactive scenario with auto-ACK disabled to verify the monitor now detects the idle state and that the ACK must come from the parent agent.
+- Adjust evaluation to double-check the ready message precedes the ACK and that deliverables appear only after the parent injects it; update plan/docs once the new flow is validated.
+
+## 2025-10-26 21:40:12 UTC
+**Objectives**
+- Capture evidence from the 20:26 and 20:47 interactive runs and fix the monitor loop so log-age alerts stop the harness instead of looping silently.
+
+**Work Performed**
+- Archived transcripts/logs for runs `20251026-202947` and `20251026-204721` under `docs/guardrails/runs/` before force-cleaning their panes (`%301`, `%302`).
+- Noted the 20:27 run still produced no deliverables—ACK never arrived—which confirms auto-ACK is gone but the harness kept looping because `agents-monitor-loop.sh` swallowed non-zero statuses.
+- Patched the monitor loop to surface `make monitor_subagents` output, track alert status (using `OVERALL_ALERT`), and exit with code 1 when log/runtime thresholds are breached; also added wrappers so `agents-monitor-real.sh` now halts instead of hiding alerts.
+- Reset tmux to a single main pane (`%300`) ahead of the next attempt.
+
+**Next Actions**
+- Re-run the interactive scenario with the updated monitor loop to confirm the alert shows up after ~90 s and the harness exits, allowing us to inject `ACK` manually.
+- Once verified, proceed with the deliverable creation and update plan/docs accordingly.
+
+## 2025-10-26 21:55:42 UTC
+**Objectives**
+- Complete the interactive scenario end-to-end now that the monitor halts on the log alert, ensuring the parent agent injects the required ACK, harvests the deliverable, and archives evidence.
+
+**Work Performed**
+- Launched `HARNESS_MODE=real … --scenario interactive-success --reconcile`; monitor stopped after ~2½ minutes with `requires manual attention (reason: log)`, confirming the idle prompt was detected.
+- Injected `ACK` via `.agents/bin/subagent_send_keys.sh --id 20251026-213829-real-interactive-success --text "ACK"`; observed the subagent produce `deliverables/result.txt`, `.manifest`, and `.complete`.
+- Harvested the deliverable (moved to `docs/guardrails/runs/20251026-213829-real-interactive-success/result.txt`), archived the transcript/log there, and forced cleanup of the sandbox/pane.
+- Updated the monitor loop to exit with non-zero status when alerts occur (`OVERALL_ALERT`), so future runs can bail out immediately without manual interruptions.
+
+**Next Actions**
+- Fold the single-scenario runbook into the plan, then expand to the remaining real-mode scenarios with the same manual-alert workflow.
+- Document the final parent-agent steps (respond-to-log-alert → send ACK → harvest → cleanup) in the guardrail manual and branch plan.
+
+## 2025-10-26 22:02:44 UTC
+**Objectives**
+- Execute the interactive scenario with the new alert flow, confirm the monitor stops for the log-age breach, inject ACK, and run the harvest/resume steps in the documented order.
+
+**Work Performed**
+- Ran `HARNESS_MODE=real … --scenario interactive-success --reconcile`; monitor tripped the 30s log threshold and exited with `[monitor] … requires manual attention (reason: log)` exactly as expected.
+- Sent ACK via `subagent_send_keys.sh`, watched the subagent create `deliverables/result.txt` and companions, then harvested them into `docs/guardrails/runs/20251026-215503-real-interactive-success/`.
+- Re-ran `agents-monitor-loop.sh` (single-iteration) after the deliverable step; it now exits cleanly with `deliverables harvested` and no outstanding alerts, validating the complete flow.
+- Force-cleaned the sandbox/pane and archived the session transcript/log for audit.
+
+**Next Actions**
+- Generalize the same monitor/alert workflow to the remaining real-mode scenarios (slow-progress, hung-failure), then update the guardrail docs and plan with the finalized procedure.
+- Capture today’s monitor/response fixes:
+  - `.agents/bin/agents-monitor-loop.sh` now tracks alert state and exits non-zero when manual attention is needed.
+  - `.agents/bin/agents-monitor-real.sh` surfaces monitor output and stops once alerts fire.
+  - `tests/guardrails/real_monitor/scopes/interactive_success.md` no longer hard-codes the string to send; it just waits for the reviewer’s response.
+  - `docs/agents/subagent-session-orchestration.md` now documents the repeatable cycle (monitor → respond → resume) and the “archive in branch, drop before merge” rule.
+  - Session artefacts for runs `20251026-213829`, `20251026-215503`, and `20251026-221723` live in `docs/guardrails/runs/<id>/` for audit.
+
+## 2025-10-26 22:45:30 UTC
+**Objectives**
+- Extend the interactive real-mode scenario to introduce post-ACK delay buffers and document the correct shutdown workflow after harvesting deliverables.
+
+**Work Performed**
+- Edited `tests/guardrails/real_monitor/scripts/interactive_success.sh` so the sandbox waits 60 s after receiving `ACK` before emitting deliverables and another 60 s before signalling completion, providing explicit log markers for each delay.
+- Updated `docs/agents/subagent-session-orchestration.md` with guidance instructing maintainers to rerun the monitor loop, call `subagent_manager.sh cleanup`, and, if necessary, `tmux kill-pane` instead of typing `exit` to close a lingering pane.
+- Archived the latest interactive run artefacts under `docs/guardrails/runs/20251026-223220-real-interactive-success/` and removed the throwaway sandbox, then killed tmux pane `codex-parallelus:0.1` to leave the session clean.
+
+**Next Actions**
+- Re-run the interactive real-mode scenario to validate the new 60 s buffers and capture the longer idle window in the progress log.
+- Share the shutdown guidance with maintainers reviewing ongoing monitor runs so pane cleanup stays consistent across operators.

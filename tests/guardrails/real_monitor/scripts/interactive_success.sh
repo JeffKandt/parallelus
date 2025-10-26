@@ -12,8 +12,13 @@ if [[ "$response" != "ACK" ]]; then
   printf '[interactive] unexpected reply; exiting with error\n' >&2
   exit 42
 fi
+printf '[interactive] delaying deliverable creation for 60s\n'
+sleep 60
 mkdir -p deliverables
 printf 'interactive-success\n' > deliverables/result.txt
 printf '{"files":["deliverables/result.txt"]}\n' > deliverables/.manifest
 touch deliverables/.complete
 printf '[interactive] deliverable recorded at %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+printf '[interactive] holding session open for 60s before completion\n'
+sleep 60
+printf '[interactive] ready for maintainer harvest/cleanup\n'

@@ -234,6 +234,13 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
 7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
    `status` no longer reports the entry as `running`. The helper enforces this guard; use
    `--force` solely for confirmed-aborted sessions.
+8. Do not rely on typing `exit` inside the sandbox to close the session—the tmux pane
+   and registry entry will remain `running`. When the transcript shows the subagent is
+   finished (for example, it emits `Session closed.`), rerun the monitor loop once to
+   confirm no further alerts, then execute `./.agents/bin/subagent_manager.sh cleanup --id <registry-id>`
+   to tear down the pane cleanly. If a pane lingers after cleanup (rare), retrieve its
+   handle from `subagent_manager.sh status` and remove it explicitly with
+   `tmux kill-pane -t <handle>` after you have captured all evidence.
 
 The same flow applies when you launch the real-mode harness (`HARNESS_MODE=real tests/guardrails/manual_monitor_real_scenario.sh`);
 that wrapper simply automates the launch and monitoring steps but leaves the nudging/cleanup decisions to you.
@@ -334,6 +341,36 @@ If a subagent session closes early:
   permissions allow.
 - Sessions are expected to remain open until finished, but replacements can be
   launched at any time.
+- Use `.agents/bin/agents-monitor-loop.sh` (invoked directly or via
+  `make monitor_subagents`) to watch idle and long-running sessions. Treat any
+  `^`, `!`, or `?` marker as a stop sign: investigate, provide whatever input
+  the subagent is asking for (for example, a confirmation string printed in the
+  transcript or a follow-up action to complete), then restart the monitor.
+- Many interactive scopes pause more than once. After every manual
+  intervention—whether you send keystrokes, answer a prompt, or unstick a
+  shell—run the monitor loop again until it exits with no outstanding
+  subagents. Repeat this monitor → respond → resume cycle as often as needed.
+- Before cleaning up a sandbox, archive its artefacts under
+  `docs/guardrails/runs/<subagent-id>/` (session transcript JSONL, raw log, and
+  any deliverables). These archives are the permanent record reviewers will use
+  in future branches.
+- Treat those archives as branch-local evidence. Keep them committed while the
+  feature branch is active so reviewers can inspect the run, but drop them (or
+  move them to the relevant ticket/hand-off location) before merging back to
+  `main` so the long-lived branch stays lean.
+- After you’ve supplied the requested input (e.g., the subagent asked for a
+  confirmation string), re-run `agents-monitor-loop.sh` until it exits with no
+  outstanding alerts. If the shell is still open but idle (for example, waiting
+  for you to exit after harvest), send the appropriate command (often `exit`) so
+  the subagent terminates on its own. Only harvest and call cleanup once both
+  conditions are true:
+  1. The monitor loop exits cleanly (no `requires manual attention` messages).
+  2. The registry status for the subagent is no longer `running`.
+  Forcing cleanup while the subagent is still alive discards evidence and hides
+  failures.
+- Only harvest or call `subagent_manager.sh cleanup` once (a) the monitor loop
+  exits cleanly and (b) the subagent’s registry entry is no longer marked
+  `running`. Closing tmux panes earlier discards state and masks problems.
 
 ## 8. Failure Handling
 

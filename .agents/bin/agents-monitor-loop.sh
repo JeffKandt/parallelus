@@ -34,6 +34,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 SNAPSHOT_DIR=${MONITOR_SNAPSHOT_DIR:-"$REPO_ROOT/.parallelus/monitor-snapshots"}
 MONITOR_DEBUG=${MONITOR_DEBUG:-0}
 mkdir -p "$SNAPSHOT_DIR"
+OVERALL_ALERT=0
 
 capture_snapshot() {
   local id="$1"
@@ -263,6 +264,9 @@ while [[ $# -gt 0 ]]; do
       exit 1 ;;
   esac
 done
+if (( OVERALL_ALERT != 0 )); then
+  exit 1
+fi
 
 REGISTRY="docs/agents/subagent-registry.json"
 MANAGER_CMD="$(git rev-parse --show-toplevel)/.agents/bin/subagent_manager.sh"
@@ -394,12 +398,21 @@ for row in rows:
     runtime_seconds = parse_mmss(runtime_str)
     log_seconds = parse_mmss(log_str)
     entry = entry_map.get(ident, {})
+    sandbox_path = entry.get("path") or ""
+    session_log_path = os.path.join(sandbox_path, "subagent.session.jsonl") if sandbox_path else ""
+    effective_log_path = ""
+    if session_log_path and os.path.exists(session_log_path):
+        effective_log_path = session_log_path
+    elif entry.get("log_path"):
+        effective_log_path = entry.get("log_path")
     rows_payload.append({
         "id": ident,
         "status": status,
         "runtime_seconds": runtime_seconds,
         "log_seconds": log_seconds,
-        "log_path": entry.get("log_path"),
+        "log_path": effective_log_path,
+        "raw_log_path": entry.get("log_path"),
+        "session_log_path": session_log_path if session_log_path and os.path.exists(session_log_path) else "",
         "launcher_kind": entry.get("launcher_kind"),
         "launcher_handle": entry.get("launcher_handle"),
         "deliverables_status": entry.get("deliverables_status"),
@@ -445,7 +458,14 @@ rows_json="[]"
 [[ -n "$alerts_line" ]] && alerts_json=${alerts_line#@@MONITOR_ALERTS }
 [[ -n "$rows_line" ]] && rows_json=${rows_line#@@MONITOR_ROWS }
 
-investigate_alerts "$alerts_json" "$rows_json" || true
+investigate_alerts "$alerts_json" "$rows_json"
+alert_status=$?
+if (( alert_status != 0 )); then
+  OVERALL_ALERT=1
+  if [[ -z "$ITERATIONS" ]]; then
+    break
+  fi
+fi
 if [[ -n "$ITERATIONS" && poll_count -ge $ITERATIONS ]]; then
   break
 fi

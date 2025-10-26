@@ -30,23 +30,123 @@ for required_dir in "$TEMPLATE_SCOPE_DIR" "$TEMPLATE_SCRIPT_DIR"; do
   fi
 done
 
+usage() {
+  cat <<'USAGE'
+Usage: agents-monitor-real.sh --scenario NAME [--scenario NAME ...] [options]
+
+Run deterministic real-mode monitor scenarios. Each invocation should focus on
+one scenario so the operator can capture post-mortem evidence before cleanup.
+
+Options:
+  --scenario NAME    Run the specified scenario (interactive-success,
+                     slow-progress, hung-failure). Repeatable.
+  --all              Run every available scenario (legacy batch mode).
+  --reconcile        After the run, harvest/verify deliverables but leave
+                     sandboxes in place for manual inspection.
+  --cleanup          Harvest/verify AND clean sandboxes (legacy behaviour).
+  --help             Show this message.
+
+Environment overrides:
+  REAL_INTERVAL, REAL_THRESHOLD, REAL_RUNTIME, REAL_RECHECK,
+  REAL_NUDGE_DELAY, REAL_NUDGE_MESSAGE, KEEP_SANDBOX
+USAGE
+}
+
 REAL_INTERVAL=${REAL_INTERVAL:-15}
 REAL_THRESHOLD=${REAL_THRESHOLD:-30}
 REAL_RUNTIME=${REAL_RUNTIME:-1800}
 REAL_RECHECK=${REAL_RECHECK:-5}
 REAL_NUDGE_DELAY=${REAL_NUDGE_DELAY:-5}
 REAL_NUDGE_MESSAGE=${REAL_NUDGE_MESSAGE:-"Proceed"}
-KEEP_SANDBOX=${KEEP_SANDBOX:-0}
+KEEP_SANDBOX=${KEEP_SANDBOX:-1}
 
-SCENARIOS=(
-  interactive-success
-  slow-progress
-  hung-failure
-)
+SCENARIOS=()
+REQUESTED_SCENARIOS=()
+RUN_ALL=0
+AUTO_RECONCILE=0
+AUTO_CLEANUP=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --scenario)
+      [[ $# -lt 2 ]] && { echo "agents-monitor-real.sh: --scenario requires a value" >&2; exit 1; }
+      REQUESTED_SCENARIOS+=("$2")
+      shift 2
+      ;;
+    --all)
+      RUN_ALL=1
+      shift
+      ;;
+    --reconcile)
+      AUTO_RECONCILE=1
+      shift
+      ;;
+    --cleanup)
+      AUTO_RECONCILE=1
+      AUTO_CLEANUP=1
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "agents-monitor-real.sh: unknown option $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if (( RUN_ALL )); then
+  SCENARIOS=(interactive-success slow-progress hung-failure)
+else
+  SCENARIOS=("${REQUESTED_SCENARIOS[@]}")
+fi
+
+if ((${#SCENARIOS[@]} == 0)); then
+  echo "agents-monitor-real.sh: specify at least one --scenario or pass --all." >&2
+  usage >&2
+  exit 1
+fi
+
+validate_scenario_name() {
+  case "$1" in
+    interactive-success|slow-progress|hung-failure) return 0 ;;
+    *)
+      echo "agents-monitor-real.sh: unsupported scenario '$1'" >&2
+      return 1 ;;
+  esac
+}
+
+for scenario in "${SCENARIOS[@]}"; do
+  validate_scenario_name "$scenario" || exit 1
+done
+
+if (( AUTO_CLEANUP == 1 )); then
+  KEEP_SANDBOX=0
+fi
 
 ENTRY_IDS=()
 ENTRY_SCENARIOS=()
 ENTRY_TYPES=()
+SCENARIO_REPORTS=()
+
+cleanup_on_signal() {
+  local status=$?
+  echo "agents-monitor-real.sh: caught signal, leaving subagents running:" >&2
+  if ((${#ENTRY_IDS[@]} == 0)); then
+    echo "  (no subagents launched yet)" >&2
+  else
+    local i
+    for i in "${!ENTRY_IDS[@]}"; do
+      printf '  - %s (%s)\n' "${ENTRY_IDS[$i]}" "${ENTRY_SCENARIOS[$i]}" >&2
+    done
+  fi
+  exit 130
+}
+
+trap cleanup_on_signal INT TERM
 
 scenario_requires_deliverable() {
   case "$1" in
@@ -224,11 +324,30 @@ launch_scenario() {
 }
 
 monitor_loop() {
+  local monitor_args
   while true; do
-    MONITOR_RECHECK_DELAY=$REAL_RECHECK \
-    MONITOR_NUDGE_DELAY=$REAL_NUDGE_DELAY \
-    MONITOR_NUDGE_MESSAGE="$REAL_NUDGE_MESSAGE" \
-      make monitor_subagents ARGS="--interval $REAL_INTERVAL --threshold $REAL_THRESHOLD --runtime-threshold $REAL_RUNTIME" >/dev/null
+    monitor_args="--interval $REAL_INTERVAL --threshold $REAL_THRESHOLD --runtime-threshold $REAL_RUNTIME"
+    if ((${#ENTRY_IDS[@]} > 0)); then
+      local entry_id
+      for entry_id in "${ENTRY_IDS[@]}"; do
+        monitor_args+=" --id $entry_id"
+      done
+    fi
+    local monitor_output monitor_status
+    set +e
+    monitor_output=$(
+      MONITOR_RECHECK_DELAY=$REAL_RECHECK \
+      MONITOR_NUDGE_DELAY=$REAL_NUDGE_DELAY \
+      MONITOR_NUDGE_MESSAGE="$REAL_NUDGE_MESSAGE" \
+        make monitor_subagents ARGS="$monitor_args" 2>&1
+    )
+    monitor_status=$?
+    set -e
+    [[ -n "$monitor_output" ]] && echo "$monitor_output"
+    if (( monitor_status != 0 )); then
+      echo "Monitor reported outstanding subagents (exit $monitor_status); stopping loop for manual intervention." >&2
+      break
+    fi
     if ! has_running_entries; then
       break
     fi
@@ -240,9 +359,10 @@ monitor_loop() {
 evaluate_scenario() {
   local entry_id=$1
   local scenario=$2
-  local sandbox log_path
+  local sandbox log_path session_log
   sandbox=$(get_entry_field "$entry_id" "path")
   log_path=$(get_entry_field "$entry_id" "log_path")
+  session_log="$sandbox/subagent.session.jsonl"
 
   local deliverable_ok=1
   if [[ $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
@@ -259,6 +379,7 @@ evaluate_scenario() {
   expected_success=$(scenario_expected_success "$scenario")
   local actual_success=1
   local summary=""
+  local next_steps=""
 
   if [[ $expected_success -eq 1 && $deliverable_ok -eq 1 ]]; then
     summary="[$scenario] deliverables present; marked success."
@@ -284,11 +405,129 @@ evaluate_scenario() {
     fi
   fi
 
-  if [[ $actual_success -eq 1 && $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
-    "$SUBAGENT_MANAGER" harvest --id "$entry_id" >/dev/null || summary="$summary (harvest reported an issue)"
+  local requires_deliverable
+  requires_deliverable=$(scenario_requires_deliverable "$scenario")
+
+  if (( AUTO_RECONCILE == 1 )); then
+    if [[ $actual_success -eq 1 && $requires_deliverable -eq 1 ]]; then
+      if ! "$SUBAGENT_MANAGER" harvest --id "$entry_id" >/dev/null; then
+        summary="$summary (harvest reported an issue)"
+        actual_success=0
+      else
+        summary="$summary Harvested deliverables."
+      fi
+    fi
+  else
+    if [[ $requires_deliverable -eq 1 ]]; then
+      next_steps="Deliverable available at $sandbox/deliverables/ (run 'subagent_manager.sh harvest --id $entry_id' after review)."
+    fi
+  fi
+
+  if [[ "$scenario" == "interactive-success" && -f "$session_log" ]]; then
+    if ! python3 - "$session_log" <<'PY'
+import json, sys
+path = sys.argv[1]
+ready_phrase = "[interactive] Ready for reviewer confirmation (type EXACT ACK to continue)."
+ready_found = False
+with open(path, "r", encoding="utf-8") as fh:
+    for raw in fh:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            record = json.loads(raw)
+        except Exception:
+            continue
+        payload = record.get("payload") or {}
+        msg = payload.get("msg") or {}
+        text = msg.get("text") or ""
+        if not text and isinstance(msg.get("content"), list):
+            text = "".join(part.get("text", "") for part in msg["content"] if isinstance(part, dict))
+        if ready_phrase in text:
+            ready_found = True
+            break
+if ready_found:
+    sys.exit(0)
+sys.exit(1)
+PY
+    then
+      summary="$summary Ready message missing from transcript."
+      actual_success=0
+    fi
+    if python3 - "$session_log" <<'PY'
+import json, sys
+path = sys.argv[1]
+for line in open(path, "r", encoding="utf-8"):
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        record = json.loads(line)
+    except Exception:
+        continue
+    payload = record.get("payload") or {}
+    msg = payload.get("msg") or {}
+    command = msg.get("command") or ""
+    if not command:
+        continue
+    normalised = command.strip().lower()
+    # Flag if the subagent itself typed ACK (or similar) at the prompt.
+    if normalised in {"ack", "\"ack\"", "'ack'"}:
+        sys.exit(1)
+    if normalised.startswith("printf") and "ack" in normalised:
+        sys.exit(1)
+    if "printf" not in normalised and "ack" in normalised and "send_keys" not in normalised:
+        sys.exit(1)
+sys.exit(0)
+PY
+    then
+      :
+    else
+      summary="$summary Interactive scenario auto-acknowledged itself (expected parent agent to send ACK)."
+      actual_success=0
+    fi
+    if ! python3 - "$session_log" <<'PY'
+import json, sys
+path = sys.argv[1]
+ack_token = "ACK"
+ack_seen = False
+with open(path, "r", encoding="utf-8") as fh:
+    for raw in fh:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            record = json.loads(raw)
+        except Exception:
+            continue
+        payload = record.get("payload") or {}
+        msg = payload.get("msg") or {}
+        text = msg.get("text") or ""
+        if not text and isinstance(msg.get("content"), list):
+            text = "".join(part.get("text", "") for part in msg["content"] if isinstance(part, dict))
+        if text.strip() == ack_token:
+            ack_seen = True
+            break
+if ack_seen:
+    sys.exit(0)
+sys.exit(1)
+PY
+    then
+      summary="$summary ACK response from main agent not detected in transcript."
+      actual_success=0
+    fi
+  fi
+
+  if (( AUTO_RECONCILE == 0 )); then
+    next_steps="${next_steps:-Sandbox preserved for post-mortem review.}"
+  fi
+
+  if [[ -n "$next_steps" ]]; then
+    summary="$summary $next_steps"
   fi
 
   printf '%s\n' "$summary"
+  SCENARIO_REPORTS+=("$summary")
   if [[ $actual_success -eq 1 ]]; then
     return 0
   else
@@ -297,6 +536,10 @@ evaluate_scenario() {
 }
 
 finalize_entries() {
+  if (( AUTO_RECONCILE == 0 )); then
+    echo "[reconcile] Automatic harvest/cleanup disabled; leaving sandboxes for manual review." >&2
+    return 0
+  fi
   local idx rc=0
   for idx in "${!ENTRY_IDS[@]}"; do
     local entry_id="${ENTRY_IDS[$idx]}"
@@ -324,6 +567,11 @@ finalize_entries() {
       fi
     fi
 
+    if (( AUTO_CLEANUP == 0 )); then
+      echo "[reconcile] Cleanup disabled; leaving $entry_id sandbox in place."
+      continue
+    fi
+
     if [[ "$entry_type" == "throwaway" ]]; then
       if ! "$SUBAGENT_MANAGER" verify --id "$entry_id" >/dev/null; then
         echo "[reconcile] Verify failed for $entry_id; leaving sandbox untouched." >&2
@@ -332,13 +580,9 @@ finalize_entries() {
       fi
     fi
 
-    if (( KEEP_SANDBOX == 1 )); then
-      echo "[reconcile] KEEP_SANDBOX=1; skipping cleanup for $entry_id."
-    else
-      if ! "$SUBAGENT_MANAGER" cleanup --id "$entry_id" >/dev/null; then
-        echo "[reconcile] Cleanup failed for $entry_id; manual cleanup required." >&2
-        rc=1
-      fi
+    if ! "$SUBAGENT_MANAGER" cleanup --id "$entry_id" >/dev/null; then
+      echo "[reconcile] Cleanup failed for $entry_id; manual cleanup required." >&2
+      rc=1
     fi
   done
   return "$rc"
@@ -371,6 +615,15 @@ main() {
   if (( reconcile_failures > 0 )); then
     echo "Real monitor harness: cleanup/verification issues detected; see messages above." >&2
   fi
+  if ((${#SCENARIO_REPORTS[@]} > 0)); then
+    echo ""
+    echo "Scenario summaries:"
+    local report
+    for report in "${SCENARIO_REPORTS[@]}"; do
+      echo " - $report"
+    done
+  fi
+  trap - INT TERM
   if (( failures > 0 || reconcile_failures > 0 )); then
     return 1
   fi

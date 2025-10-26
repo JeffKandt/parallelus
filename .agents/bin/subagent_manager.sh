@@ -150,6 +150,7 @@ print_status() {
   local filter_id=${1:-}
 python3 - "$REGISTRY_FILE" "$filter_id" <<'PY'
 import json, sys, os, time
+from collections import deque
 from datetime import datetime, timezone
 
 registry_path, filter_id = sys.argv[1:3]
@@ -200,6 +201,45 @@ handle_width = width_for("Handle", [], 14, 24)
 log_header = "Last Log (UTC)"
 log_header_width = len(log_header)
 
+
+def parse_iso8601(value: str):
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            return datetime.fromisoformat(value[:-1]).replace(tzinfo=timezone.utc)
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def last_meaningful_event(session_path: str, limit: int = 400):
+    if not session_path or not os.path.exists(session_path):
+        return None
+    try:
+        with open(session_path, "r", encoding="utf-8") as fh:
+            tail = deque(fh, maxlen=limit)
+    except Exception:
+        return None
+    for raw in reversed(tail):
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            record = json.loads(raw)
+        except Exception:
+            continue
+        kind = record.get("kind")
+        payload = record.get("payload") or {}
+        variant = record.get("variant") or payload.get("variant")
+        if kind == "app_event" and variant == "CommitTick":
+            continue
+        ts = record.get("ts")
+        ts_dt = parse_iso8601(ts) if ts else None
+        if ts_dt:
+            return ts_dt
+    return None
+
 row_fmt = (
     f"{{:<{id_width}}} "
     f"{{:<{type_width}}} "
@@ -227,6 +267,8 @@ print(header)
 print("-" * len(header))
 for row in entries:
     log_path = row.get('log_path')
+    sandbox_path = row.get('path') or ''
+    session_path = os.path.join(sandbox_path, "subagent.session.jsonl") if sandbox_path else ""
     log_age = '-'
     log_summary = '-'
     runtime = '-'
@@ -240,12 +282,30 @@ for row in entries:
             runtime = f"{minutes:02d}:{seconds:02d}"
         except Exception:
             runtime = '-'
-    if log_path and os.path.exists(log_path):
-        mtime = os.path.getmtime(log_path)
-        delta = int(now - mtime)
+    effective_path = ""
+    effective_timestamp = None
+    source_label = ""
+    session_event = last_meaningful_event(session_path)
+    if session_event is not None:
+        effective_timestamp = session_event.timestamp()
+        effective_path = session_path
+        source_label = "[session]"
+    elif log_path and os.path.exists(log_path):
+        effective_timestamp = os.path.getmtime(log_path)
+        effective_path = log_path
+        source_label = "[raw]"
+    elif log_path:
+        effective_path = log_path
+    if effective_timestamp is not None:
+        delta = int(now - effective_timestamp)
         minutes, seconds = divmod(max(delta, 0), 60)
         log_age = f"{minutes:02d}:{seconds:02d}"
-        log_summary = datetime.utcfromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+        if source_label == "[session]" and session_event is not None:
+            log_summary = session_event.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            log_summary = datetime.utcfromtimestamp(effective_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        if source_label:
+            log_summary = f"{log_summary} {source_label}"
     launcher_kind = row.get('launcher_kind', '') or ''
     launcher_handle = row.get('launcher_handle') or {}
     title = row.get('window_title') or launcher_handle.get('title') or ''
