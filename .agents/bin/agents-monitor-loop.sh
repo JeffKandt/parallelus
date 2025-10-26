@@ -26,6 +26,8 @@ ITERATIONS=""
 RECHECK_DELAY=${MONITOR_RECHECK_DELAY:-15}
 NUDGE_DELAY=${MONITOR_NUDGE_DELAY:-10}
 NUDGE_MESSAGE=${MONITOR_NUDGE_MESSAGE:-"Proceed"}
+NUDGE_ESCAPE=${MONITOR_NUDGE_ESCAPE:-1}
+NUDGE_CLEAR=${MONITOR_NUDGE_CLEAR:-1}
 KNOWN_STUCK=""
 TMUX_BIN=$(command -v tmux || true)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -197,20 +199,23 @@ PY
       if is_stuck "$id"; then
         echo "[monitor] $id still flagged ($reason); already nudged."
       else
-        capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
-        (( MONITOR_DEBUG == 1 )) && printf '[monitor-debug] sending nudge to %s via %s\n' "$id" "$pane_id" >&2
-        echo "[monitor] $id attempting nudge via tmux pane $pane_id"
-        "$TMUX_BIN" send-keys -t "$pane_id" "$NUDGE_MESSAGE" C-m >/dev/null 2>&1 || true
-        nudged=1
+        capture_snapshot "$id" "$reason" "pre-check" "$tmux_target"
+        echo "[monitor] $id requires manual attention (reason: $reason)."
+        capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
+        mark_stuck "$id"
+        unresolved+=" $id"
+        continue
       fi
     elif [[ -n "$TMUX_BIN" && "$launcher_kind" == "tmux-window" && -n "$window_id" ]]; then
       if is_stuck "$id"; then
         echo "[monitor] $id still flagged ($reason); already nudged."
       else
-        capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
-        echo "[monitor] Attempting nudge for $id via tmux window $window_id"
-        "$TMUX_BIN" send-keys -t "$window_id" "$NUDGE_MESSAGE" C-m >/dev/null 2>&1 || true
-        nudged=1
+        capture_snapshot "$id" "$reason" "pre-check" "$tmux_target"
+        echo "[monitor] $id requires manual attention (reason: $reason)."
+        capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
+        mark_stuck "$id"
+        unresolved+=" $id"
+        continue
       fi
     fi
 

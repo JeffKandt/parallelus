@@ -130,5 +130,221 @@
     "status": "failed",
     "launched_at": "20251021-065246-fast-fail",
     "window_title": "fast-fail"
+  },
+  {
+    "id": "20251025-124253-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-08lBr0",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-08lBr0/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-08lBr0/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-08lBr0/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251025-124253",
+    "window_title": "20251025-124253-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251025-124253-real-interactive-success",
+      "window_id": "@66",
+      "pane_id": "%276"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-26T02:37:31Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251025-124313-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-H4eAGt",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-H4eAGt/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-H4eAGt/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-H4eAGt/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251025-124313",
+    "window_title": "20251025-124313-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251025-124313-real-interactive-success",
+      "window_id": "@66",
+      "pane_id": "%277"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-26T02:37:59Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251025-124315-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jf4m6S",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jf4m6S/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jf4m6S/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jf4m6S/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251025-124315",
+    "window_title": "20251025-124315-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251025-124315-real-slow-progress",
+      "window_id": "@66",
+      "pane_id": "%278"
+    }
+  },
+  {
+    "id": "20251025-124315-real-hung-failure",
+    "type": "throwaway",
+    "slug": "real-hung-failure",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-RpW8Az",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-RpW8Az/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-RpW8Az/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-RpW8Az/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251025-124315",
+    "window_title": "20251025-124315-real-hung-failure",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251025-124315-real-hung-failure",
+      "window_id": "@66",
+      "pane_id": "%279"
+    }
+  },
+  {
+    "id": "20251026-023912-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-y6SxGA",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-y6SxGA/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-y6SxGA/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-y6SxGA/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251026-023912",
+    "window_title": "20251026-023912-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-023912-real-interactive-success",
+      "window_id": "@66",
+      "pane_id": "%280"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "pending"
+      }
+    ],
+    "deliverables_status": "pending"
+  },
+  {
+    "id": "20251026-023913-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-Wp8CGs",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-Wp8CGs/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-Wp8CGs/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-Wp8CGs/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251026-023913",
+    "window_title": "20251026-023913-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-023913-real-slow-progress",
+      "window_id": "@66",
+      "pane_id": "%281"
+    }
+  },
+  {
+    "id": "20251026-023914-real-hung-failure",
+    "type": "throwaway",
+    "slug": "real-hung-failure",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-nAPbCO",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-nAPbCO/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-nAPbCO/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-hung-failure-nAPbCO/subagent.log",
+    "launcher": "auto",
+    "status": "running",
+    "launched_at": "20251026-023914",
+    "window_title": "20251026-023914-real-hung-failure",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-023914-real-hung-failure",
+      "window_id": "@66",
+      "pane_id": "%282"
+    }
+  },
+  {
+    "id": "20251026-143853-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-EsIfDa",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-EsIfDa/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-EsIfDa/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-EsIfDa/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251026-143853",
+    "window_title": "20251026-143853-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-143853-real-interactive-success",
+      "window_id": "@66",
+      "pane_id": "%283"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "pending"
+      }
+    ],
+    "deliverables_status": "pending"
+  },
+  {
+    "id": "20251026-143855-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-VJKEGX",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-VJKEGX/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-VJKEGX/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-VJKEGX/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251026-143855",
+    "window_title": "20251026-143855-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-143855-real-slow-progress",
+      "window_id": "@66",
+      "pane_id": "%284"
+    }
   }
 ]

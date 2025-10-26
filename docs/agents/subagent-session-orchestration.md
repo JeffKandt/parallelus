@@ -185,6 +185,18 @@ Start the looping monitor immediately after launching a subagent:
 make monitor_subagents
 ```
 
+Every sandbox now emits two transcripts:
+
+- `subagent.session.jsonl` – structured Codex events, recorded via the TUI session logging env vars.
+- `subagent.log` – the legacy raw TTY capture (still available for replay).
+
+When inspecting activity, default to the structured JSONL file. The helper
+`.agents/bin/subagent_tail.sh --id <registry-id>` prints the latest entries (and
+falls back to the raw log automatically if JSONL is missing). If you decide a
+nudge is necessary, use `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "Proceed"`
+so prompt clearing and the bracketed-paste sequence stay consistent. The monitor
+loop now raises alerts and captures snapshots only—it no longer injects keystrokes.
+
 By default the helper runs `agents-monitor-loop.sh` with a 45 s poll interval, a 180 s log-heartbeat
 threshold, and a 600 s runtime threshold. For fast-feedback sessions you may export shorter values
 before invoking the loop (the real-mode harness uses 15 s / 30 s / 300 s) as long as you are prepared
@@ -210,14 +222,10 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
 2. If deliverables remain pending, copy them back immediately with
    `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` (repeat for each ID)
    so review reports, logs, and evidence land in version control before cleanup.
-3. Inspect recent activity without stealing focus: from the main agent pane, run a
-   one-shot log capture such as
-   `tail -n 80 .parallelus/subagents/sandboxes/<registry-id>/subagent.log` to confirm
-   whether the subagent is still emitting output. This works for any launch mode (tmux,
-   Terminal, worktree) because every subagent writes the same sandbox log. Avoid
-   long-running tails—grab a snapshot, review it, and return to command mode immediately.
-4. Inspect the tail of `subagent.log` to decide the next step:
-   - If the transcript shows a prompt waiting for input (e.g., “waiting for instructions”), decide whether to nudge. Craft the nudge manually so it reflects the latest output.
+3. Capture the latest transcript via
+   `./.agents/bin/subagent_tail.sh --id <registry-id> --lines 120`. Do **not** use the `--follow` flag; persistent tails stall the parent agent. The helper prefers `subagent.session.jsonl` for clean JSON output and falls back to `subagent.log` only when the structured file is unavailable. Grab a snapshot, review it, and return to command mode immediately.
+4. Review the transcript to decide the next step:
+   - If the buffer is waiting for input, send any follow-up instructions with `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "…"`.
    - If the transcript shows ongoing work, restart the monitor loop immediately (`make monitor_subagents ARGS="--id <registry-id>"`) and record the intervention in the progress log.
    - If the transcript is silent and no progress is apparent, investigate before restarting; capture the state in the progress log.
 5. Harvest deliverables as soon as they are ready. Subagents must only create `deliverables/.manifest` and `deliverables/.complete` after all files are final, so the presence of those markers is your signal that outputs can be copied back. Use `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` for throwaway sandboxes. Worktree sessions may not register deliverables at all—review their diffs manually.

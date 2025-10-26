@@ -28,7 +28,7 @@ for required_dir in "$TEMPLATE_SCOPE_DIR" "$TEMPLATE_SCRIPT_DIR"; do
     echo "agents-monitor-real.sh: missing template directory $required_dir" >&2
     exit 1
   fi
-fi
+done
 
 REAL_INTERVAL=${REAL_INTERVAL:-15}
 REAL_THRESHOLD=${REAL_THRESHOLD:-30}
@@ -36,6 +36,7 @@ REAL_RUNTIME=${REAL_RUNTIME:-1800}
 REAL_RECHECK=${REAL_RECHECK:-5}
 REAL_NUDGE_DELAY=${REAL_NUDGE_DELAY:-5}
 REAL_NUDGE_MESSAGE=${REAL_NUDGE_MESSAGE:-"Proceed"}
+KEEP_SANDBOX=${KEEP_SANDBOX:-0}
 
 SCENARIOS=(
   interactive-success
@@ -43,18 +44,28 @@ SCENARIOS=(
   hung-failure
 )
 
-declare -A EXPECT_DELIVERABLE=(
-  [interactive-success]=1
-)
+ENTRY_IDS=()
+ENTRY_SCENARIOS=()
+ENTRY_TYPES=()
 
-declare -A EXPECT_SUCCESS=(
-  [interactive-success]=1
-  [slow-progress]=0
-  [hung-failure]=0
-)
+scenario_requires_deliverable() {
+  case "$1" in
+    interactive-success) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
 
-declare -a ENTRY_IDS=()
-declare -A ENTRY_SCENARIO=()
+scenario_expected_success() {
+  case "$1" in
+    interactive-success) echo 1 ;;
+    slow-progress|hung-failure) echo 0 ;;
+    *) echo 0 ;;
+  esac
+}
+
+scenario_slug() {
+  printf 'real-%s\n' "$1"
+}
 
 get_entry_field() {
   local entry_id=$1
@@ -97,10 +108,90 @@ PY
   return $?
 }
 
+get_entry_status() {
+  local entry_id=$1
+  get_entry_field "$entry_id" "status"
+}
+
+get_deliverables_status() {
+  local entry_id=$1
+  get_entry_field "$entry_id" "deliverables_status"
+}
+
+require_scenario_ready() {
+  local scenario=$1
+  local slug
+  slug=$(scenario_slug "$scenario")
+  python3 - "$REGISTRY" "$slug" <<'PY' || return 1
+import json
+import sys
+
+path, slug = sys.argv[1:3]
+try:
+    with open(path, "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+except FileNotFoundError:
+    data = []
+
+running = []
+stale = []
+for row in data:
+    if row.get("slug") != slug:
+        continue
+    status = (row.get("status") or "").lower()
+    if status == "running":
+        running.append(row.get("id") or "")
+    else:
+        stale.append((row.get("id") or "", status))
+
+if running:
+    print(f"running:{','.join(filter(None, running))}")
+    sys.exit(2)
+
+if stale:
+    print("stale:" + ",".join(f"{id_}:{status}" for id_, status in stale if id_))
+
+PY
+  local result=$?
+  if (( result == 2 )); then
+    echo "agents-monitor-real.sh: scenario '$scenario' already running (see registry output above)." >&2
+    return 1
+  fi
+  return 0
+}
+
+record_entry() {
+  local entry_id=$1
+  local scenario=$2
+  local entry_json
+  entry_json=$(python3 - "$REGISTRY" "$entry_id" <<'PY'
+import json, sys
+path, entry_id = sys.argv[1:3]
+with open(path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+for row in data:
+    if row.get("id") == entry_id:
+        print(json.dumps(row))
+        break
+PY
+  )
+  local type=""
+  if [[ -n "$entry_json" ]]; then
+    type=$(python3 -c "import json,sys;print(json.loads(sys.argv[1]).get('type',''))" "$entry_json")
+  fi
+  ENTRY_IDS+=("$entry_id")
+  ENTRY_SCENARIOS+=("$scenario")
+  ENTRY_TYPES+=("$type")
+}
+
 launch_scenario() {
   local scenario=$1
-  local scope_template="$TEMPLATE_SCOPE_DIR/${scenario}.md"
-  local script_template="$TEMPLATE_SCRIPT_DIR/${scenario}.sh"
+  if ! require_scenario_ready "$scenario"; then
+    exit 1
+  fi
+  local template_key=${scenario//-/_}
+  local scope_template="$TEMPLATE_SCOPE_DIR/${template_key}.md"
+  local script_template="$TEMPLATE_SCRIPT_DIR/${template_key}.sh"
   if [[ ! -f "$scope_template" ]]; then
     echo "Missing scope template for $scenario: $scope_template" >&2
     exit 1
@@ -111,19 +202,25 @@ launch_scenario() {
   fi
 
   local slug="real-${scenario}"
-  local deliverable_args=()
-  if [[ ${EXPECT_DELIVERABLE[$scenario]:-0} -eq 1 ]]; then
+  local -a deliverable_args=()
+  if [[ $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
     deliverable_args+=(--deliverable "deliverables/result.txt")
   fi
 
   local entry_id
-  entry_id=$("$SUBAGENT_MANAGER" launch --type throwaway --slug "$slug" --scope "$scope_template" "${deliverable_args[@]}") || {
-    echo "Failed to launch scenario $scenario" >&2
-    exit 1
-  }
+  if (( ${#deliverable_args[@]} )); then
+    entry_id=$("$SUBAGENT_MANAGER" launch --type throwaway --slug "$slug" --scope "$scope_template" "${deliverable_args[@]}") || {
+      echo "Failed to launch scenario $scenario" >&2
+      exit 1
+    }
+  else
+    entry_id=$("$SUBAGENT_MANAGER" launch --type throwaway --slug "$slug" --scope "$scope_template") || {
+      echo "Failed to launch scenario $scenario" >&2
+      exit 1
+    }
+  fi
 
-  ENTRY_IDS+=("$entry_id")
-  ENTRY_SCENARIO["$entry_id"]="$scenario"
+  record_entry "$entry_id" "$scenario"
 }
 
 monitor_loop() {
@@ -142,13 +239,13 @@ monitor_loop() {
 
 evaluate_scenario() {
   local entry_id=$1
-  local scenario=${ENTRY_SCENARIO[$entry_id]}
+  local scenario=$2
   local sandbox log_path
   sandbox=$(get_entry_field "$entry_id" "path")
   log_path=$(get_entry_field "$entry_id" "log_path")
 
   local deliverable_ok=1
-  if [[ ${EXPECT_DELIVERABLE[$scenario]:-0} -eq 1 ]]; then
+  if [[ $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
     if [[ ! -f "$sandbox/deliverables/.complete" || ! -f "$sandbox/deliverables/result.txt" ]]; then
       deliverable_ok=0
     fi
@@ -158,7 +255,8 @@ evaluate_scenario() {
     fi
   fi
 
-  local expected_success=${EXPECT_SUCCESS[$scenario]:-0}
+  local expected_success
+  expected_success=$(scenario_expected_success "$scenario")
   local actual_success=1
   local summary=""
 
@@ -175,14 +273,18 @@ evaluate_scenario() {
   fi
 
   if [[ $actual_success -eq 0 ]]; then
-    if [[ -n "$log_path" && -f "$log_path" ]]; then
+    if [[ -x "$ROOT/.agents/bin/subagent_tail.sh" ]]; then
+      echo "---- transcript tail for $scenario ($entry_id) ----" >&2
+      "$ROOT/.agents/bin/subagent_tail.sh" --id "$entry_id" --lines 40 >&2 || true
+      echo "---- end transcript ----" >&2
+    elif [[ -n "$log_path" && -f "$log_path" ]]; then
       echo "---- log tail for $scenario ($entry_id) ----" >&2
       tail -n 20 "$log_path" >&2 || true
       echo "---- end log tail ----" >&2
     fi
   fi
 
-  if [[ $actual_success -eq 1 && ${EXPECT_DELIVERABLE[$scenario]:-0} -eq 1 ]]; then
+  if [[ $actual_success -eq 1 && $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
     "$SUBAGENT_MANAGER" harvest --id "$entry_id" >/dev/null || summary="$summary (harvest reported an issue)"
   fi
 
@@ -194,6 +296,54 @@ evaluate_scenario() {
   fi
 }
 
+finalize_entries() {
+  local idx rc=0
+  for idx in "${!ENTRY_IDS[@]}"; do
+    local entry_id="${ENTRY_IDS[$idx]}"
+    local scenario="${ENTRY_SCENARIOS[$idx]}"
+    local entry_type="${ENTRY_TYPES[$idx]}"
+    local status
+    status=$(get_entry_status "$entry_id")
+    if [[ "$status" == "running" || -z "$status" ]]; then
+      echo "[reconcile] $entry_id still marked '$status'. Leaving for manual follow-up." >&2
+      rc=1
+      continue
+    fi
+
+    local expect_deliverable
+    expect_deliverable=$(scenario_requires_deliverable "$scenario")
+    if [[ "$expect_deliverable" -eq 1 ]]; then
+      local deliverable_status
+      deliverable_status=$(get_deliverables_status "$entry_id")
+      if [[ "${deliverable_status,,}" != "harvested" ]]; then
+        if ! "$SUBAGENT_MANAGER" harvest --id "$entry_id" >/dev/null; then
+          echo "[reconcile] Harvest failed for $entry_id; leaving sandbox untouched." >&2
+          rc=1
+          continue
+        fi
+      fi
+    fi
+
+    if [[ "$entry_type" == "throwaway" ]]; then
+      if ! "$SUBAGENT_MANAGER" verify --id "$entry_id" >/dev/null; then
+        echo "[reconcile] Verify failed for $entry_id; leaving sandbox untouched." >&2
+        rc=1
+        continue
+      fi
+    fi
+
+    if (( KEEP_SANDBOX == 1 )); then
+      echo "[reconcile] KEEP_SANDBOX=1; skipping cleanup for $entry_id."
+    else
+      if ! "$SUBAGENT_MANAGER" cleanup --id "$entry_id" >/dev/null; then
+        echo "[reconcile] Cleanup failed for $entry_id; manual cleanup required." >&2
+        rc=1
+      fi
+    fi
+  done
+  return "$rc"
+}
+
 main() {
   local failures=0
   for scenario in "${SCENARIOS[@]}"; do
@@ -202,14 +352,26 @@ main() {
 
   monitor_loop
 
-  for entry_id in "${ENTRY_IDS[@]}"; do
-    if ! evaluate_scenario "$entry_id"; then
+  local idx reconcile_failures=0
+  for idx in "${!ENTRY_IDS[@]}"; do
+    local entry_id="${ENTRY_IDS[$idx]}"
+    local scenario="${ENTRY_SCENARIOS[$idx]}"
+    if ! evaluate_scenario "$entry_id" "$scenario"; then
       failures=$((failures + 1))
     fi
   done
 
+  if ! finalize_entries; then
+    reconcile_failures=1
+  fi
+
   if (( failures > 0 )); then
     echo "Real monitor harness: $failures scenario(s) failed. Inspect logs above." >&2
+  fi
+  if (( reconcile_failures > 0 )); then
+    echo "Real monitor harness: cleanup/verification issues detected; see messages above." >&2
+  fi
+  if (( failures > 0 || reconcile_failures > 0 )); then
     return 1
   fi
   return 0

@@ -128,6 +128,9 @@ export SUBAGENT=1
 if [[ -z "\${CI:-}" ]]; then
   export CI=true
 fi
+# Capture structured Codex session log alongside the raw TTY transcript.
+export CODEX_TUI_RECORD_SESSION=1
+export CODEX_TUI_SESSION_LOG_PATH="\$PARALLELUS_WORKDIR/subagent.session.jsonl"
 ${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}${config_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
