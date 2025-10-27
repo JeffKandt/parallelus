@@ -10,9 +10,9 @@ or total runtime exceeds the configured thresholds. When the user presses any ke
 (Ctrl+C), the loop exits.
 
 Options:
-  --interval SECONDS         Sleep duration between polls (default: 45)
-  --threshold SECONDS        Maximum acceptable log-age before highlighting (default: 180)
-  --runtime-threshold SECONDS  Maximum runtime for a subagent before prompting review (default: 600)
+  --interval SECONDS         Sleep duration between polls (default: 30)
+  --threshold SECONDS        Maximum acceptable log-age before highlighting (default: 90)
+  --runtime-threshold SECONDS  Maximum runtime for a subagent before prompting review (default: 240)
   --iterations N             Stop after N polls (default: infinite)
   --id SUBAGENT_ID           Monitor only the specified subagent ID (default: all running)
 EOF
@@ -29,8 +29,13 @@ NUDGE_MESSAGE=${MONITOR_NUDGE_MESSAGE:-}
 NUDGE_ESCAPE=${MONITOR_NUDGE_ESCAPE:-1}
 NUDGE_CLEAR=${MONITOR_NUDGE_CLEAR:-1}
 KNOWN_STUCK=""
-TMUX_BIN=$(command -v tmux || true)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+TMUX_HELPER="$REPO_ROOT/.agents/bin/tmux-safe"
+if [[ -x "$TMUX_HELPER" ]]; then
+  TMUX_BIN="$TMUX_HELPER"
+else
+  TMUX_BIN=$(command -v tmux || true)
+fi
 SNAPSHOT_DIR=${MONITOR_SNAPSHOT_DIR:-"$REPO_ROOT/.parallelus/monitor-snapshots"}
 MONITOR_DEBUG=${MONITOR_DEBUG:-0}
 SEND_KEYS_CMD="$REPO_ROOT/.agents/bin/subagent_send_keys.sh"

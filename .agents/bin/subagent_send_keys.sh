@@ -3,7 +3,12 @@ set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 REGISTRY="$ROOT/docs/agents/subagent-registry.json"
-TMUX_BIN=$(command -v tmux || true)
+TMUX_HELPER="$ROOT/.agents/bin/tmux-safe"
+if [[ -x "$TMUX_HELPER" ]]; then
+  TMUX_BIN="$TMUX_HELPER"
+else
+  TMUX_BIN=$(command -v tmux || true)
+fi
 
 usage() {
   cat <<'USAGE'

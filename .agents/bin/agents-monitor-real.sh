@@ -6,6 +6,7 @@ set -euo pipefail
 # thresholds, inspects deliverables/transcripts, and force-cleans sandboxes.
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+REPO_ROOT="$ROOT"
 cd "$ROOT"
 
 REGISTRY="$ROOT/docs/agents/subagent-registry.json"
@@ -610,6 +611,8 @@ finalize_entries() {
     return 0
   fi
   local idx rc=0
+  local current_head
+  current_head=$(git rev-parse HEAD)
   for idx in "${!ENTRY_IDS[@]}"; do
     local entry_id="${ENTRY_IDS[$idx]}"
     local scenario="${ENTRY_SCENARIOS[$idx]}"
@@ -641,6 +644,53 @@ finalize_entries() {
       continue
     fi
 
+    local review_targets
+    review_targets=$(python3 - "$REGISTRY" "$entry_id" <<'PY'
+import json, sys
+registry_path, entry_id = sys.argv[1:3]
+with open(registry_path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+for row in data:
+    if row.get("id") == entry_id:
+        for deliverable in row.get("deliverables") or []:
+            target = deliverable.get("target_path") or deliverable.get("target") or ""
+            if target.startswith("docs/reviews/"):
+                print(target)
+        break
+PY
+    ) || true
+    if [[ -n "$review_targets" ]]; then
+      local review_file=""
+      while IFS= read -r candidate; do
+        [[ -z "$candidate" ]] && continue
+        if [[ -f "$candidate" ]]; then
+          review_file="$candidate"
+          break
+        elif [[ -f "$REPO_ROOT/$candidate" ]]; then
+          review_file="$REPO_ROOT/$candidate"
+          break
+        fi
+      done <<< "$review_targets"
+      if [[ -z "$review_file" ]]; then
+        echo "[reconcile] Review report for $entry_id not found at $review_targets." >&2
+        rc=1
+        continue
+      fi
+      local review_commit
+      review_commit=$(grep -i '^Reviewed-Commit:' "$review_file" | head -n1 | sed -E 's/Reviewed-Commit:[[:space:]]*//I')
+      review_commit=${review_commit// /}
+      if [[ -z "$review_commit" ]]; then
+        echo "[reconcile] Review report $review_file is missing Reviewed-Commit." >&2
+        rc=1
+        continue
+      fi
+      if [[ "$review_commit" != "$current_head" ]]; then
+        echo "[reconcile] Review $review_file covers $review_commit but branch HEAD is $current_head. Re-run the review." >&2
+        rc=1
+        continue
+      fi
+    fi
+
     if [[ "$entry_type" == "throwaway" ]]; then
       if ! "$SUBAGENT_MANAGER" verify --id "$entry_id" >/dev/null; then
         echo "[reconcile] Verify failed for $entry_id; leaving sandbox untouched." >&2
@@ -655,7 +705,10 @@ finalize_entries() {
     if [[ "$entry_idx" != "-1" ]]; then
       summary_text=${ENTRY_SUMMARIES[$entry_idx]}
     fi
-    archive_entry "$entry_id" "$scenario" "$summary_text" || rc=1
+    if ! archive_entry "$entry_id" "$scenario" "$summary_text"; then
+      rc=1
+      continue
+    fi
 
     if ! "$SUBAGENT_MANAGER" cleanup --id "$entry_id" >/dev/null; then
       echo "[reconcile] Cleanup failed for $entry_id; manual cleanup required." >&2

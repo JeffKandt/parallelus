@@ -9,8 +9,8 @@ Before launching the workload, complete the standard bootstrap flow:
 - Run `make bootstrap slug=real-slow-progress` so plan/progress notebooks
   exist in the sandbox.
 - Capture guardrail acknowledgements and initial objectives in
-  `docs/plans/feature-real-interactive-success.md` and
-  `docs/progress/feature-real-interactive-success.md`.
+  `docs/plans/feature-real-slow-progress.md` and
+  `docs/progress/feature-real-slow-progress.md`.
 
 1. Run:
    ```bash
