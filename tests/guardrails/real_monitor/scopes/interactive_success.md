@@ -1,6 +1,18 @@
 # Scenario: interactive-success
 
-You are operating inside a throwaway sandbox. Follow these steps:
+You are operating inside a throwaway sandbox. Before posting the readiness
+message, complete the standard bootstrap sequence:
+
+- Run `make read_bootstrap`.
+- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+  explicitly reference for this scope).
+- Run `make bootstrap slug=real-interactive-success` so plan/progress notebooks
+  exist in the sandbox.
+- Record the guardrail acknowledgements and initial objectives in
+  `docs/plans/feature-real-interactive-success.md` and
+  `docs/progress/feature-real-interactive-success.md`.
+
+Once those steps are finished, follow this interactive flow:
 
 1. Post an agent message in this Codex chat stating **exactly**:
    ```

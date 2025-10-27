@@ -842,5 +842,35 @@
       }
     ],
     "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251026-234820-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-eC4UW8",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-eC4UW8/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-eC4UW8/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-eC4UW8/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251026-234820",
+    "window_title": "20251026-234820-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251026-234820-real-interactive-success",
+      "window_id": "@74",
+      "pane_id": "%313"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-26T23:54:00Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]

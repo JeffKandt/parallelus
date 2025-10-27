@@ -330,3 +330,24 @@
 
 **Next Actions**
 - Commit the helper/script updates, then re-run the scenario once more to confirm the new heartbeat behaviour surfaces in-session.
+
+## 2025-10-27 00:02:14 UTC
+**Objectives**
+- Verify the committed helper produces streaming heartbeats and capture follow-on documentation needs.
+
+**Work Performed**
+- Re-ran the interactive scenario after pushing the helper updates; the subagent now produces heartbeats every 10 s through both 60-second windows (`docs/guardrails/runs/20251026-234820-real-interactive-success/`).
+- Noted that the scope still leaves ordering ambiguous (guardrail review vs. readiness message), so we plan to clarify the sequence (guardrails → bootstrap → notebooks → readiness message → helper) in both the scope and plan template.
+
+**Next Actions**
+- Update `tests/guardrails/real_monitor/scopes/interactive_success.md` and the plan template so subagents perform guardrail review and bootstrap before posting the readiness message, and highlight the helper script as the post-ACK action.
+
+## 2025-10-27 01:08:43 UTC
+**Objectives**
+- Clarify the bootstrap sequence directly in the interactive-success scope so subagents stop reordering tasks.
+
+**Work Performed**
+- Amended `tests/guardrails/real_monitor/scopes/interactive_success.md` with a preamble instructing subagents to run `make read_bootstrap`, review guardrails, execute `make bootstrap`, and update plan/progress notebooks before posting the readiness message; step 3 now explicitly frames the helper script as the only post-ACK action.
+
+**Next Actions**
+- Monitor the next real-mode run to confirm the clarified scope removes the guardrail/plan conflict noted earlier.
