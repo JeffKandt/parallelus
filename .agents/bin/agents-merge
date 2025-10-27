@@ -166,11 +166,22 @@ check_review() {
     exit 1
   fi
   if [[ -n "$commit_ref" && "$review_commit" != "$commit_ref" ]]; then
-    parent_commit=$(git rev-parse "$commit_ref^" 2>/dev/null || true)
-    if [[ -n "$parent_commit" && "$review_commit" == "$parent_commit" ]]; then
-      diff_names=$(git diff --name-only "$parent_commit" "$commit_ref")
-      if echo "$diff_names" | grep -vq '^docs/reviews/'; then
-        echo "agents-merge: review $file is one commit behind and intervening commit alters non-review files." >&2
+    if git merge-base --is-ancestor "$review_commit" "$commit_ref" 2>/dev/null; then
+      diff_names=$(git diff --name-only "$review_commit" "$commit_ref")
+      local allowed=1
+      while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        case "$path" in
+          docs/guardrails/runs/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/plans/*|docs/progress/*|docs/agents/*)
+            ;;
+          *)
+            allowed=0
+            break
+            ;;
+        esac
+      done <<< "$diff_names"
+      if (( allowed == 0 )); then
+        echo "agents-merge: review $file predates commit $commit_ref and intervening changes touch non-benign files." >&2
         echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
         exit 1
       fi

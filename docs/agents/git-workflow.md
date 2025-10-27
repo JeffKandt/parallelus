@@ -162,6 +162,19 @@ Run this checklist whenever the user requests a merge (even casually):
    their content lands.
 7. Treat the workspace as back in Recon & Planning once cleanup completes.
 
+If you need to make doc-only touch-ups after the senior review is captured, the
+merge guardrail now allows additional post-review commits so long as **every**
+changed file lives under these benign paths:
+
+- `docs/guardrails/runs/`
+- `docs/reviews/`
+- `docs/PLAN.md`, `docs/PROGRESS.md`
+- `docs/plans/` and `docs/progress/`
+- `docs/agents/`
+
+Any other modifications still require rerunning the senior architect review on
+the final commit before merging.
+
 ## 6. Branch Notebooks & Session Logs
 - Never create notebooks/session logs during merge operations; they belong on
   the feature branch.
