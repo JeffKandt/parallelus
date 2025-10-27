@@ -952,5 +952,85 @@
       "window_id": "@74",
       "pane_id": "%317"
     }
+  },
+  {
+    "id": "20251027-030925-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-KsUjwJ",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-KsUjwJ/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-KsUjwJ/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-KsUjwJ/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-030925",
+    "window_title": "20251027-030925-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-030925-real-slow-progress",
+      "window_id": "@74",
+      "pane_id": "%318"
+    }
+  },
+  {
+    "id": "20251027-031643-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-zVIq7c",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-zVIq7c/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-zVIq7c/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-zVIq7c/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-031643",
+    "window_title": "20251027-031643-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-031643-real-slow-progress",
+      "window_id": "@75",
+      "pane_id": "%320"
+    }
+  },
+  {
+    "id": "20251027-131734-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jhO1KD",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jhO1KD/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jhO1KD/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-jhO1KD/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-131734",
+    "window_title": "20251027-131734-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-131734-real-slow-progress",
+      "window_id": "@75",
+      "pane_id": "%321"
+    }
+  },
+  {
+    "id": "20251027-132628-real-slow-progress",
+    "type": "throwaway",
+    "slug": "real-slow-progress",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-EA6mSV",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-EA6mSV/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-EA6mSV/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-slow-progress-EA6mSV/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-132628",
+    "window_title": "20251027-132628-real-slow-progress",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-132628-real-slow-progress",
+      "window_id": "@75",
+      "pane_id": "%322"
+    }
   }
 ]
