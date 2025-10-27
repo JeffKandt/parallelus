@@ -32,3 +32,14 @@
 
 **Next Actions**
 - Harvest the approved senior architect review and proceed with merge once satisfied.
+
+## 2025-10-27 23:42:15 UTC
+**Objectives**
+- Capture the cleanup best practice for senior-review subagents.
+
+**Work Performed**
+- Documented the post-review shutdown sequence (harvest → verify hash → monitor clean exit → subagent cleanup) in `docs/agents/git-workflow.md`.
+- Closed the lingering senior-review pane after `cleanup --force` and noted the pattern to avoid repeats.
+
+**Next Actions**
+- Finish the current senior-review run and ensure all panes are closed before merging.

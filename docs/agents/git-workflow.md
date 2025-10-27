@@ -160,6 +160,14 @@ and summarise the findings for your merge/archive/delete decision. This keeps
 the workflow consistent whether you intend to merge immediately or just want a
 snapshot of branch health.
 
+Always finish a senior-review run by:
+1. Harvesting the report.
+2. Verifying `Reviewed-Commit` matches the current `HEAD`.
+3. Re-running `make monitor_subagents --id …` until it exits cleanly.
+4. Calling `subagent_manager.sh cleanup --id …` (or `--force` once you’ve
+   confirmed the session ended). Use `Ctrl+C` twice inside the pane if you need
+   to stop Codex manually before cleanup.
+
 When you simply want a quick orientation—what commits and files are present,
 where the plan left off, etc.—ask for a branch overview:
 
