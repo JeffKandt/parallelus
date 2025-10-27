@@ -11,5 +11,5 @@
 - [x] Add regression tests for the updated guardrail logic.
 
 ## Next Actions
-- Observe future merges to ensure the benign-diff gate behaves as expected.
-- Re-run senior architect review on the final commit before merging.
+- Harvest the approved senior architect review and merge into main when ready.
+- Monitor upcoming merges to ensure the benign-diff guardrail works as intended.

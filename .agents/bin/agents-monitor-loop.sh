@@ -212,15 +212,13 @@ PY
             "$TMUX_BIN" send-keys -t "$tmux_target" Escape >/dev/null 2>&1 || true
           fi
           capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
-          local nudge_status=0
+          local nudge_status
           if (( ${#clear_args[@]} > 0 )); then
-            if ! "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE" "${clear_args[@]}"; then
-              nudge_status=$?
-            fi
+            "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE" "${clear_args[@]}"
+            nudge_status=$?
           else
-            if ! "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE"; then
-              nudge_status=$?
-            fi
+            "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE"
+            nudge_status=$?
           fi
           if (( nudge_status == 0 )); then
             nudged=1
