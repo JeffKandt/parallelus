@@ -364,14 +364,14 @@ evaluate_scenario() {
   log_path=$(get_entry_field "$entry_id" "log_path")
   session_log="$sandbox/subagent.session.jsonl"
 
-  local deliverable_ok=1
+  local deliverable_present=0
   if [[ $(scenario_requires_deliverable "$scenario") -eq 1 ]]; then
-    if [[ ! -f "$sandbox/deliverables/.complete" || ! -f "$sandbox/deliverables/result.txt" ]]; then
-      deliverable_ok=0
+    if [[ -f "$sandbox/deliverables/.complete" && -f "$sandbox/deliverables/result.txt" ]]; then
+      deliverable_present=1
     fi
   else
     if [[ -f "$sandbox/deliverables/.complete" || -f "$sandbox/deliverables/result.txt" ]]; then
-      deliverable_ok=0
+      deliverable_present=1
     fi
   fi
 
@@ -381,12 +381,12 @@ evaluate_scenario() {
   local summary=""
   local next_steps=""
 
-  if [[ $expected_success -eq 1 && $deliverable_ok -eq 1 ]]; then
+  if [[ $expected_success -eq 1 && $deliverable_present -eq 1 ]]; then
     summary="[$scenario] deliverables present; marked success."
-  elif [[ $expected_success -eq 0 && $deliverable_ok -eq 1 ]]; then
+  elif [[ $expected_success -eq 0 && $deliverable_present -eq 1 ]]; then
     summary="[$scenario] unexpected deliverable present."
     actual_success=0
-  elif [[ $expected_success -eq 1 && $deliverable_ok -eq 0 ]]; then
+  elif [[ $expected_success -eq 1 && $deliverable_present -eq 0 ]]; then
     summary="[$scenario] expected deliverable missing."
     actual_success=0
   else
