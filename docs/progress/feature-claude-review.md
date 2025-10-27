@@ -351,3 +351,15 @@
 
 **Next Actions**
 - Monitor the next real-mode run to confirm the clarified scope removes the guardrail/plan conflict noted earlier.
+
+## 2025-10-27 01:23:59 UTC
+**Objectives**
+- Exercise the slow-progress scenario after clarifying its scope and archive the resulting evidence.
+
+**Work Performed**
+- Updated `tests/guardrails/real_monitor/scopes/slow_progress.md` and `.../hung_failure.md` to mirror the bootstrap order (guardrail review → bootstrap → notebook updates → scenario commands).
+- Ran `HARNESS_MODE=real … --scenario slow-progress --reconcile`; captured progress logs for run `20251027-011234-real-slow-progress`, archived `subagent.log`, and generated a cleaned transcript under `docs/guardrails/runs/20251027-011234-real-slow-progress/` (no deliverables expected).
+- Cleaned the sandbox and tmux pane after verifying the helper completed and no deliverables were produced.
+
+**Next Actions**
+- Launch the hung-failure scenario next, using the updated scope instructions.

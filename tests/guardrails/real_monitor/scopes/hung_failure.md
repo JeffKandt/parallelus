@@ -1,6 +1,15 @@
 # Scenario: hung-failure
 
-This sandbox emulates a task that stalls indefinitely.
+This sandbox emulates a task that stalls indefinitely. Before running it,
+complete the usual bootstrap tasks:
+
+- Run `make read_bootstrap`.
+- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+  explicitly reference for this scope).
+- Run `make bootstrap slug=real-hung-failure` so plan/progress notebooks exist.
+- Record guardrail acknowledgements and objectives in
+  `docs/plans/feature-real-hung-failure.md` and
+  `docs/progress/feature-real-hung-failure.md`.
 
 1. Run:
    ```bash

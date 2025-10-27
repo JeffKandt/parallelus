@@ -1,6 +1,16 @@
 # Scenario: slow-progress
 
 This sandbox simulates long-running work without interactive prompts.
+Before launching the workload, complete the standard bootstrap flow:
+
+- Run `make read_bootstrap`.
+- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+  explicitly call out for this scope).
+- Run `make bootstrap slug=real-slow-progress` so plan/progress notebooks
+  exist in the sandbox.
+- Capture guardrail acknowledgements and initial objectives in
+  `docs/plans/feature-real-interactive-success.md` and
+  `docs/progress/feature-real-interactive-success.md`.
 
 1. Run:
    ```bash
