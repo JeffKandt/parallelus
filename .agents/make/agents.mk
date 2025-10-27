@@ -32,6 +32,8 @@ read_bootstrap:
 		fi; \
 	fi
 	@$(AGENTS_BIN)/agents-detect
+	@printf '\nBranch / PR snapshot:\n'; \
+	$(AGENTS_BIN)/report_branches.py || true
 
 bootstrap:
 ifndef slug

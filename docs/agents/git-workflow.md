@@ -147,6 +147,19 @@ git checkout -b pr-<id> origin/<branch>
 Recognised remote naming patterns include `origin/codex/*`, `origin/feature/*`,
 `origin/pull/<id>`, and `origin/<id>`.
 
+When you need a fresh senior-architect assessment on any branch (local or remote),
+trigger the review by asking the supervising agent:
+
+```
+Senior review request: <branch-name> [optional focus notes]
+```
+
+The shorthand tells the agent to fetch the branch if needed, launch the senior
+architect subagent with the appropriate scope, monitor it, harvest the report,
+and summarise the findings for your merge/archive/delete decision. This keeps
+the workflow consistent whether you intend to merge immediately or just want a
+snapshot of branch health.
+
 ## 5. Merge & Close Checklist
 Run this checklist whenever the user requests a merge (even casually):
 1. Confirm plan/progress notebooks are up to date and committed.
