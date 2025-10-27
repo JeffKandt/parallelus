@@ -122,7 +122,9 @@ def format_report(branches: List[BranchInfo]) -> str:
 def main() -> None:
     report = build_report()
     print(format_report(report))
-    print("\nTip: request a review with `Senior review request: <branch-name>`")
+    print("\nTips:")
+    print(" - Request a quality review with `Senior review request: <branch-name>`")
+    print(" - Request an orientation with `Branch overview request: <branch-name>`")
 
 
 if __name__ == "__main__":

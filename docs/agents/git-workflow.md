@@ -160,6 +160,18 @@ and summarise the findings for your merge/archive/delete decision. This keeps
 the workflow consistent whether you intend to merge immediately or just want a
 snapshot of branch health.
 
+When you simply want a quick orientation—what commits and files are present,
+where the plan left off, etc.—ask for a branch overview:
+
+```
+Branch overview request: <branch-name>
+```
+
+That cue fetches the branch and produces a high-level report summarising unique
+commits, touched areas (code vs docs/tests), outstanding TODOs, existing review
+artifacts, and plan/progress context. Use it when deciding whether to merge,
+archive, or delete without running the full senior-architect quality pass.
+
 ## 5. Merge & Close Checklist
 Run this checklist whenever the user requests a merge (even casually):
 1. Confirm plan/progress notebooks are up to date and committed.
