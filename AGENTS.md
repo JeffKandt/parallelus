@@ -113,6 +113,9 @@ commands beyond `make read_bootstrap`.
 - **Subagents:** Before launching or monitoring subagents (e.g.
   `make monitor_subagents`, `subagent_manager ...`), read
   `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
+  Senior architect reviews are executed inside subagents, so when one is
+  requested you must review this manual (even if you've read it earlier in the
+  session) and record the acknowledgement in the progress log before continuing.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`,
   `make archive`, or evaluating unmerged branches, revisit
   `docs/agents/git-workflow.md`. Merge requests now require an approved senior

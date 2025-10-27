@@ -224,9 +224,10 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
    so review reports, logs, and evidence land in version control before cleanup.
 3. Capture the latest transcript via
    `./.agents/bin/subagent_tail.sh --id <registry-id> --lines 120`. Do **not** use the `--follow` flag; persistent tails stall the parent agent. The helper prefers `subagent.session.jsonl` for clean JSON output and falls back to `subagent.log` only when the structured file is unavailable. Grab a snapshot, review it, and return to command mode immediately.
+   The monitor now prints a short log tail automatically when it exits with a manual-attention alert; use that snippet (or run the tail helper yourself) rather than relying on tmux pane captures.
 4. Review the transcript to decide the next step:
    - If the buffer is waiting for input, send any follow-up instructions with `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "…"`.
-   - If the transcript shows ongoing work, restart the monitor loop immediately (`make monitor_subagents ARGS="--id <registry-id>"`) and record the intervention in the progress log.
+   - If the transcript shows ongoing work, restart the monitor loop immediately (`make monitor_subagents ARGS="--id <registry-id>"`) and record the intervention in the progress log. Avoid sending keystrokes unless the log confirms it is waiting.
    - If the transcript is silent and no progress is apparent, investigate before restarting; capture the state in the progress log.
 5. Harvest deliverables as soon as they are ready. Subagents must only create `deliverables/.manifest` and `deliverables/.complete` after all files are final, so the presence of those markers is your signal that outputs can be copied back. Use `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` for throwaway sandboxes. Worktree sessions may not register deliverables at all—review their diffs manually.
 6. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so

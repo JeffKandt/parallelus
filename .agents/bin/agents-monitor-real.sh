@@ -57,7 +57,7 @@ REAL_THRESHOLD=${REAL_THRESHOLD:-30}
 REAL_RUNTIME=${REAL_RUNTIME:-1800}
 REAL_RECHECK=${REAL_RECHECK:-5}
 REAL_NUDGE_DELAY=${REAL_NUDGE_DELAY:-5}
-REAL_NUDGE_MESSAGE=${REAL_NUDGE_MESSAGE:-"Proceed"}
+REAL_NUDGE_MESSAGE=${REAL_NUDGE_MESSAGE:-}
 KEEP_SANDBOX=${KEEP_SANDBOX:-1}
 
 SCENARIOS=()
@@ -130,7 +130,9 @@ fi
 ENTRY_IDS=()
 ENTRY_SCENARIOS=()
 ENTRY_TYPES=()
+ENTRY_SUMMARIES=()
 SCENARIO_REPORTS=()
+SESSION_TRANSCRIPT_TOOL="$ROOT/.agents/bin/subagent_session_to_transcript.py"
 
 cleanup_on_signal() {
   local status=$?
@@ -282,6 +284,20 @@ PY
   ENTRY_IDS+=("$entry_id")
   ENTRY_SCENARIOS+=("$scenario")
   ENTRY_TYPES+=("$type")
+  ENTRY_SUMMARIES+=("")
+}
+
+entry_index() {
+  local needle=$1
+  local i
+  for i in "${!ENTRY_IDS[@]}"; do
+    if [[ "${ENTRY_IDS[$i]}" == "$needle" ]]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  echo "-1"
+  return 1
 }
 
 launch_scenario() {
@@ -528,11 +544,64 @@ PY
 
   printf '%s\n' "$summary"
   SCENARIO_REPORTS+=("$summary")
+  local entry_idx
+  entry_idx=$(entry_index "$entry_id") || true
+  if [[ "$entry_idx" != "-1" ]]; then
+    ENTRY_SUMMARIES[$entry_idx]="$summary"
+  fi
   if [[ $actual_success -eq 1 ]]; then
     return 0
   else
     return 1
   fi
+}
+
+archive_entry() {
+  local entry_id=$1
+  local scenario=$2
+  local summary=$3
+  local sandbox
+  sandbox=$(get_entry_field "$entry_id" "path")
+  if [[ -z "$sandbox" || ! -d "$sandbox" ]]; then
+    echo "[archive] Sandbox missing for $entry_id; skipping artifact capture." >&2
+    return 1
+  fi
+
+  local run_dir="$ROOT/docs/guardrails/runs/${entry_id}"
+  mkdir -p "$run_dir"
+
+  if [[ -f "$sandbox/subagent.session.jsonl" ]]; then
+    cp "$sandbox/subagent.session.jsonl" "$run_dir/session.jsonl"
+    if [[ -x "$SESSION_TRANSCRIPT_TOOL" ]]; then
+      if ! "$SESSION_TRANSCRIPT_TOOL" "$sandbox/subagent.session.jsonl" --output "$run_dir/transcript.md"; then
+        echo "[archive] Failed to generate transcript for $entry_id." >&2
+      fi
+    fi
+  else
+    echo "[archive] session.jsonl missing for $entry_id." >&2
+  fi
+
+  if [[ -f "$sandbox/subagent.log" ]]; then
+    cp "$sandbox/subagent.log" "$run_dir/subagent.log"
+  fi
+
+  if [[ -d "$sandbox/deliverables" ]]; then
+    mkdir -p "$run_dir/deliverables"
+    if ! cp -R "$sandbox/deliverables/." "$run_dir/deliverables/"; then
+      echo "[archive] Failed to copy deliverables for $entry_id." >&2
+      return 1
+    fi
+  fi
+
+  cat >"$run_dir/summary.md" <<EOF
+# Subagent Run Summary
+- Scenario: $scenario
+- Entry ID: $entry_id
+- Archived At (UTC): $(date -u '+%Y-%m-%d %H:%M:%S')
+
+${summary}
+EOF
+  return 0
 }
 
 finalize_entries() {
@@ -579,6 +648,14 @@ finalize_entries() {
         continue
       fi
     fi
+
+    local entry_idx
+    entry_idx=$(entry_index "$entry_id") || true
+    local summary_text=""
+    if [[ "$entry_idx" != "-1" ]]; then
+      summary_text=${ENTRY_SUMMARIES[$entry_idx]}
+    fi
+    archive_entry "$entry_id" "$scenario" "$summary_text" || rc=1
 
     if ! "$SUBAGENT_MANAGER" cleanup --id "$entry_id" >/dev/null; then
       echo "[reconcile] Cleanup failed for $entry_id; manual cleanup required." >&2

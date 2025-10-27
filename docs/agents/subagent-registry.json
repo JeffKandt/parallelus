@@ -1032,5 +1032,197 @@
       "window_id": "@75",
       "pane_id": "%322"
     }
+  },
+  {
+    "id": "20251027-143647-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-Ll2vBD",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-Ll2vBD/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-Ll2vBD/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-Ll2vBD/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-143647",
+    "window_title": "20251027-143647-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-143647-real-interactive-success",
+      "window_id": "@76",
+      "pane_id": "%324"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-27T14:51:13Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251027-180752-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-twq1vO",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-twq1vO/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-twq1vO/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-twq1vO/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-180752",
+    "window_title": "20251027-180752-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-180752-real-interactive-success",
+      "window_id": "@76",
+      "pane_id": "%325"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "pending"
+      }
+    ],
+    "deliverables_status": "pending"
+  },
+  {
+    "id": "20251027-183239-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-oaDQ0B",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-oaDQ0B/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-oaDQ0B/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-oaDQ0B/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-183239",
+    "window_title": "20251027-183239-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-183239-real-interactive-success",
+      "window_id": "@76",
+      "pane_id": "%326"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-27T18:40:41Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251027-184402-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-4mGgJr",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-4mGgJr/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-4mGgJr/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-4mGgJr/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-184402",
+    "window_title": "20251027-184402-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-184402-real-interactive-success",
+      "window_id": "@76",
+      "pane_id": "%327"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "pending"
+      }
+    ],
+    "deliverables_status": "pending"
+  },
+  {
+    "id": "20251027-194902-real-interactive-success",
+    "type": "throwaway",
+    "slug": "real-interactive-success",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-zz9Oqz",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-zz9Oqz/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-zz9Oqz/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/real-interactive-success-zz9Oqz/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-194902",
+    "window_title": "20251027-194902-real-interactive-success",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-194902-real-interactive-success",
+      "window_id": "@76",
+      "pane_id": "%328"
+    },
+    "deliverables": [
+      {
+        "source": "deliverables/result.txt",
+        "target": "deliverables/result.txt",
+        "status": "harvested",
+        "harvested_at": "2025-10-27T19:57:34Z",
+        "target_path": "deliverables/result.txt"
+      }
+    ],
+    "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251027-200047-pytest-test_subagent_launch_without_r0",
+    "type": "throwaway",
+    "slug": "pytest-test_subagent_launch_without_r0",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-x9tDMe",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-x9tDMe/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-x9tDMe/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/pytest-test_subagent_launch_without_r0-x9tDMe/subagent.log",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20251027-200047",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null
+  },
+  {
+    "id": "20251027-203854-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CvLZip",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CvLZip/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CvLZip/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-CvLZip/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251027-203854",
+    "window_title": "20251027-203854-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251027-203854-senior-review",
+      "window_id": "@76",
+      "pane_id": "%331"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews/feature-claude-review-2025-10-27.md",
+        "target": "docs/reviews/feature-claude-review-2025-10-27.md",
+        "status": "harvested",
+        "harvested_at": "2025-10-27T20:55:47Z",
+        "target_path": "docs/reviews/feature-claude-review-2025-10-27.md"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]

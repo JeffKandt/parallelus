@@ -25,7 +25,7 @@ FILTER_ID=""
 ITERATIONS=""
 RECHECK_DELAY=${MONITOR_RECHECK_DELAY:-15}
 NUDGE_DELAY=${MONITOR_NUDGE_DELAY:-10}
-NUDGE_MESSAGE=${MONITOR_NUDGE_MESSAGE:-"Proceed"}
+NUDGE_MESSAGE=${MONITOR_NUDGE_MESSAGE:-}
 NUDGE_ESCAPE=${MONITOR_NUDGE_ESCAPE:-1}
 NUDGE_CLEAR=${MONITOR_NUDGE_CLEAR:-1}
 KNOWN_STUCK=""
@@ -33,6 +33,8 @@ TMUX_BIN=$(command -v tmux || true)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 SNAPSHOT_DIR=${MONITOR_SNAPSHOT_DIR:-"$REPO_ROOT/.parallelus/monitor-snapshots"}
 MONITOR_DEBUG=${MONITOR_DEBUG:-0}
+SEND_KEYS_CMD="$REPO_ROOT/.agents/bin/subagent_send_keys.sh"
+TAIL_CMD="$REPO_ROOT/.agents/bin/subagent_tail.sh"
 mkdir -p "$SNAPSHOT_DIR"
 OVERALL_ALERT=0
 
@@ -188,36 +190,56 @@ PY
     fi
 
     local nudged=0
+    if [[ -n "$tmux_target" ]]; then
+      if is_stuck "$id"; then
+        echo "[monitor] $id still flagged ($reason); already nudged."
+      else
+        if [[ -x "$SEND_KEYS_CMD" && -n "$NUDGE_MESSAGE" ]]; then
+          local -a clear_args=()
+          if (( NUDGE_CLEAR == 0 )); then
+            clear_args+=(--no-clear)
+          fi
+          if (( MONITOR_DEBUG == 1 )); then
+            printf '[monitor-debug] nudge id=%s message=%s target=%s\n' "$id" "$NUDGE_MESSAGE" "$tmux_target" >&2
+          fi
+          echo "[monitor] $id nudged ($reason) with '$NUDGE_MESSAGE'."
+          if (( NUDGE_ESCAPE == 1 )); then
+            "$TMUX_BIN" send-keys -t "$tmux_target" Escape >/dev/null 2>&1 || true
+          fi
+          capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
+          local nudge_status=0
+          if (( ${#clear_args[@]} > 0 )); then
+            if ! "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE" "${clear_args[@]}"; then
+              nudge_status=$?
+            fi
+          else
+            if ! "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE"; then
+              nudge_status=$?
+            fi
+          fi
+          if (( nudge_status == 0 )); then
+            nudged=1
+            capture_snapshot "$id" "$reason" "post-nudge" "$tmux_target"
+          else
+            echo "[monitor] $id nudge helper failed; manual intervention required."
+            nudged=0
+          fi
+        else
+          echo "[monitor] $id requires manual attention (reason: $reason; nudge helper unavailable)."
+          capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
+          mark_stuck "$id"
+          unresolved+=" $id"
+          continue
+        fi
+      fi
+    fi
+
     if [[ -z "$log_path" && "$reason" == "runtime" ]]; then
       # Long runtime without log path; nothing to do besides warn.
       :
     elif [[ -n "$log_path" && $rechecked -eq 0 ]]; then
       # No log file available to recheck; nothing else to do here.
       :
-    fi
-
-    if [[ -n "$TMUX_BIN" && "$launcher_kind" == "tmux-pane" && -n "$pane_id" ]]; then
-      if is_stuck "$id"; then
-        echo "[monitor] $id still flagged ($reason); already nudged."
-      else
-        capture_snapshot "$id" "$reason" "pre-check" "$tmux_target"
-        echo "[monitor] $id requires manual attention (reason: $reason)."
-        capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
-        mark_stuck "$id"
-        unresolved+=" $id"
-        continue
-      fi
-    elif [[ -n "$TMUX_BIN" && "$launcher_kind" == "tmux-window" && -n "$window_id" ]]; then
-      if is_stuck "$id"; then
-        echo "[monitor] $id still flagged ($reason); already nudged."
-      else
-        capture_snapshot "$id" "$reason" "pre-check" "$tmux_target"
-        echo "[monitor] $id requires manual attention (reason: $reason)."
-        capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
-        mark_stuck "$id"
-        unresolved+=" $id"
-        continue
-      fi
     fi
 
     if [[ $nudged -eq 1 && -n "$log_path" ]]; then
@@ -235,6 +257,11 @@ PY
     unresolved+=" $id"
     echo "[monitor] $id requires manual attention (reason: $reason)."
     capture_snapshot "$id" "$reason" "manual-attention" "$tmux_target"
+    if [[ -x "$TAIL_CMD" ]]; then
+      echo "[monitor] Recent log tail for $id:" >&2
+      "$TAIL_CMD" --id "$id" --lines 20 >&2 || true
+      echo "[monitor] End log tail for $id." >&2
+    fi
   done
 
   if [[ -n "$unresolved" ]]; then
@@ -264,9 +291,6 @@ while [[ $# -gt 0 ]]; do
       exit 1 ;;
   esac
 done
-if (( OVERALL_ALERT != 0 )); then
-  exit 1
-fi
 
 REGISTRY="docs/agents/subagent-registry.json"
 MANAGER_CMD="$(git rev-parse --show-toplevel)/.agents/bin/subagent_manager.sh"
@@ -471,3 +495,7 @@ if [[ -n "$ITERATIONS" && poll_count -ge $ITERATIONS ]]; then
 fi
 sleep "$INTERVAL"
 done
+
+if (( OVERALL_ALERT != 0 )); then
+  exit 1
+fi

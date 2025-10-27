@@ -123,9 +123,9 @@ def test_runtime_guardrail() -> None:
     finally:
         shutil.rmtree(repo)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Runtime threshold exceeded" in result.stdout, result.stdout
+    assert result.returncode != 0, result.stdout + result.stderr
     assert "^ 20251009-000000-monitor" in result.stdout, result.stdout
+    assert "requires manual attention" in result.stdout, result.stdout
 
 
 def test_heartbeat_guardrail() -> None:
@@ -135,9 +135,9 @@ def test_heartbeat_guardrail() -> None:
     finally:
         shutil.rmtree(repo)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Log heartbeat threshold exceeded" in result.stdout, result.stdout
+    assert result.returncode != 0, result.stdout + result.stderr
     assert "! 20251009-000001-monitor" in result.stdout, result.stdout
+    assert "requires manual attention" in result.stdout, result.stdout
 
 
 def test_no_subagents_exit() -> None:
@@ -173,8 +173,8 @@ def test_stale_entry_exits() -> None:
     finally:
         shutil.rmtree(repo)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Stale subagent entry detected" in result.stdout, result.stdout
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "requires manual attention" in result.stdout or "Stale subagent entry detected" in result.stdout, result.stdout
 
 
 if __name__ == "__main__":
