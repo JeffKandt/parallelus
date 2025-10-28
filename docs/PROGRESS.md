@@ -502,3 +502,16 @@
 
 **Next Actions**
 - Fold remaining notebooks, implement automated log harvesting before cleanup, and proceed with merging the fixes into `main`.
+
+### 2025-10-23 — codex/investigate-context-cloning-for-subagents
+
+**Objectives**
+- Capture design and tooling for "context capsules" that let the main agent hand rich session context to subagents.
+
+**Work Performed**
+- Documented capsule design (`docs/agents/prototypes/context-capsule.md`) and prompt template (`docs/agents/templates/context_capsule_prompt.md`).
+- Added helper scripts (`scripts/capsule_prompt.py`, `scripts/remember_later.py`) plus a notes inbox (`docs/agents/capsules/remember-later.md`).
+- Logged operator workflows and TODOs in the codex branch plan/progress notebooks (now folded into canonical docs).
+
+**Next Actions**
+- Pilot the capsule workflow alongside standard progress logging, socialise prompt usage, and scope implementation spikes for automation.

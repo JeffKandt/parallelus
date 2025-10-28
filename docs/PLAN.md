@@ -27,3 +27,4 @@
 - Update `docs/agents/templates/senior_architect_scope.md` to reference `origin/feature/publish-repo`.
 - Rationalise backlog management across `docs/PLAN.md`, branch checklists, and Next Actions so TODOs appear in a single canonical location.
 - Automate senior-review log harvest so sandbox cleanup records transcripts before panes close (preventing evidence loss).
+- Pilot the context capsule workflow (design/templates/helpers) introduced on codex/investigate-context-cloning-for-subagents and evaluate integration points with existing progress logging.
