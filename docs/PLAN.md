@@ -26,3 +26,4 @@
 - Clean up duplicate `local` declarations in `.agents/bin/launch_subagent.sh:create_runner`.
 - Update `docs/agents/templates/senior_architect_scope.md` to reference `origin/feature/publish-repo`.
 - Rationalise backlog management across `docs/PLAN.md`, branch checklists, and Next Actions so TODOs appear in a single canonical location.
+- Automate senior-review log harvest so sandbox cleanup records transcripts before panes close (preventing evidence loss).
