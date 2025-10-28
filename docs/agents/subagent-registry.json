@@ -1224,5 +1224,36 @@
       }
     ],
     "deliverables_status": "harvested"
+  },
+  {
+    "id": "20251028-001950-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-hnKpGy",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-hnKpGy/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-hnKpGy/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-hnKpGy/subagent.log",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20251028-001950",
+    "window_title": "20251028-001950-senior-review",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20251028-001950-senior-review",
+      "window_id": "@78",
+      "pane_id": "%338"
+    },
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "source": "docs/reviews/feature-claude-review-2025-10-27.md",
+        "target": "docs/reviews/feature-claude-review-2025-10-27.md",
+        "status": "harvested",
+        "harvested_at": "2025-10-28T00:33:49Z",
+        "target_path": "docs/reviews/feature-claude-review-2025-10-27.md"
+      }
+    ],
+    "deliverables_status": "harvested"
   }
 ]
