@@ -9,6 +9,7 @@ markers (`!` and `^`) and exit messages without requiring a real registry.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
@@ -81,6 +82,16 @@ EOF
 20251009-000020-monitor worktree   monitor-loop-stale       running          pending      00:00     -         -              -
 EOF
         """
+    elif scenario == "nudge-failure":
+        body = f"""
+            #!/usr/bin/env bash
+            set -euo pipefail
+            cat <<'EOF'
+{HEADER}
+{SEPARATOR}
+20251009-000030-monitor worktree   monitor-loop-nudge       running          pending      05:00     05:00     %2/@7          2025-10-09 19:15:00
+EOF
+        """
     else:
         raise ValueError(f"unknown scenario: {scenario}")
 
@@ -94,17 +105,87 @@ def _setup_repo(scenario: str) -> Path:
     script_dest = tmp_dir / ".agents" / "bin"
     script_dest.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(SCRIPT_UNDER_TEST, script_dest / "agents-monitor-loop.sh")
-    mode = os.stat(script_dest / "agents-monitor-loop.sh").st_mode
-    os.chmod(script_dest / "agents-monitor-loop.sh", mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    monitor_script = script_dest / "agents-monitor-loop.sh"
+    shutil.copy2(SCRIPT_UNDER_TEST, monitor_script)
+    mode = os.stat(monitor_script).st_mode
+    os.chmod(monitor_script, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     _write_stub(tmp_dir, scenario)
+
+    tmux_safe = script_dest / "tmux-safe"
+    tmux_safe.write_text(
+        dedent(
+            """
+            #!/usr/bin/env bash
+            set -euo pipefail
+            exit 0
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(tmux_safe, os.stat(tmux_safe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    send_keys_stub = script_dest / "subagent_send_keys.sh"
+    exit_code = 1 if scenario == "nudge-failure" else 0
+    send_keys_stub.write_text(
+        dedent(
+            f"""
+            #!/usr/bin/env bash
+            set -euo pipefail
+            exit {exit_code}
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(send_keys_stub, os.stat(send_keys_stub).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    tail_stub = script_dest / "subagent_tail.sh"
+    tail_stub.write_text(
+        dedent(
+            """
+            #!/usr/bin/env bash
+            set -euo pipefail
+            exit 0
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(tail_stub, os.stat(tail_stub).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    registry_dir = tmp_dir / "docs" / "agents"
+    registry_dir.mkdir(parents=True, exist_ok=True)
+    registry_entries: list[dict[str, object]] = []
+    if scenario == "nudge-failure":
+        sandbox = tmp_dir / ".parallelus" / "subagents" / "sandboxes" / "monitor-loop-nudge"
+        sandbox.mkdir(parents=True, exist_ok=True)
+        (sandbox / "subagent.session.jsonl").write_text("[]\n", encoding="utf-8")
+        registry_entries.append(
+            {
+                "id": "20251009-000030-monitor",
+                "type": "throwaway",
+                "slug": "monitor-loop-nudge",
+                "status": "running",
+                "path": str(sandbox),
+                "launcher_kind": "tmux-pane",
+                "launcher_handle": {"pane_id": "%2", "window_id": "@7"},
+            }
+        )
+    (registry_dir / "subagent-registry.json").write_text(json.dumps(registry_entries, indent=2) + "\n", encoding="utf-8")
+
     subprocess.run(["git", "init", "-q"], cwd=tmp_dir, check=True)
     return tmp_dir
 
 
-def _run_monitor(repo_root: Path, *extra_args: str) -> subprocess.CompletedProcess[str]:
+def _run_monitor(
+    repo_root: Path, *extra_args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     cmd = [str(Path(repo_root, ".agents", "bin", "agents-monitor-loop.sh")), "--interval", "0", *extra_args]
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
     return subprocess.run(
         cmd,
         cwd=repo_root,
@@ -113,6 +194,7 @@ def _run_monitor(repo_root: Path, *extra_args: str) -> subprocess.CompletedProce
         stderr=subprocess.PIPE,
         text=True,
         timeout=5,
+        env=run_env,
     )
 
 
@@ -175,6 +257,24 @@ def test_stale_entry_exits() -> None:
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "requires manual attention" in result.stdout or "Stale subagent entry detected" in result.stdout, result.stdout
+
+
+def test_nudge_helper_failure_reports_manual_attention() -> None:
+    repo = _setup_repo("nudge-failure")
+    try:
+        env = {
+            "MONITOR_NUDGE_MESSAGE": "poke",
+            "MONITOR_RECHECK_DELAY": "0",
+            "MONITOR_NUDGE_DELAY": "0",
+            "MONITOR_SNAPSHOT_DIR": str(Path(repo, "snapshots")),
+        }
+        result = _run_monitor(repo, "--iterations", "1", env=env)
+    finally:
+        shutil.rmtree(repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "nudge helper failed" in result.stdout, result.stdout
+    assert "requires manual attention" in result.stdout, result.stdout
 
 
 if __name__ == "__main__":

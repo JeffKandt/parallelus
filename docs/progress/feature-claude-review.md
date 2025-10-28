@@ -43,3 +43,39 @@
 
 **Next Actions**
 - Finish the current senior-review run and ensure all panes are closed before merging.
+
+## 2025-10-27 23:47:49 UTC
+**Objectives**
+- Reconcile the latest senior-review subagent run and address its findings.
+
+**Work Performed**
+- Reviewed `AGENTS.md` and `docs/agents/subagent-session-orchestration.md` to confirm current guardrails before executing new commands.
+- Inspected the sandbox `senior-review-kEZuFt` and compared the unharvested review with the repository copy.
+- Recorded session context with `SESSION_PROMPT="Harvest senior review" make start_session`.
+
+**Next Actions**
+- Harvest the updated review report, clean up the subagent sandbox, and fix the monitor loop regression plus missing test coverage.
+
+## 2025-10-27 23:59:18 UTC
+**Objectives**
+- Land the pending senior-review deliverable and close out the identified monitor-loop regressions.
+
+**Work Performed**
+- Copied the `senior-review-kEZuFt` review artefact into `docs/reviews/feature-claude-review-2025-10-27.md`, archived the session under `docs/guardrails/runs/20251027-232707-senior-review-kEZuFt/`, and deleted the orphaned sandbox directory.
+- Updated `.agents/bin/agents-monitor-loop.sh` so failed `subagent_send_keys` nudges log a manual-attention warning without exiting under `set -euo pipefail`.
+- Extended `.agents/tests/monitor_loop.py` with a `nudge-failure` fixture that stubs `subagent_send_keys.sh`, `tmux-safe`, and the registry to verify the failure path.
+- Ran `python3 -m pytest .agents/tests/monitor_loop.py -q` to confirm the guardrail suite passes with the new coverage.
+
+**Next Actions**
+- Communicate the harvested review status, highlight the blocker resolution, and decide whether a follow-up senior review is required after committing the fixes.
+
+## 2025-10-28 00:04:15 UTC
+**Objectives**
+- Relaunch the senior architect review on the post-fix commit with full gate compliance.
+
+**Work Performed**
+- Re-read `docs/agents/subagent-session-orchestration.md` to refresh the subagent guardrails ahead of the new review run.
+- Captured renewed session context via `SESSION_PROMPT="Rerun senior review" make start_session` for auditability.
+
+**Next Actions**
+- Update scope/plan details as needed and launch the senior-review subagent for the current HEAD.

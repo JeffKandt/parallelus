@@ -11,5 +11,6 @@
 - [x] Add regression tests for the updated guardrail logic.
 
 ## Next Actions
-- Harvest the approved senior architect review and merge into main when ready.
+- Rerun the senior architect review on the post-fix commit and confirm the blocker is cleared.
+- Prepare merge packaging once the refreshed review is approved (fold notebooks, gather retrospectives).
 - Monitor upcoming merges to ensure the benign-diff guardrail works as intended.

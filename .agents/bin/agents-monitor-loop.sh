@@ -212,19 +212,26 @@ PY
             "$TMUX_BIN" send-keys -t "$tmux_target" Escape >/dev/null 2>&1 || true
           fi
           capture_snapshot "$id" "$reason" "pre-nudge" "$tmux_target"
-          local nudge_status
+          local nudge_status=0
           if (( ${#clear_args[@]} > 0 )); then
-            "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE" "${clear_args[@]}"
-            nudge_status=$?
+            if "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE" "${clear_args[@]}"; then
+              nudge_status=0
+            else
+              nudge_status=$?
+            fi
           else
-            "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE"
-            nudge_status=$?
+            if "$SEND_KEYS_CMD" --id "$id" --text "$NUDGE_MESSAGE"; then
+              nudge_status=0
+            else
+              nudge_status=$?
+            fi
           fi
           if (( nudge_status == 0 )); then
             nudged=1
             capture_snapshot "$id" "$reason" "post-nudge" "$tmux_target"
           else
-            echo "[monitor] $id nudge helper failed; manual intervention required."
+            echo "[monitor] $id nudge helper failed (exit $nudge_status); manual intervention required."
+            capture_snapshot "$id" "$reason" "nudge-failure" "$tmux_target"
             nudged=0
           fi
         else
