@@ -21,6 +21,7 @@ standard fields (`Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`,
 
 ## Subagent Operating Context
 
+- Ignore previous review files that reference an older commit; you are producing a fresh report for the current tip.
 - Ignore instructions about updating branch plans, progress notebooks, or
   running bootstrap helpers; those belong to the main operator. Your scope is
   read-only evaluation plus authoring the review markdown.

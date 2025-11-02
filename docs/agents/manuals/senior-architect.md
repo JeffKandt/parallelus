@@ -26,9 +26,7 @@ save it to `docs/reviews/<branch>-<date>.md`.
 3. Inspect the generated review, ensure findings are addressed, and commit it.
 4. Do not hand-write review markdowns; merges will be blocked unless the review
    provenance indicates a subagent run.
-5. Before launching, confirm no previous senior-review pane is still open. If
-   `tmux list-panes` shows `*-senior-review` (or a slug-specific pane), close it
-   or run `subagent_manager.sh cleanup --id <id>` before starting a new session.
+5. After harvesting the review, close the senior-review pane (e.g. `tmux kill-pane`) so future launches start clean. Before launching a new run, confirm no previous pane remains; if `tmux list-panes` shows `*-senior-review` (or a slug-specific pane), close it or run `subagent_manager.sh cleanup --id <id>` first.
 6. Remind the reviewer that their session is read-only apart from the review
    file—no plan/progress edits, `make bootstrap`, or other helpers that change
    the workspace are permitted during the review run.
