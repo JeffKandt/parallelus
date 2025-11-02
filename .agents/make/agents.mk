@@ -70,7 +70,7 @@ monitor_subagents:
 ifdef ARGS
 	@$(AGENTS_BIN)/agents-monitor-loop.sh $(ARGS)
 else
-	@$(AGENTS_BIN)/agents-monitor-loop.sh --interval 45 --threshold 180 --runtime-threshold 600
+	@$(AGENTS_BIN)/agents-monitor-loop.sh --interval 10 --threshold 30 --runtime-threshold 600
 endif
 
 queue_init:
