@@ -242,9 +242,6 @@ PY
 
 current_commit=$(git rev-parse HEAD)
 review_file=$(resolve_review_file "$feature_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
-retro_skip_log_pending=0
-retro_skip_reason=""
-retro_skip_timestamp=""
 
 if [[ -z "${AGENTS_MERGE_FORCE:-}" ]]; then
   check_review "$review_file" "$feature_branch" "$current_commit"
@@ -289,10 +286,24 @@ else
   skip_dir="$repo_root/docs/self-improvement/retro-skip-logs"
   mkdir -p "$skip_dir"
   skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
-  retro_skip_log_pending=1
-  retro_skip_reason="$skip_reason"
-  retro_skip_timestamp="$timestamp"
-  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO acknowledged; justification will be logged post-checkout." >&2
+  skip_dir="$repo_root/.parallelus/retro-skip-logs"
+  mkdir -p "$skip_dir"
+  skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
+  python3 - "$skip_file" "$feature_branch" "$current_commit" "$timestamp" "$skip_reason" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+data = {
+    "branch": sys.argv[2],
+    "commit": sys.argv[3],
+    "timestamp": sys.argv[4],
+    "reason": sys.argv[5],
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+PY
+  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO acknowledged; justification logged at ${skip_file#$repo_root/}" >&2
 fi
 
 # Ensure branch notebooks are already folded into canonical docs.
@@ -337,28 +348,6 @@ if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   }
 else
   git checkout "$base_branch" >/dev/null
-fi
-
-if [[ $retro_skip_log_pending -eq 1 ]]; then
-  skip_dir="$repo_root/docs/self-improvement/retro-skip-logs"
-  mkdir -p "$skip_dir"
-  skip_file="$skip_dir/${slugged_branch}--${retro_skip_timestamp}.json"
-  python3 - "$skip_file" "$feature_branch" "$current_commit" "$retro_skip_timestamp" "$retro_skip_reason" <<'PY'
-import json, sys
-
-path = sys.argv[1]
-data = {
-    "branch": sys.argv[2],
-    "commit": sys.argv[3],
-    "timestamp": sys.argv[4],
-    "reason": sys.argv[5],
-}
-with open(path, "w", encoding="utf-8") as fh:
-    json.dump(data, fh, ensure_ascii=False, indent=2)
-    fh.write("\n")
-PY
-  git add "$skip_file" >/dev/null 2>&1 || true
-  echo "agents-merge: retrospective check skipped (logged at ${skip_file#$repo_root/})" >&2
 fi
 
 if [[ "$has_remote" == true ]]; then

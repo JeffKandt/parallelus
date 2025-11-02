@@ -97,7 +97,7 @@ commands beyond `make read_bootstrap`.
 - Continuous-improvement audits are temporarily suspended at merge time; if you
   must bypass the retrospective check, set `AGENTS_MERGE_SKIP_RETRO=1` along with
   `AGENTS_MERGE_SKIP_RETRO_REASON="<why>"`. The merge helper records a skip log under
-  `docs/self-improvement/retro-skip-logs/` for follow-up, and a TODO exists to
+  `.parallelus/retro-skip-logs/` (next to the repo) for follow-up, and a TODO exists to
   reinstate the guardrail.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted

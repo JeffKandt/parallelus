@@ -13,7 +13,7 @@
 - Updated the senior architect manual to reference `.agents/bin/subagent_manager.sh` explicitly, preventing path resolution failures.
 - Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes (now suffix-matched to avoid false positives). Updated `.agents/bin/agents-merge` to validate retrospectives before notebook cleanup so audits fail before guardrail artifacts vanish.
 - Clarified the senior architect manual with explicit close-after-harvest guidance, standardized monitoring via `make monitor_subagents`, and restored/enhanced the reviewer prompt's "Subagent Operating Context" guardrails (manual-reading boundaries, fresh-review reminder).
-- Added a temporary retrospective skip flow that logs justifications under `docs/self-improvement/retro-skip-logs/`; TODO: reinstate full CI audit enforcement once the new merge workflow lands.
+- Added a temporary retrospective skip flow that logs justifications under `.parallelus/retro-skip-logs/`; TODO: reinstate full CI audit enforcement once the new merge workflow lands.
 
 **Next Actions**
 - Roll the helper into normal rebase docs and update any manuals referencing the old interactive flow if they appear.
