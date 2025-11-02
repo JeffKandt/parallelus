@@ -1,23 +1,23 @@
 # Senior Architect Review – feature/sa-review-subagent-guardrail
 
 Reviewed-Branch: feature/sa-review-subagent-guardrail
-Reviewed-Commit: 7be061394e5d4624d7cb052f95566c450715c5ac
+Reviewed-Commit: 26418b123de5323f9dfdf0413c320152af02280c
 Reviewed-On: 2025-11-02
 Decision: approved
-Reviewer: senior-review-H4dQmv
+Reviewer: senior-review-r14Pdc
 
 ## Summary
-- Guardrail updates keep senior-review runs hygienic by blocking uncleared registry entries, tightening tmux pane detection, and ensuring reviews carry the subagent provenance line before merge.
+- Final guardrail tweak reorders `agents-merge` so retrospective validation runs before the notebook cleanup gate, keeping the audit evidence intact while retaining existing safety checks.
 
 ## Findings
-- Severity: Info | Area: Merge Guardrails | Summary: Confirmed `.agents/bin/agents-merge` now whitelists doc-only drift between the reviewed commit and tip while rejecting additional code changes and requiring the “Session Mode: synchronous subagent” provenance line before merge.  
-  - Evidence: `.agents/bin/agents-merge:171`, `.agents/bin/agents-merge:183`, `.agents/bin/agents-merge:196`
-- Severity: Info | Area: Subagent Launch Hygiene | Summary: Verified the launcher blocks stale runs with uncleared registry rows and only flags tmux panes whose titles end with `-<slug>`, eliminating the previous false positives without letting real leftovers through.  
-  - Evidence: `.agents/bin/subagent_manager.sh:101`, `.agents/bin/subagent_manager.sh:148`
+- Severity: Info | Area: Merge Guardrails | Summary: Confirmed `.agents/bin/agents-merge` now executes `check_retrospective` before verifying that branch notebooks were deleted, so audits fail fast without forcing operators to resurrect plan/progress files.  
+  - Evidence: `.agents/bin/agents-merge:70`, `.agents/bin/agents-merge:276`, `.agents/bin/agents-merge:302`
+- Severity: Info | Area: Retrospective Hygiene | Summary: The latest retrospective marker still records head `da31504cd9a5…`; rerun `make turn_end m="summary"` after cleanup so the marker reflects `HEAD` (`26418b123de5…`) before merge.  
+  - Evidence: `docs/self-improvement/markers/feature-sa-review-subagent-guardrail.json:4`
 
 ## Tests & Evidence Reviewed
-- `git diff origin/main...HEAD`
-- Manual inspection of `.agents/bin/agents-merge`, `.agents/bin/subagent_manager.sh`, `.agents/bin/agents-rebase-continue`, `docs/PROGRESS.md`
+- `git diff 7be061394e5d4624d7cb052f95566c450715c5ac...HEAD`
+- Manual inspection of `.agents/bin/agents-merge`, `docs/PROGRESS.md`, `docs/self-improvement/markers/feature-sa-review-subagent-guardrail.json`
 
 ## Follow-Ups / Tickets
 - [ ] None.
