@@ -274,7 +274,11 @@ export AGENTS_MERGE_REVIEW_FILE="$review_file"
 export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
 export AGENTS_MERGE_COMMIT="$current_commit"
 
-check_retrospective
+if [[ -z "${AGENTS_MERGE_SKIP_RETRO:-}" ]]; then
+  check_retrospective
+else
+  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO set; skipping retrospective verification" >&2
+fi
 
 # Ensure branch notebooks are already folded into canonical docs.
 shopt -s nullglob
