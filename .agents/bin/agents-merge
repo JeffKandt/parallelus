@@ -260,9 +260,13 @@ if [[ -n "$pending_ack" ]]; then
   echo "agents-merge: AGENTS_MERGE_ACK_REVIEW acknowledged; continuing despite lower-severity findings." >&2
 fi
 
-if ! make ci; then
-  echo "agents-merge: make ci failed; resolve issues before merging" >&2
-  exit 1
+if [[ -z "${AGENTS_MERGE_SKIP_CI:-}" ]]; then
+  if ! make ci; then
+    echo "agents-merge: make ci failed; resolve issues before merging" >&2
+    exit 1
+  fi
+else
+  echo "agents-merge: AGENTS_MERGE_SKIP_CI set; skipping make ci" >&2
 fi
 
 # Clean up artifacts generated during CI runs (e.g., smoke test registry entries).
@@ -274,36 +278,22 @@ export AGENTS_MERGE_REVIEW_FILE="$review_file"
 export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
 export AGENTS_MERGE_COMMIT="$current_commit"
 
+SKIP_RETRO_REQUESTED=0
+SKIP_RETRO_REASON=""
+SKIP_RETRO_TIMESTAMP=""
+SKIP_RETRO_BASENAME=""
+
 if [[ -z "${AGENTS_MERGE_SKIP_RETRO:-}" ]]; then
   check_retrospective
 else
-  skip_reason=${AGENTS_MERGE_SKIP_RETRO_REASON:-}
-  if [[ -z "$skip_reason" ]]; then
+  SKIP_RETRO_REQUESTED=1
+  SKIP_RETRO_REASON=${AGENTS_MERGE_SKIP_RETRO_REASON:-}
+  if [[ -z "$SKIP_RETRO_REASON" ]]; then
     echo "agents-merge: AGENTS_MERGE_SKIP_RETRO set but AGENTS_MERGE_SKIP_RETRO_REASON is missing." >&2
     exit 1
   fi
-  timestamp=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-  skip_dir="$repo_root/docs/self-improvement/retro-skip-logs"
-  mkdir -p "$skip_dir"
-  skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
-  skip_dir="$repo_root/.parallelus/retro-skip-logs"
-  mkdir -p "$skip_dir"
-  skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
-  python3 - "$skip_file" "$feature_branch" "$current_commit" "$timestamp" "$skip_reason" <<'PY'
-import json, sys
-
-path = sys.argv[1]
-data = {
-    "branch": sys.argv[2],
-    "commit": sys.argv[3],
-    "timestamp": sys.argv[4],
-    "reason": sys.argv[5],
-}
-with open(path, "w", encoding="utf-8") as fh:
-    json.dump(data, fh, ensure_ascii=False, indent=2)
-    fh.write("\n")
-PY
-  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO acknowledged; justification logged at ${skip_file#$repo_root/}" >&2
+  SKIP_RETRO_TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+  SKIP_RETRO_BASENAME="${slugged_branch}--${SKIP_RETRO_TIMESTAMP}.json"
 fi
 
 # Ensure branch notebooks are already folded into canonical docs.
@@ -348,6 +338,38 @@ if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   }
 else
   git checkout "$base_branch" >/dev/null
+fi
+
+if (( SKIP_RETRO_REQUESTED == 1 )); then
+  repo_parent=$(cd "$repo_root/.." && pwd)
+  state_root="$repo_parent/.parallelus"
+  skip_dir="$state_root/retro-skip-logs"
+  if ! mkdir -p "$skip_dir"; then
+    echo "agents-merge: unable to create skip log directory $skip_dir" >&2
+    exit 1
+  fi
+  skip_file="$skip_dir/$SKIP_RETRO_BASENAME"
+  python3 - "$skip_file" "$feature_branch" "$current_commit" "$SKIP_RETRO_TIMESTAMP" "$SKIP_RETRO_REASON" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+data = {
+    "branch": sys.argv[2],
+    "commit": sys.argv[3],
+    "timestamp": sys.argv[4],
+    "reason": sys.argv[5],
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+PY
+  display_path="$skip_file"
+  if [[ "${display_path#"$repo_root/"}" != "$display_path" ]]; then
+    display_path=${display_path#$repo_root/}
+  elif [[ "${display_path#"$state_root"}" != "$display_path" ]]; then
+    display_path=".parallelus${display_path#$state_root}"
+  fi
+  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO acknowledged; justification logged at $display_path" >&2
 fi
 
 if [[ "$has_remote" == true ]]; then

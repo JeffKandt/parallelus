@@ -10,6 +10,6 @@
 - [ ] Complete merge to main once guardrails pass.
 
 ## Next Actions
-- Run `make turn_end` after the final audit/report is saved so the marker head stays aligned.
-
-- [ ] post-audit merge prep
+- [x] Implement monitor auto-exit behaviour (e.g. exit after consecutive stale-heartbeat polls) so the main agent regains control once senior-review logs go quiet.
+- [x] Rework the `AGENTS_MERGE_SKIP_RETRO` flow to log justification after checkout without staging files on the feature branch, then rerun the senior architect review.
+- [ ] Once guardrails and audit skip flow are approved, rerun required audits and complete the merge back to `main`.

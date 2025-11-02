@@ -215,6 +215,11 @@ to restart the monitor whenever it exits early.
   flagged sandbox right away, respond, document the intervention (plan/progress + progress log),
   and restart the loop only after next steps are clear.
 
+The helper also tracks consecutive stale-heartbeat polls. If every running subagent misses
+`MONITOR_AUTO_EXIT_STALE_POLLS` polls in a row (default: 3), the monitor exits immediately—even
+when `--iterations` is set—so the main agent can intervene. Set
+`MONITOR_AUTO_EXIT_STALE_POLLS=0` to suppress this guardrail during debugging sessions.
+
 When the loop exits (the helper highlights any registry IDs with pending deliverables):
 1. Run `./.agents/bin/subagent_manager.sh status --id <registry-id>` to confirm which
    subagent triggered the exit, capture its latest log age, and inspect the new

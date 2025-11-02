@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -34,6 +35,14 @@ def _setup_repo() -> Path:
     (tmpdir / ".agents" / "bin").mkdir(parents=True)
     shutil.copy2(MERGE_SCRIPT, tmpdir / ".agents" / "bin" / "agents-merge")
     os.chmod(tmpdir / ".agents" / "bin" / "agents-merge", 0o755)
+    detect_stub = tmpdir / ".agents" / "bin" / "agents-detect"
+    detect_stub.write_text(
+        "echo 'REPO_MODE=remote-connected'\n"
+        "echo 'BASE_BRANCH=main'\n"
+        "echo 'HAS_REMOTE=false'\n",
+        encoding="utf-8",
+    )
+    os.chmod(detect_stub, 0o755)
     shutil.copy2(AGENTRC, tmpdir / ".agents" / "agentrc")
     _run(["git", "init", "-q"], cwd=tmpdir)
     _run(["git", "config", "user.name", "Test User"], cwd=tmpdir)
@@ -43,8 +52,9 @@ def _setup_repo() -> Path:
     (tmpdir / "docs").mkdir()
     (tmpdir / "docs" / "PLAN.md").write_text("# Plan\n", encoding="utf-8")
     (tmpdir / "docs" / "PROGRESS.md").write_text("# Progress\n", encoding="utf-8")
+    (tmpdir / "Makefile").write_text("ci:\n\t@echo \"ci stub\"\n", encoding="utf-8")
     _run(["git", "add", "."], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "initial"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "initial"], cwd=tmpdir)
     return tmpdir
 
 
@@ -53,7 +63,7 @@ def _prepare_benign_repo(tmpdir: Path) -> str:
     code_file = tmpdir / "src.txt"
     code_file.write_text("base change\n", encoding="utf-8")
     _run(["git", "add", "src.txt"], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "feature work"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "feature work"], cwd=tmpdir)
     review_commit = _run(["git", "rev-parse", "HEAD"], cwd=tmpdir).stdout.strip()
 
     # Allowed doc-only follow-up (multiple commits)
@@ -70,16 +80,31 @@ def _prepare_benign_repo(tmpdir: Path) -> str:
                 "Reviewed-On: 2025-10-27",
                 "Decision: approved",
                 "Reviewer: test",
+                "Session Mode: synchronous subagent",
             ]
         )
         + "\n",
         encoding="utf-8",
     )
     _run(["git", "add", "docs"], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "doc follow-up"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "doc follow-up"], cwd=tmpdir)
     (tmpdir / "docs" / "PROGRESS.md").write_text("# Progress\nupdated\n", encoding="utf-8")
-    _run(["git", "add", "docs/PROGRESS.md"], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "progress update"], cwd=tmpdir)
+    marker_timestamp = "2025-11-02T00:00:00Z"
+    markers_dir = tmpdir / "docs" / "self-improvement" / "markers"
+    reports_dir = tmpdir / "docs" / "self-improvement" / "reports"
+    markers_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    slugged = "feature-test"
+    (markers_dir / f"{slugged}.json").write_text(
+        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/test", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    _run(["git", "add", "docs/PROGRESS.md", "docs/self-improvement"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "progress update"], cwd=tmpdir)
     return "test"
 
 
@@ -88,7 +113,7 @@ def _prepare_non_benign_repo(tmpdir: Path) -> str:
     code_file = tmpdir / "src.txt"
     code_file.write_text("base change\n", encoding="utf-8")
     _run(["git", "add", "src.txt"], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "feature work"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "feature work"], cwd=tmpdir)
     review_commit = _run(["git", "rev-parse", "HEAD"], cwd=tmpdir).stdout.strip()
 
     # Follow-up touches code (not allowed)
@@ -103,13 +128,28 @@ def _prepare_non_benign_repo(tmpdir: Path) -> str:
                 "Reviewed-On: 2025-10-27",
                 "Decision: approved",
                 "Reviewer: test",
+                "Session Mode: synchronous subagent",
             ]
         )
         + "\n",
         encoding="utf-8",
     )
+    marker_timestamp = "2025-11-02T00:00:00Z"
+    markers_dir = tmpdir / "docs" / "self-improvement" / "markers"
+    reports_dir = tmpdir / "docs" / "self-improvement" / "reports"
+    markers_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    slugged = "feature-fail"
+    (markers_dir / f"{slugged}.json").write_text(
+        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/fail", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
     _run(["git", "add", "."], cwd=tmpdir)
-    _run(["git", "commit", "-mq", "code follow-up"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "code follow-up"], cwd=tmpdir)
     return "fail"
 
 
@@ -135,3 +175,38 @@ def test_agents_merge_rejects_non_benign_commit():
         assert result.returncode != 0, "Expected failure for code diff after review"
     finally:
         shutil.rmtree(tmpdir)
+
+
+def test_agents_merge_skip_retro_logs_outside_repo():
+    tmpdir = _setup_repo()
+    state_root = Path(tmpdir).parent / ".parallelus"
+    shutil.rmtree(state_root, ignore_errors=True)
+    try:
+        slug = _prepare_benign_repo(tmpdir)
+        env = os.environ.copy()
+        env.setdefault("AGENTS_ALLOW_MAIN_COMMIT", "1")
+        env.setdefault("AGENTS_MERGE_SKIP_RETRO", "1")
+        env.setdefault("AGENTS_MERGE_SKIP_RETRO_REASON", "skip for test")
+        stub_dir = Path(tempfile.mkdtemp(prefix="agents-merge-make-stub-"))
+        make_stub = stub_dir / "make"
+        make_stub.write_text(
+            "#!/usr/bin/env bash\nexit 1\n",
+            encoding="utf-8",
+        )
+        os.chmod(make_stub, 0o755)
+        env.setdefault("AGENTS_MERGE_SKIP_CI", "1")
+        env["PATH"] = f"{stub_dir}:{env.get('PATH', '')}"
+        result = _run([".agents/bin/agents-merge", slug], cwd=tmpdir, env=env, check=False)
+        assert result.returncode == 0, f"Expected success, got {result.returncode}: {result.stderr}"
+        skip_dir = state_root / "retro-skip-logs"
+        pattern = f"feature-{slug}--*.json"
+        matches = list(skip_dir.glob(pattern))
+        assert matches, f"Expected skip log matching {pattern}"
+        for path in matches:
+            assert not str(path).startswith(str(tmpdir)), "Skip log should not reside inside repo root"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            assert data["reason"] == "skip for test"
+    finally:
+        shutil.rmtree(tmpdir)
+        shutil.rmtree(stub_dir, ignore_errors=True)
+        shutil.rmtree(state_root, ignore_errors=True)

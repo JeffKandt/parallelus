@@ -43,6 +43,62 @@ TAIL_CMD="$REPO_ROOT/.agents/bin/subagent_tail.sh"
 mkdir -p "$SNAPSHOT_DIR"
 OVERALL_ALERT=0
 
+AUTO_EXIT_POLLS_RAW=${MONITOR_AUTO_EXIT_STALE_POLLS:-3}
+if [[ "$AUTO_EXIT_POLLS_RAW" =~ ^[0-9]+$ ]]; then
+  AUTO_EXIT_POLLS=$AUTO_EXIT_POLLS_RAW
+else
+  AUTO_EXIT_POLLS=0
+fi
+STALE_COUNTS=""
+
+get_stale_count() {
+  local key="$1"
+  local entry
+  for entry in $STALE_COUNTS; do
+    if [[ "${entry%%=*}" == "$key" ]]; then
+      printf '%s\n' "${entry#*=}"
+      return
+    fi
+  done
+  printf '0\n'
+}
+
+set_stale_count() {
+  local key="$1"
+  local value="$2"
+  local new_counts=""
+  local entry
+  local found=0
+  for entry in $STALE_COUNTS; do
+    if [[ "${entry%%=*}" == "$key" ]]; then
+      found=1
+      if (( value > 0 )); then
+        new_counts+="$key=$value "
+      fi
+    else
+      new_counts+="$entry "
+    fi
+  done
+  if (( !found )) && (( value > 0 )); then
+    new_counts+="$key=$value "
+  fi
+  STALE_COUNTS="${new_counts#" "}"
+}
+
+prune_non_running() {
+  local new_counts=""
+  local entry
+  local key
+  local lookup=" $* "
+  for entry in $STALE_COUNTS; do
+    key=${entry%%=*}
+    if [[ "$lookup" == *" $key "* ]]; then
+      new_counts+="$entry "
+    fi
+  done
+  STALE_COUNTS="${new_counts#" "}"
+}
+
 capture_snapshot() {
   local id="$1"
   local reason="$2"
@@ -492,11 +548,97 @@ rows_json="[]"
 [[ -n "$alerts_line" ]] && alerts_json=${alerts_line#@@MONITOR_ALERTS }
 [[ -n "$rows_line" ]] && rows_json=${rows_line#@@MONITOR_ROWS }
 
+auto_exit_candidate=0
+auto_exit_ids_str=""
+auto_exit_message=""
+if (( AUTO_EXIT_POLLS > 0 )); then
+  stale_info=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
+import json
+import os
+import sys
+
+rows = json.loads(os.environ.get("ROWS_JSON") or "[]")
+threshold = int(sys.argv[1])
+running = []
+stale = []
+for row in rows:
+    if (row.get("status") or "").lower() != "running":
+        continue
+    ident = row.get("id")
+    if not ident:
+        continue
+    running.append(ident)
+    log_seconds = row.get("log_seconds")
+    if log_seconds is None or (isinstance(log_seconds, int) and log_seconds > threshold):
+        stale.append(ident)
+print(" ".join(running))
+print(" ".join(stale))
+PY
+  ) || stale_info=$'\n'
+  running_ids=()
+  IFS=$'\n' read -r running_line stale_line <<<"$stale_info"
+  IFS=' ' read -r -a running_ids <<<"${running_line:-}"
+  IFS=$' \t\n'
+  stale_line=${stale_line:-}
+  stale_lookup=" $stale_line "
+  prune_non_running "${running_ids[@]}"
+  for id in $stale_line; do
+    [[ -z "$id" ]] && continue
+    current=$(get_stale_count "$id")
+    current=$((current + 1))
+    set_stale_count "$id" "$current"
+  done
+  for id in "${running_ids[@]}"; do
+    [[ -z "$id" ]] && continue
+    if [[ "$stale_lookup" != *" $id "* ]]; then
+      set_stale_count "$id" 0
+    fi
+  done
+  if (( ${#running_ids[@]} > 0 )); then
+    all_stale=1
+    for id in "${running_ids[@]}"; do
+      [[ -z "$id" ]] && continue
+      if [[ "$stale_lookup" != *" $id "* ]]; then
+        all_stale=0
+        break
+      fi
+    done
+    if (( all_stale == 1 )); then
+      ready=1
+      exit_ids_formatted=""
+      for id in "${running_ids[@]}"; do
+        [[ -z "$id" ]] && continue
+        count=$(get_stale_count "$id")
+        if (( count < AUTO_EXIT_POLLS )); then
+          ready=0
+          break
+        fi
+        exit_ids_formatted+=" $id(${count})"
+      done
+      if (( ready == 1 )); then
+        auto_exit_candidate=1
+        auto_exit_ids_str="${exit_ids_formatted# }"
+        auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
+      fi
+    fi
+  fi
+fi
+
 investigate_alerts "$alerts_json" "$rows_json"
 alert_status=$?
 if (( alert_status != 0 )); then
   OVERALL_ALERT=1
+  if (( auto_exit_candidate == 1 )); then
+    [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
+    break
+  fi
   if [[ -z "$ITERATIONS" ]]; then
+    break
+  fi
+else
+  if (( auto_exit_candidate == 1 )); then
+    OVERALL_ALERT=1
+    [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
     break
   fi
 fi

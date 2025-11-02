@@ -259,6 +259,23 @@ def test_stale_entry_exits() -> None:
     assert "requires manual attention" in result.stdout or "Stale subagent entry detected" in result.stdout, result.stdout
 
 
+def test_auto_exit_after_consecutive_stale_polls() -> None:
+    repo = _setup_repo("heartbeat")
+    try:
+        env = {
+            "MONITOR_AUTO_EXIT_STALE_POLLS": "2",
+            "MONITOR_RECHECK_DELAY": "0",
+            "MONITOR_NUDGE_DELAY": "0",
+        }
+        result = _run_monitor(repo, "--iterations", "10", env=env)
+    finally:
+        shutil.rmtree(repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Auto-exit triggered" in result.stdout, result.stdout
+    assert result.stdout.count("---") <= 4, result.stdout
+
+
 def test_nudge_helper_failure_reports_manual_attention() -> None:
     repo = _setup_repo("nudge-failure")
     try:
