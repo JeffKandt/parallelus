@@ -277,7 +277,25 @@ export AGENTS_MERGE_COMMIT="$current_commit"
 if [[ -z "${AGENTS_MERGE_SKIP_RETRO:-}" ]]; then
   check_retrospective
 else
-  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO set; skipping retrospective verification" >&2
+  skip_reason=${AGENTS_MERGE_SKIP_RETRO_REASON:-}
+  if [[ -z "$skip_reason" ]]; then
+    echo "agents-merge: AGENTS_MERGE_SKIP_RETRO set but AGENTS_MERGE_SKIP_RETRO_REASON is missing." >&2
+    exit 1
+  fi
+  timestamp=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+  skip_dir="$repo_root/docs/self-improvement/retro-skip-logs"
+  mkdir -p "$skip_dir"
+  skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
+  cat <<EOF >"$skip_file"
+{
+  "branch": "$feature_branch",
+  "commit": "$current_commit",
+  "timestamp": "$timestamp",
+  "reason": "$skip_reason"
+}
+EOF
+  git add "$skip_file" >/dev/null 2>&1 || true
+  echo "agents-merge: retrospective check skipped (logged at ${skip_file#$repo_root/})" >&2
 fi
 
 # Ensure branch notebooks are already folded into canonical docs.

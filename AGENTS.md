@@ -94,6 +94,11 @@ commands beyond `make read_bootstrap`.
 - Use `make turn_end m="summary"` to append structured updates before replying
   on an active turn; the helper updates progress logs, plan notebooks, session
   summary, and `meta.json` in one step.
+- Continuous-improvement audits are temporarily suspended at merge time; if you
+  must bypass the retrospective check, set `AGENTS_MERGE_SKIP_RETRO=1` along with
+  `AGENTS_MERGE_SKIP_RETRO_REASON="<why>"`. The merge helper records a skip log under
+  `docs/self-improvement/retro-skip-logs/` for follow-up, and a TODO exists to
+  reinstate the guardrail.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.

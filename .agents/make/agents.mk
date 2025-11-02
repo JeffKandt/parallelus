@@ -66,11 +66,13 @@ ifndef slug
 endif
 	@$(AGENTS_BIN)/agents-merge $(slug)
 
+MONITOR_DEFAULT_FLAGS=--interval 10 --threshold 30 --runtime-threshold 600
+
 monitor_subagents:
 ifdef ARGS
-	@$(AGENTS_BIN)/agents-monitor-loop.sh $(ARGS)
+	@$(AGENTS_BIN)/agents-monitor-loop.sh $(MONITOR_DEFAULT_FLAGS) $(ARGS)
 else
-	@$(AGENTS_BIN)/agents-monitor-loop.sh --interval 10 --threshold 30 --runtime-threshold 600
+	@$(AGENTS_BIN)/agents-monitor-loop.sh $(MONITOR_DEFAULT_FLAGS)
 endif
 
 queue_init:
