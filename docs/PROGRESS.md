@@ -11,7 +11,7 @@
 - Added `.agents/bin/agents-rebase-continue`, a helper that exports `GIT_EDITOR=true` before calling `git rebase --continue`, ensuring the guardrail works in sandboxed shells.
 - Documented the helper in `AGENTS.md` so operators reach for it instead of the raw Git command.
 - Updated the senior architect manual to reference `.agents/bin/subagent_manager.sh` explicitly, preventing path resolution failures.
-- Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes (now suffix-matched to avoid false positives).
+- Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes (now suffix-matched to avoid false positives). Updated `.agents/bin/agents-merge` to validate retrospectives before notebook cleanup so audits fail before guardrail artifacts vanish.
 - Clarified the senior architect manual with explicit close-after-harvest guidance, standardized monitoring via `make monitor_subagents`, and restored/enhanced the reviewer prompt's "Subagent Operating Context" guardrails (manual-reading boundaries, fresh-review reminder).
 
 **Next Actions**

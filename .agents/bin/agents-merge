@@ -68,6 +68,9 @@ if [[ "$current_branch" != "$feature_branch" ]]; then
   current_branch="$feature_branch"
 fi
 
+# Verify retrospectives before modifying branch notebooks so audit guardrails fail fast.
+check_retrospective
+
 # Ensure branch notebooks are already folded into canonical docs.
 shopt -s nullglob
 plan_files=("docs/plans/feature-"*.md)
