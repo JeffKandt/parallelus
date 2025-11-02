@@ -1,5 +1,19 @@
 # Project Progress
 
+## 2025-10-31
+
+### 17:59:00 UTC — feature/sa-review-subagent-guardrail
+
+**Objectives**
+- Prevent rebase hangs by codifying the non-interactive continuation workflow.
+
+**Work Performed**
+- Added `.agents/bin/agents-rebase-continue`, a helper that exports `GIT_EDITOR=true` before calling `git rebase --continue`, ensuring the guardrail works in sandboxed shells.
+- Documented the helper in `AGENTS.md` so operators reach for it instead of the raw Git command.
+
+**Next Actions**
+- Roll the helper into normal rebase docs and update any manuals referencing the old interactive flow if they appear.
+
 ## 2025-10-12
 
 ### 10:27:29 UTC — feature-process-review-gate

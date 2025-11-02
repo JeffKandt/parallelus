@@ -111,6 +111,7 @@ commands beyond `make read_bootstrap`.
 - `SESSION_PROMPT="..." make start_session` – initialise session artifacts.
 - `make turn_end m="summary"` – checkpoint plan/progress + session meta.
 - `make ci` – run lint, tests, and smoke suite inside the configured adapters.
+- `.agents/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.
 
 ## 4. Operational Gates (Read-on-Trigger Manuals)
 - **Subagents:** Before launching or monitoring subagents (e.g.
