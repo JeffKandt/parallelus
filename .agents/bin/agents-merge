@@ -286,7 +286,7 @@ else
   skip_dir="$repo_root/docs/self-improvement/retro-skip-logs"
   mkdir -p "$skip_dir"
   skip_file="$skip_dir/${slugged_branch}--${timestamp}.json"
-  python3 - "$skip_file" <<'PY'
+  python3 - "$skip_file" "$feature_branch" "$current_commit" "$timestamp" "$skip_reason" <<'PY'
 import json, sys
 
 path = sys.argv[1]
@@ -300,7 +300,6 @@ with open(path, "w", encoding="utf-8") as fh:
     json.dump(data, fh, ensure_ascii=False, indent=2)
     fh.write("\n")
 PY
-"$skip_file" "$feature_branch" "$current_commit" "$timestamp" "$skip_reason"
   git add "$skip_file" >/dev/null 2>&1 || true
   echo "agents-merge: retrospective check skipped (logged at ${skip_file#$repo_root/})" >&2
 fi
