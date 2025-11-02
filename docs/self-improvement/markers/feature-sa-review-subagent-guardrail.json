@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-11-02T16:43:01.188263+00:00",
+  "branch": "feature/sa-review-subagent-guardrail",
+  "head": "37f2742991d0ea9c567f1189d01e0eacd175a80d",
+  "plan_path": "docs/plans/feature-sa-review-subagent-guardrail.md",
+  "plan_lines": 13,
+  "progress_path": "docs/progress/feature-sa-review-subagent-guardrail.md",
+  "progress_lines": 25,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}

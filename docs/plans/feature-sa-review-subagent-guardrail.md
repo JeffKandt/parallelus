@@ -9,3 +9,5 @@
 
 ## Next Actions
 - Run make turn_end to log the latest state.
+
+- [ ] review approved and guardrail updates landed
