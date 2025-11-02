@@ -29,3 +29,6 @@ save it to `docs/reviews/<branch>-<date>.md`.
 5. Before launching, confirm no previous senior-review pane is still open. If
    `tmux list-panes` shows `*-senior-review` (or a slug-specific pane), close it
    or run `subagent_manager.sh cleanup --id <id>` before starting a new session.
+6. Remind the reviewer that their session is read-only apart from the review
+   file—no plan/progress edits, `make bootstrap`, or other helpers that change
+   the workspace are permitted during the review run.
