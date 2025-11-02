@@ -97,6 +97,65 @@ ensure_clean_worktree() {
   fi
 }
 
+ensure_slug_clean() {
+  local slug=$1
+  ensure_registry
+  if [[ ! -f "$REGISTRY_FILE" ]]; then
+    return
+  fi
+  python3 - "$REGISTRY_FILE" "$slug" <<'PY'
+import json, sys
+registry_path, slug = sys.argv[1:3]
+try:
+    with open(registry_path, "r", encoding="utf-8") as fh:
+        entries = json.load(fh)
+except FileNotFoundError:
+    sys.exit(0)
+
+blocked = []
+for row in entries:
+    if row.get("slug") == slug:
+        status = (row.get("status") or "").lower()
+        if status != "cleaned":
+            blocked.append((row.get("id"), status or "unknown"))
+
+if blocked:
+    print(
+        "subagent_manager: previous runs for slug '{}' are still active; clean them up before launching again.".format(
+            slug
+        ),
+        file=sys.stderr,
+    )
+    for entry_id, status in blocked:
+        print(f"  - {entry_id} (status: {status})", file=sys.stderr)
+    print(
+        "Hint: run '.agents/bin/subagent_manager.sh cleanup --id <id>' once the subagent has finished.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+PY
+}
+
+ensure_no_tmux_pane_for_slug() {
+  local slug=$1
+  if ! tmux_available; then
+    return
+  fi
+  local flagged=0
+  while IFS='|' read -r pane_id pane_title; do
+    [[ -z "$pane_id" ]] && continue
+    [[ -z "$pane_title" ]] && continue
+    if [[ "$pane_title" == *"-${slug}"* ]]; then
+      echo "subagent_manager: tmux pane $pane_id ('$pane_title') from a previous '$slug' run is still open." >&2
+      echo "  Close the pane (e.g. tmux kill-pane -t $pane_id) or clean up the subagent before launching again." >&2
+      flagged=1
+    fi
+  done < <("$TMUX_BIN" list-panes -a -F '#{pane_id}|#{pane_title}' 2>/dev/null || true)
+  if (( flagged )); then
+    exit 1
+  fi
+}
+
 append_registry() {
   local entry_json=$1
   python3 - "$REGISTRY_FILE" "$entry_json" <<'PY'
@@ -797,7 +856,9 @@ USAGE
 
   ensure_not_main
   ensure_registry
+  ensure_slug_clean "$slug"
   ensure_tmux_ready "$launcher"
+  ensure_no_tmux_pane_for_slug "$slug"
 
   local parent_branch
   parent_branch=$(current_branch)
