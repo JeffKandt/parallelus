@@ -69,32 +69,6 @@ if [[ "$current_branch" != "$feature_branch" ]]; then
 fi
 
 # Verify retrospectives before modifying branch notebooks so audit guardrails fail fast.
-check_retrospective
-
-# Ensure branch notebooks are already folded into canonical docs.
-shopt -s nullglob
-plan_files=("docs/plans/feature-"*.md)
-progress_files=("docs/progress/feature-"*.md)
-shopt -u nullglob
-
-if ((${#plan_files[@]} > 0)); then
-  echo "agents-merge: branch plan notebooks still present:" >&2
-  for f in "${plan_files[@]}"; do
-    echo "  - $f" >&2
-  done
-  echo "Fold plan updates into docs/PLAN.md (or the canonical plan) and remove branch notebooks before merging." >&2
-  exit 1
-fi
-
-if ((${#progress_files[@]} > 0)); then
-  echo "agents-merge: branch progress logs still present:" >&2
-  for f in "${progress_files[@]}"; do
-    echo "  - $f" >&2
-  done
-  echo "Stitch progress notes into docs/PROGRESS.md and delete branch notebooks before merging." >&2
-  exit 1
-fi
-
 # Install/refresh merge guard hook.
 hook_src="$repo_root/.agents/hooks/pre-merge-commit"
 hook_dst="$repo_root/.git/hooks/pre-merge-commit"
@@ -301,6 +275,30 @@ export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
 export AGENTS_MERGE_COMMIT="$current_commit"
 
 check_retrospective
+
+# Ensure branch notebooks are already folded into canonical docs.
+shopt -s nullglob
+plan_files=("docs/plans/feature-"*.md)
+progress_files=("docs/progress/feature-"*.md)
+shopt -u nullglob
+
+if ((${#plan_files[@]} > 0)); then
+  echo "agents-merge: branch plan notebooks still present:" >&2
+  for f in "${plan_files[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Fold plan updates into docs/PLAN.md (or the canonical plan) and remove branch notebooks before merging." >&2
+  exit 1
+fi
+
+if ((${#progress_files[@]} > 0)); then
+  echo "agents-merge: branch progress logs still present:" >&2
+  for f in "${progress_files[@]}"; do
+    echo "  - $f" >&2
+  done
+  echo "Stitch progress notes into docs/PROGRESS.md and delete branch notebooks before merging." >&2
+  exit 1
+fi
 
 # Determine base branch via agents-detect.
 detect_output="$(.agents/bin/agents-detect)"
