@@ -26,3 +26,6 @@ save it to `docs/reviews/<branch>-<date>.md`.
 3. Inspect the generated review, ensure findings are addressed, and commit it.
 4. Do not hand-write review markdowns; merges will be blocked unless the review
    provenance indicates a subagent run.
+5. Before launching, confirm no previous senior-review pane is still open. If
+   `tmux list-panes` shows `*-senior-review` (or a slug-specific pane), close it
+   or run `subagent_manager.sh cleanup --id <id>` before starting a new session.
