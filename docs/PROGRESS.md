@@ -12,7 +12,7 @@
 - Documented the helper in `AGENTS.md` so operators reach for it instead of the raw Git command.
 - Updated the senior architect manual to reference `.agents/bin/subagent_manager.sh` explicitly, preventing path resolution failures.
 - Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes.
-- Clarified the senior architect manual with explicit tmux cleanup/read-only reminders and restored the reviewer prompt's "Subagent Operating Context" guidance to keep guardrails intact.
+- Clarified the senior architect manual with explicit tmux cleanup/read-only reminders, standardized monitoring via `make monitor_subagents`, and restored the reviewer prompt's "Subagent Operating Context" guidance (including manual-reading boundaries) to keep guardrails intact.
 
 **Next Actions**
 - Roll the helper into normal rebase docs and update any manuals referencing the old interactive flow if they appear.

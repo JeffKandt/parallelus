@@ -32,3 +32,6 @@ save it to `docs/reviews/<branch>-<date>.md`.
 6. Remind the reviewer that their session is read-only apart from the review
    file—no plan/progress edits, `make bootstrap`, or other helpers that change
    the workspace are permitted during the review run.
+7. Start monitoring with `make monitor_subagents ARGS="--id <id>"` (rather than
+   calling `agents-monitor-loop.sh` directly); the make target keeps the loop
+   running with the standard thresholds so you do not have to babysit it.
