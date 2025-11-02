@@ -145,7 +145,7 @@ ensure_no_tmux_pane_for_slug() {
   while IFS='|' read -r pane_id pane_title; do
     [[ -z "$pane_id" ]] && continue
     [[ -z "$pane_title" ]] && continue
-    if [[ "$pane_title" == *"-${slug}"* ]]; then
+    if [[ "$pane_title" == *"-${slug}" ]]; then
       echo "subagent_manager: tmux pane $pane_id ('$pane_title') from a previous '$slug' run is still open." >&2
       echo "  Close the pane (e.g. tmux kill-pane -t $pane_id) or clean up the subagent before launching again." >&2
       flagged=1
