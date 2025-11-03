@@ -208,7 +208,11 @@ PY
 print_status() {
   local filter_id=${1:-}
 python3 - "$REGISTRY_FILE" "$filter_id" <<'PY'
-import json, sys, os, time
+import glob
+import json
+import os
+import sys
+import time
 from collections import deque
 from datetime import datetime, timezone
 
@@ -236,9 +240,26 @@ slug_values = [row.get("slug", "-") or "-" for row in entries]
 type_values = [row.get("type", "-") or "-" for row in entries]
 status_values = [row.get("status", "-") or "-" for row in entries]
 deliverable_values = []
+registry_modified = False
 for row in entries:
     deliverables = row.get("deliverables") or []
     meta = (row.get("deliverables_status") or "").strip()
+    sandbox_path = row.get("path") or ""
+    if sandbox_path and deliverables:
+        for item in deliverables:
+            status = (item.get("status") or "pending").lower()
+            source_glob = item.get("source_glob")
+            if status in {"waiting", "pending"} and source_glob:
+                glob_pattern = os.path.join(sandbox_path, source_glob)
+                matches = [os.path.relpath(path, sandbox_path) for path in sorted(glob.glob(glob_pattern))]
+                baseline = set(item.get("baseline") or [])
+                ready = [rel for rel in matches if rel not in baseline]
+                if ready:
+                    item["status"] = "ready"
+                    item["ready_files"] = ready
+                    row["deliverables_status"] = "ready"
+                    meta = "ready"
+                    registry_modified = True
     if meta:
         label = meta
     elif deliverables:
@@ -399,6 +420,10 @@ for row in entries:
         handle,
         log_summary,
     ))
+
+if registry_modified:
+    with open(registry_path, "w", encoding="utf-8") as fh:
+        json.dump(entries, fh, indent=2)
 PY
 }
 
@@ -1223,6 +1248,7 @@ for item in deliverables:
     source_rel = item.get("source")
     source_glob = item.get("source_glob")
     baseline = set(item.get("baseline") or [])
+    ready_files = item.get("ready_files") or []
     targets: List[str] = []
 
     if status == "harvested":
@@ -1233,11 +1259,14 @@ for item in deliverables:
     elif source_glob:
         matches = []
         glob_pattern = os.path.join(sandbox_root, source_glob)
-        for path in sorted(glob.glob(glob_pattern)):
-            rel = os.path.relpath(path, sandbox_root)
-            if rel in baseline:
-                continue
-            matches.append(rel)
+        if ready_files:
+            matches = list(ready_files)
+        else:
+            for path in sorted(glob.glob(glob_pattern)):
+                rel = os.path.relpath(path, sandbox_root)
+                if rel in baseline:
+                    continue
+                matches.append(rel)
         for rel in matches:
             targets.append((rel, item.get("target") or rel))
         if not matches:
@@ -1274,6 +1303,8 @@ for item in deliverables:
         if source_glob and baseline:
             baseline.update(source_rel_path for source_rel_path, _ in targets)
             item["baseline"] = sorted(baseline)
+        if "ready_files" in item:
+            item.pop("ready_files", None)
 
 payload = {
     "deliverables": deliverables,

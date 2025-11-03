@@ -591,9 +591,10 @@ rows_json="[]"
 auto_exit_candidate=0
 auto_exit_ids_str=""
 auto_exit_message=""
-running_ids=()
-stale_meaningful_ids=()
-deliverable_ready_ids=()
+auto_exit_reason=""
+declare -a running_ids=()
+declare -a stale_meaningful_ids=()
+declare -a deliverable_ready_ids=()
 if (( AUTO_EXIT_POLLS > 0 )); then
   state_lines=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
 import json
@@ -629,34 +630,38 @@ PY
     rest=${line#${key}}
     rest=${rest# }
     case "$key" in
-      RUNNING) [[ -n "$rest" ]] && read -r -a running_ids <<<"$rest" || running_ids=() ;;
-      STALE_MEANINGFUL) [[ -n "$rest" ]] && read -r -a stale_meaningful_ids <<<"$rest" || stale_meaningful_ids=() ;;
-      DELIV_READY) [[ -n "$rest" ]] && read -r -a deliverable_ready_ids <<<"$rest" || deliverable_ready_ids=() ;;
+      RUNNING) if [[ -n "$rest" ]]; then read -r -a running_ids <<<"$rest"; else running_ids=(); fi ;;
+      STALE_MEANINGFUL) if [[ -n "$rest" ]]; then read -r -a stale_meaningful_ids <<<"$rest"; else stale_meaningful_ids=(); fi ;;
+      DELIV_READY) if [[ -n "$rest" ]]; then read -r -a deliverable_ready_ids <<<"$rest"; else deliverable_ready_ids=(); fi ;;
     esac
   done <<<"$state_lines"
 
-  stale_lookup=" ${stale_meaningful_ids[*]} "
+  if (( ${#stale_meaningful_ids[@]-0} > 0 )); then
+    stale_lookup=" ${stale_meaningful_ids[*]} "
+  else
+    stale_lookup=" "
+  fi
   prune_non_running "${running_ids[@]}"
-  for id in "${stale_meaningful_ids[@]}"; do
+  for id in "${stale_meaningful_ids[@]-}"; do
     [[ -z "$id" ]] && continue
     current=$(get_stale_count "$id")
     current=$((current + 1))
     set_stale_count "$id" "$current"
   done
-  for id in "${running_ids[@]}"; do
+  for id in "${running_ids[@]-}"; do
     [[ -z "$id" ]] && continue
     if [[ "$stale_lookup" != *" $id "* ]]; then
       set_stale_count "$id" 0
     fi
   done
 
-  if (( ${#running_ids[@]} > 0 )); then
+  if (( ${#running_ids[@]-0} > 0 )); then
     deliverable_complete=1
-    if (( ${#deliverable_ready_ids[@]} == 0 )); then
+    if (( ${#deliverable_ready_ids[@]-0} == 0 )); then
       deliverable_complete=0
     else
-      for id in "${running_ids[@]}"; do
-        if [[ " ${deliverable_ready_ids[*]} " != *" $id "* ]]; then
+      for id in "${running_ids[@]-}"; do
+        if [[ " ${deliverable_ready_ids[*]-} " != *" $id "* ]]; then
           deliverable_complete=0
           break
         fi
@@ -667,9 +672,10 @@ PY
       auto_exit_candidate=1
       auto_exit_ids_str="${deliverable_ready_ids[*]}"
       auto_exit_message="[monitor] Deliverables ready for ${auto_exit_ids_str}; exiting monitor."
+      auto_exit_reason="deliverable"
     else
       all_stale=1
-      for id in "${running_ids[@]}"; do
+      for id in "${running_ids[@]-}"; do
         if [[ "$stale_lookup" != *" $id "* ]]; then
           all_stale=0
           break
@@ -678,7 +684,7 @@ PY
       if (( all_stale == 1 )); then
         ready=1
         exit_ids_formatted=""
-        for id in "${running_ids[@]}"; do
+        for id in "${running_ids[@]-}"; do
           count=$(get_stale_count "$id")
           if (( count < AUTO_EXIT_POLLS )); then
             ready=0
@@ -690,26 +696,42 @@ PY
           auto_exit_candidate=1
           auto_exit_ids_str="${exit_ids_formatted# }"
           auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
+          auto_exit_reason="stale"
         fi
       fi
     fi
   fi
 fi
 
+ if (( auto_exit_candidate == 1 )) && [[ "$auto_exit_reason" == "deliverable" ]]; then
+  OVERALL_ALERT=0
+  [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
+  break
+ fi
+
 investigate_alerts "$alerts_json" "$rows_json"
 alert_status=$?
 if (( alert_status != 0 )); then
-  OVERALL_ALERT=1
   if (( auto_exit_candidate == 1 )); then
+    if [[ "$auto_exit_reason" == "deliverable" ]]; then
+      OVERALL_ALERT=0
+    else
+      OVERALL_ALERT=1
+    fi
     [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
     break
   fi
+  OVERALL_ALERT=1
   if [[ -z "$ITERATIONS" ]]; then
     break
   fi
 else
   if (( auto_exit_candidate == 1 )); then
-    OVERALL_ALERT=1
+    if [[ "$auto_exit_reason" == "deliverable" ]]; then
+      OVERALL_ALERT=0
+    else
+      OVERALL_ALERT=1
+    fi
     [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
     break
   fi
