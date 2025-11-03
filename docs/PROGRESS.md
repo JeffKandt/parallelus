@@ -16,7 +16,7 @@
 **Summary**
 - Archived the manually authored 2025-10-19 senior architect reviews under `archive/manual-reviews/` so active docs remain subagent-generated.
 - Updated the project domain guide to emphasise the “fix it once, fix it forever” expectation and point readers at the continuous-improvement playbook.
-- Set `GIT_EDITOR=true` in `.agents/agentrc` so rebase continuations never hang on interactive editors; use `agents-rebase-continue` for guardrailed flows.
+- Added `git-rebase-continue` / `grc` aliases in `.agents/agentrc` so rebases resume through the guarded helper without hanging on interactive editors.
 
 **Next Actions**
 - Remove branch-specific plan/progress notebooks after merge (completed).

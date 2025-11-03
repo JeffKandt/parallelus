@@ -69,6 +69,8 @@ commands beyond `make read_bootstrap`.
 - Before launching a senior architect review, ensure the canonical progress log
   (`docs/PROGRESS.md`) contains a concrete summary—no placeholders, TODO markers,
   or "pending" text.
+- Use `.agents/bin/agents-rebase-continue` (aliases `git-rebase-continue` / `grc`)
+  to resume rebases without triggering interactive editors.
 - Once a senior architect review is captured, avoid history rewrites (rebase, amend,
   reset) on that branch. Apply follow-up commits instead; doc-only commits are
   automatically tolerated by the merge guardrails.
