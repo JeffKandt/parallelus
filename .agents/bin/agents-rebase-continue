@@ -29,7 +29,7 @@ if [[ ! -d .git/rebase-merge && ! -d .git/rebase-apply ]]; then
   exit 1
 fi
 
-# Force a non-interactive editor unless the caller overrides it explicitly.
-export GIT_EDITOR="${GIT_EDITOR:-true}"
+# Force a non-interactive editor so rebases never invoke an interactive editor.
+export GIT_EDITOR=true
 
 exec git rebase --continue "$@"
