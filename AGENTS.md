@@ -66,6 +66,9 @@ commands beyond `make read_bootstrap`.
   `➜ checkpoint` markers as mandatory commit points.
 - Expect the managed `pre-commit` hook to remind you about plan/progress updates
   when committing feature work; treat warnings as action items, not noise.
+- Before launching a senior architect review, ensure the canonical progress log
+  (`docs/PROGRESS.md`) contains a concrete summary—no placeholders, TODO markers,
+  or "pending" text.
 - Once a senior architect review is captured, avoid history rewrites (rebase, amend,
   reset) on that branch. Apply follow-up commits instead; doc-only commits are
   automatically tolerated by the merge guardrails.

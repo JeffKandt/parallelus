@@ -39,3 +39,6 @@ save it to `docs/reviews/<branch>-<date>.md`.
 8. Start monitoring with `make monitor_subagents ARGS="--id <id>"` (rather than
    calling `agents-monitor-loop.sh` directly); the make target keeps the loop
    running with the standard thresholds so you do not have to babysit it.
+9. If the progress log still contains placeholder text ("pending update", TODOs,
+   etc.), halt the review and ask the main agent to update the summary before
+   proceeding.
