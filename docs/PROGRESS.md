@@ -1,5 +1,17 @@
 # Project Progress
 
+## 2025-11-03
+
+### 17:13:45 UTC — feature/sa-review-subagent-guardrail
+
+**Summary**
+- Updated monitor deliverable aggregation and auto-exit behaviour so runs only stand down once every declared artifact is ready/harvested, and ensured manual-attention alerts respect the configured stale-poll threshold.
+- Expanded the monitor smoke suite to assert the deliverable-ready and consecutive-stale exit paths, keeping `AGENTS_MERGE_SKIP_CI` documented while CI audit tooling remains broken.
+- Captured senior architect approval (`docs/reviews/feature-sa-review-subagent-guardrail-2025-11-03e.md`) against commit 77dd7b175b528b50dac1a4d44071d1b92d85fd4e and logged the branch progress notebook before folding it into canonical docs.
+
+**Next Actions**
+- Restore the CI audit helper once the underlying failures are fixed so `AGENTS_MERGE_SKIP_CI` can be removed from the merge path.
+
 ## 2025-10-31
 
 ### 17:59:00 UTC — feature/sa-review-subagent-guardrail

@@ -6,6 +6,7 @@
 - Deployment safety and CI flow hardened (hook backups, Python-only adapter).
 - Parallelus-specific documentation realigned (README philosophy, project domain/structure notes, continuous-improvement playbook, tmux setup manual).
 - Overlay deployment workflow refined (preserve project docs, optional backup suppression, shared senior review template).
+- Monitor deliverable gating tightened and smoke tests expanded, with senior architect approval captured for `feature/sa-review-subagent-guardrail`.
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
