@@ -1,5 +1,26 @@
 # Branch Progress — feature/sa-review-subagent-guardrail
 
+## 2025-11-03 16:45:30 UTC
+**Summary**
+- Aggregated deliverable readiness so registry rows stay `pending`/`partial` until every deliverable reports `ready`, and ensured harvested-only runs retain that label.
+- Required the monitor auto-exit path to trigger only when a subagent’s aggregate status is `ready` or `harvested`, preventing new runs in `pending` from short-circuiting coverage.
+- Reviewed `docs/agents/manuals/senior-architect.md` to prep the follow-up review launch.
+
+**Tests**
+- `python3 .agents/tests/monitor_loop.py`
+- `python3 -m pytest .agents/tests/test_agents_merge_benign.py`
+
+**Next Actions**
+- Regenerate the senior architect review to confirm the updated gating passes and capture the approval artifact.
+
+## 2025-11-03 16:36:52 UTC
+**Summary**
+- Read `AGENTS.md`, confirmed active plan/progress context, and opened session 20251041-20251103163652-0c3406 to tackle the senior-review deliverable gating fixes.
+- Reviewed branch plan objectives plus outstanding senior findings to prep the implementation approach.
+
+**Next Actions**
+- Tighten deliverable readiness aggregation and monitor auto-exit gating, then rerun the senior architect review.
+
 ## 2025-11-02 19:21:57 UTC
 **Summary**
 - Added configurable auto-exit handling to `agents-monitor-loop.sh`, refreshed the orchestration manual, and verified behaviour with updated monitor loop smoke tests.
@@ -30,6 +51,10 @@
 
 **Tests**
 - `python3 .agents/tests/monitor_loop.py`
+
+## 2025-11-03 16:06:32 UTC
+**Summary**
+- Ran follow-up senior review (`20251103-160044`); reviewer still flagged auto-exit as premature (`docs/reviews/feature-sa-review-subagent-guardrail-2025-11-03b.md`). Need to tighten the readiness state (stay in `waiting/pending` until all deliverables confirm) before requesting another approval.
 
 ## 2025-11-02 19:08:55 UTC
 **Summary**

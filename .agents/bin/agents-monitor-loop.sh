@@ -616,8 +616,8 @@ for row in rows:
     meaningful = row.get("meaningful_age_seconds")
     if meaningful is None or meaningful > threshold:
         stale_meaningful.append(ident)
-    deliverable_status = (row.get("deliverables_status") or "").lower()
-    if deliverable_status and deliverable_status not in {"", "-", "waiting", "harvested"}:
+    deliverable_status = (row.get("deliverables_status") or "").strip().lower()
+    if deliverable_status in {"ready", "harvested"}:
         deliverable_ready.append(ident)
 
 print("RUNNING " + " ".join(running))

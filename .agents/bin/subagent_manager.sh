@@ -243,8 +243,9 @@ deliverable_values = []
 registry_modified = False
 for row in entries:
     deliverables = row.get("deliverables") or []
-    meta = (row.get("deliverables_status") or "").strip()
     sandbox_path = row.get("path") or ""
+    current_meta = (row.get("deliverables_status") or "").strip()
+    meta_lower = current_meta.lower()
     if sandbox_path and deliverables:
         for item in deliverables:
             status = (item.get("status") or "pending").lower()
@@ -255,13 +256,38 @@ for row in entries:
                 baseline = set(item.get("baseline") or [])
                 ready = [rel for rel in matches if rel not in baseline]
                 if ready:
-                    item["status"] = "ready"
-                    item["ready_files"] = ready
-                    row["deliverables_status"] = "ready"
-                    meta = "ready"
-                    registry_modified = True
-    if meta:
-        label = meta
+                    if status != "ready" or item.get("ready_files") != ready:
+                        item["status"] = "ready"
+                        item["ready_files"] = ready
+                        registry_modified = True
+    statuses = [(item.get("status") or "pending").lower() for item in deliverables]
+    desired_meta = ""
+    if deliverables:
+        all_harvested = statuses and all(state == "harvested" for state in statuses)
+        all_complete = statuses and all(state in {"ready", "harvested"} for state in statuses)
+        any_progress = any(state in {"ready", "harvested"} for state in statuses)
+        if all_harvested:
+            desired_meta = "harvested"
+        elif all_complete:
+            desired_meta = "ready"
+        elif any_progress:
+            desired_meta = "partial"
+        else:
+            desired_meta = "waiting" if meta_lower == "waiting" else "pending"
+    if desired_meta:
+        if desired_meta != meta_lower:
+            row["deliverables_status"] = desired_meta
+            registry_modified = True
+            current_meta = desired_meta
+        else:
+            current_meta = current_meta or desired_meta
+    else:
+        if current_meta:
+            row["deliverables_status"] = ""
+            registry_modified = True
+            current_meta = ""
+    if current_meta:
+        label = current_meta
     elif deliverables:
         pending = any((item.get("status") or "pending").lower() != "harvested" for item in deliverables)
         label = "pending" if pending else "harvested"
