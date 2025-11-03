@@ -15,3 +15,6 @@ AUDIBLE_ALERT_REQUIRE_TTY=0
 AUDIBLE_ALERT_VOICE="Alex"
 AGENTS_REQUIRE_RETRO=1
 AGENTS_REQUIRE_SENIOR_REVIEW=1
+# Ensure Git never blocks on an interactive editor (e.g. during rebase
+# continuations); use agents-rebase-continue for guardrailed flows.
+export GIT_EDITOR=true
