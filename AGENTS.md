@@ -66,6 +66,9 @@ commands beyond `make read_bootstrap`.
   `➜ checkpoint` markers as mandatory commit points.
 - Expect the managed `pre-commit` hook to remind you about plan/progress updates
   when committing feature work; treat warnings as action items, not noise.
+- Once a senior architect review is captured, avoid history rewrites (rebase, amend,
+  reset) on that branch. Apply follow-up commits instead; doc-only commits are
+  automatically tolerated by the merge guardrails.
 - Direct commits to the base branch are blocked; set `AGENTS_ALLOW_MAIN_COMMIT=1`
   only for emergencies, and record the rationale in the progress log.
 - When subagents are active, maintain the monitor loop per the Subagent manual.

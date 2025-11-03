@@ -158,7 +158,7 @@ check_review() {
         esac
       done <<< "$diff_names"
       if [[ $allow_doc_only -eq 1 ]]; then
-        echo "agents-merge: review $file is on commit $review_commit; allowing doc-only follow-up commits through $commit_ref." >&2
+        echo "agents-merge: review $file covers commit $review_commit; doc-only follow-up commit(s) detected and permitted through $commit_ref." >&2
       else
         echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref with additional non-doc changes." >&2
         echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
