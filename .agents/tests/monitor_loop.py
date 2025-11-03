@@ -194,12 +194,12 @@ def _setup_repo(scenario: str) -> Path:
                 "slug": "monitor-loop-review",
                 "status": "running",
                 "path": str(sandbox),
-                "deliverables_status": "pending",
+                "deliverables_status": "ready",
                 "deliverables": [
                     {
                         "source": "docs/reviews/feature-test-2025-10-09.md",
                         "target": "docs/reviews/feature-test-2025-10-09.md",
-                        "status": "pending",
+                        "status": "ready",
                     }
                 ],
             }

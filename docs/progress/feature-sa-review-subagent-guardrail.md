@@ -13,6 +13,25 @@
 **Next Actions**
 - Regenerate the senior architect review to confirm the updated gating passes and capture the approval artifact.
 
+## 2025-11-03 16:53:10 UTC
+**Summary**
+- Fired audible alerts, launched senior-review subagent 20251103-164306, monitored until deliverables hit `ready`, harvested the review output, and force-cleaned the sandbox after verifying the pane shut down.
+- Received review `docs/reviews/feature-sa-review-subagent-guardrail-2025-11-03c.md` with a blocker noting the monitor smoke test still reports `pending`, so the new readiness gate breaks `test_auto_exit_on_deliverable_ready`.
+
+**Next Actions**
+- Update the monitor loop test fixtures to surface `deliverables_status="ready"` (and matching item state) so CI covers the new contract, rerun the suite, and relaunch the senior review for approval.
+
+## 2025-11-03 16:57:40 UTC
+**Summary**
+- Adjusted the monitor smoke scenario to mark deliverables `ready` once the review artifact appears so the auto-exit gate matches runtime behaviour.
+
+**Tests**
+- `python3 .agents/tests/monitor_loop.py`
+- `python3 -m pytest .agents/tests/test_agents_merge_benign.py`
+
+**Next Actions**
+- Relaunch the senior architect review to confirm the blocker is cleared and capture the approval artifact.
+
 ## 2025-11-03 16:36:52 UTC
 **Summary**
 - Read `AGENTS.md`, confirmed active plan/progress context, and opened session 20251041-20251103163652-0c3406 to tackle the senior-review deliverable gating fixes.
