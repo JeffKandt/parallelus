@@ -32,6 +32,25 @@
 **Next Actions**
 - Relaunch the senior architect review to confirm the blocker is cleared and capture the approval artifact.
 
+## 2025-11-03 17:00:15 UTC
+**Summary**
+- Fired alerts, ran senior-review subagent 20251103-165201, harvested `docs/reviews/feature-sa-review-subagent-guardrail-2025-11-03d.md`, and cleaned the sandbox.
+- Review still returned blockers: deliverable auto-exit now exits 0, and the stale auto-exit path loses to the manual-attention guard, so `pytest .agents/tests/monitor_loop.py::test_auto_exit_*` fails.
+
+**Next Actions**
+- Treat deliverable auto-exits as alerts (non-zero exit) and delay manual-attention failures until the stale counter meets `MONITOR_AUTO_EXIT_STALE_POLLS`, then rerun the monitor smoke suite followed by another senior review.
+
+## 2025-11-03 17:09:20 UTC
+**Summary**
+- Marked deliverable auto-exits as alerting failures, gated manual-attention escalation behind an explicit `MONITOR_AUTO_EXIT_STALE_POLLS` override, and normalized the monitor table separator so the smoke suite recognises quick exits.
+
+**Tests**
+- `python3 -m pytest .agents/tests/monitor_loop.py`
+- `python3 -m pytest .agents/tests/test_agents_merge_benign.py`
+
+**Next Actions**
+- Relaunch the senior architect review to confirm the blockers are resolved and capture the approval artifact.
+
 ## 2025-11-03 16:36:52 UTC
 **Summary**
 - Read `AGENTS.md`, confirmed active plan/progress context, and opened session 20251041-20251103163652-0c3406 to tackle the senior-review deliverable gating fixes.

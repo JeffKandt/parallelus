@@ -370,7 +370,7 @@ header = row_fmt.format(
     log_header,
 )
 print(header)
-print("-" * len(header))
+print("=" * len(header))
 for row in entries:
     log_path = row.get('log_path')
     sandbox_path = row.get('path') or ''

@@ -43,6 +43,12 @@ TAIL_CMD="$REPO_ROOT/.agents/bin/subagent_tail.sh"
 mkdir -p "$SNAPSHOT_DIR"
 OVERALL_ALERT=0
 
+if [[ -n "${MONITOR_AUTO_EXIT_STALE_POLLS+x}" ]]; then
+  AUTO_EXIT_POLLS_SET=1
+else
+  AUTO_EXIT_POLLS_SET=0
+fi
+
 AUTO_EXIT_POLLS_RAW=${MONITOR_AUTO_EXIT_STALE_POLLS:-3}
 if [[ "$AUTO_EXIT_POLLS_RAW" =~ ^[0-9]+$ ]]; then
   AUTO_EXIT_POLLS=$((10#$AUTO_EXIT_POLLS_RAW))
@@ -319,6 +325,22 @@ PY
       fi
     fi
 
+    if [[ "$reason" == "log" || "$reason" == "stale" ]]; then
+      if (( AUTO_EXIT_POLLS_SET == 1 )); then
+        local stale_count
+        stale_count=$(get_stale_count "$id")
+        if (( AUTO_EXIT_POLLS == 0 )); then
+          continue
+        fi
+        if (( stale_count < AUTO_EXIT_POLLS )); then
+          continue
+        fi
+        if (( auto_exit_candidate == 1 )) && [[ "$auto_exit_reason" == "stale" ]]; then
+          continue
+        fi
+      fi
+    fi
+
     mark_stuck "$id"
     unresolved+=" $id"
     echo "[monitor] $id requires manual attention (reason: $reason)."
@@ -457,6 +479,8 @@ rows = lines[2:]
 
 result = [header]
 if separator:
+    if set(separator) == {"-"}:
+        separator = "=" * len(separator)
     result.append(separator)
 
 log_alert = False
@@ -704,7 +728,7 @@ PY
 fi
 
  if (( auto_exit_candidate == 1 )) && [[ "$auto_exit_reason" == "deliverable" ]]; then
-  OVERALL_ALERT=0
+  OVERALL_ALERT=1
   [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
   break
  fi
@@ -713,11 +737,7 @@ investigate_alerts "$alerts_json" "$rows_json"
 alert_status=$?
 if (( alert_status != 0 )); then
   if (( auto_exit_candidate == 1 )); then
-    if [[ "$auto_exit_reason" == "deliverable" ]]; then
-      OVERALL_ALERT=0
-    else
-      OVERALL_ALERT=1
-    fi
+    OVERALL_ALERT=1
     [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
     break
   fi
@@ -727,11 +747,7 @@ if (( alert_status != 0 )); then
   fi
 else
   if (( auto_exit_candidate == 1 )); then
-    if [[ "$auto_exit_reason" == "deliverable" ]]; then
-      OVERALL_ALERT=0
-    else
-      OVERALL_ALERT=1
-    fi
+    OVERALL_ALERT=1
     [[ -n "$auto_exit_message" ]] && echo "$auto_exit_message"
     break
   fi
