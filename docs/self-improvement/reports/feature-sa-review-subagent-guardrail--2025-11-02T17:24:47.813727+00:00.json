@@ -1,0 +1,6 @@
+{
+  "branch": "feature/sa-review-subagent-guardrail",
+  "marker_timestamp": "2025-11-02T17:24:47.813727+00:00",
+  "summary": "Retrospective audit skipped because CI audit helper is currently broken; see AGENTS_MERGE_SKIP_RETRO_REASON for merge context.",
+  "skip_reason": "CI audit helper currently broken; bypassing audit until tooling fix"
+}

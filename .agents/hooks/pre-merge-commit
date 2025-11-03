@@ -128,16 +128,29 @@ if [[ -z "$expected_commit" && -n "$merge_branch" ]]; then
 fi
 
 if [[ -n "$expected_commit" && "$review_commit" != "$expected_commit" ]]; then
-  parent_commit=$(git rev-parse "$expected_commit^" 2>/dev/null || true)
-  if [[ -n "$parent_commit" && "$review_commit" == "$parent_commit" ]]; then
-    diff_names=$(git diff --name-only "$parent_commit" "$expected_commit")
-    if echo "$diff_names" | grep -vq '^docs/reviews/'; then
-      echo "pre-merge-commit: review $review_file is one commit behind and intervening commit alters non-review files." >&2
+  if git merge-base --is-ancestor "$review_commit" "$expected_commit" 2>/dev/null; then
+    diff_names=$(git diff --name-only "$review_commit" "$expected_commit")
+    allow_doc_only=1
+    while IFS= read -r path; do
+      [[ -z "$path" ]] && continue
+      case "$path" in
+        docs/guardrails/runs/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/plans/*|docs/progress/*|docs/agents/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
+          ;;
+        *)
+          allow_doc_only=0
+          break
+          ;;
+      esac
+    done <<<"$diff_names"
+    if (( allow_doc_only == 1 )); then
+      echo "pre-merge-commit: doc-only follow-up commits detected; proceeding with approved review $review_commit." >&2
+    else
+      echo "pre-merge-commit: additional commits after $review_commit modify non-doc files." >&2
       echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
       exit 1
     fi
   else
-    echo "pre-merge-commit: review $review_file covers $review_commit but merge input is $expected_commit." >&2
+    echo "pre-merge-commit: review $review_file covers $review_commit but merge input is $expected_commit (non-ancestor)." >&2
     echo "Re-review the final commit or override via AGENTS_MERGE_FORCE=1." >&2
     exit 1
   fi
