@@ -12,6 +12,15 @@
 **Next Actions**
 - Restore the CI audit helper once the underlying failures are fixed so `AGENTS_MERGE_SKIP_CI` can be removed from the merge path.
 
+## 2025-10-19 16:46:00 UTC — feature/sa-review-reset
+**Summary**
+- Archived the manually authored 2025-10-19 senior architect reviews under `archive/manual-reviews/` so active docs remain subagent-generated.
+- Updated the project domain guide to emphasise the “fix it once, fix it forever” expectation and point readers at the continuous-improvement playbook.
+- Set `GIT_EDITOR=true` in `.agents/agentrc` so rebase continuations never hang on interactive editors; use `agents-rebase-continue` for guardrailed flows.
+
+**Next Actions**
+- Remove branch-specific plan/progress notebooks after merge (completed).
+
 ## 2025-10-31
 
 ### 17:59:00 UTC — feature/sa-review-subagent-guardrail
