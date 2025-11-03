@@ -326,7 +326,7 @@ PY
     fi
 
     if [[ "$reason" == "log" || "$reason" == "stale" ]]; then
-      if (( AUTO_EXIT_POLLS_SET == 1 )); then
+      if (( AUTO_EXIT_POLLS_SET == 1 && AUTO_EXIT_POLLS > 0 )); then
         local stale_count
         stale_count=$(get_stale_count "$id")
         if (( AUTO_EXIT_POLLS == 0 )); then
@@ -619,8 +619,7 @@ auto_exit_reason=""
 declare -a running_ids=()
 declare -a stale_meaningful_ids=()
 declare -a deliverable_ready_ids=()
-if (( AUTO_EXIT_POLLS > 0 )); then
-  state_lines=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
+state_lines=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
 import json
 import os
 import sys
@@ -648,80 +647,81 @@ print("RUNNING " + " ".join(running))
 print("STALE_MEANINGFUL " + " ".join(stale_meaningful))
 print("DELIV_READY " + " ".join(deliverable_ready))
 PY
-  ) || state_lines=""
-  while IFS= read -r line; do
-    key=${line%% *}
-    rest=${line#${key}}
-    rest=${rest# }
-    case "$key" in
-      RUNNING) if [[ -n "$rest" ]]; then read -r -a running_ids <<<"$rest"; else running_ids=(); fi ;;
-      STALE_MEANINGFUL) if [[ -n "$rest" ]]; then read -r -a stale_meaningful_ids <<<"$rest"; else stale_meaningful_ids=(); fi ;;
-      DELIV_READY) if [[ -n "$rest" ]]; then read -r -a deliverable_ready_ids <<<"$rest"; else deliverable_ready_ids=(); fi ;;
-    esac
-  done <<<"$state_lines"
+) || state_lines=""
+while IFS= read -r line; do
+  key=${line%% *}
+  rest=${line#${key}}
+  rest=${rest# }
+  case "$key" in
+    RUNNING) if [[ -n "$rest" ]]; then read -r -a running_ids <<<"$rest"; else running_ids=(); fi ;;
+    STALE_MEANINGFUL) if [[ -n "$rest" ]]; then read -r -a stale_meaningful_ids <<<"$rest"; else stale_meaningful_ids=(); fi ;;
+    DELIV_READY) if [[ -n "$rest" ]]; then read -r -a deliverable_ready_ids <<<"$rest"; else deliverable_ready_ids=(); fi ;;
+  esac
+done <<<"$state_lines"
 
-  if (( ${#stale_meaningful_ids[@]-0} > 0 )); then
-    stale_lookup=" ${stale_meaningful_ids[*]} "
-  else
-    stale_lookup=" "
+if (( ${#stale_meaningful_ids[@]-0} > 0 )); then
+  stale_lookup=" ${stale_meaningful_ids[*]} "
+else
+  stale_lookup=" "
+fi
+prune_non_running "${running_ids[@]}"
+for id in "${stale_meaningful_ids[@]-}"; do
+  [[ -z "$id" ]] && continue
+  current=$(get_stale_count "$id")
+  current=$((current + 1))
+  set_stale_count "$id" "$current"
+done
+for id in "${running_ids[@]-}"; do
+  [[ -z "$id" ]] && continue
+  if [[ "$stale_lookup" != *" $id "* ]]; then
+    set_stale_count "$id" 0
   fi
-  prune_non_running "${running_ids[@]}"
-  for id in "${stale_meaningful_ids[@]-}"; do
-    [[ -z "$id" ]] && continue
-    current=$(get_stale_count "$id")
-    current=$((current + 1))
-    set_stale_count "$id" "$current"
-  done
-  for id in "${running_ids[@]-}"; do
-    [[ -z "$id" ]] && continue
-    if [[ "$stale_lookup" != *" $id "* ]]; then
-      set_stale_count "$id" 0
-    fi
-  done
+done
 
-  if (( ${#running_ids[@]-0} > 0 )); then
-    deliverable_complete=1
-    if (( ${#deliverable_ready_ids[@]-0} == 0 )); then
-      deliverable_complete=0
-    else
+if (( ${#running_ids[@]-0} > 0 )); then
+  deliverable_complete=1
+  if (( ${#deliverable_ready_ids[@]-0} == 0 )); then
+    deliverable_complete=0
+  else
+    for id in "${running_ids[@]-}"; do
+      if [[ " ${deliverable_ready_ids[*]-} " != *" $id "* ]]; then
+        deliverable_complete=0
+        break
+      fi
+    done
+  fi
+
+  if (( deliverable_complete == 1 )); then
+    auto_exit_candidate=1
+    auto_exit_ids_str="${deliverable_ready_ids[*]}"
+    auto_exit_message="[monitor] Deliverables ready for ${auto_exit_ids_str}; exiting monitor."
+    auto_exit_reason="deliverable"
+  fi
+
+  if (( AUTO_EXIT_POLLS > 0 )); then
+    all_stale=1
+    for id in "${running_ids[@]-}"; do
+      if [[ "$stale_lookup" != *" $id "* ]]; then
+        all_stale=0
+        break
+      fi
+    done
+    if (( all_stale == 1 )); then
+      ready=1
+      exit_ids_formatted=""
       for id in "${running_ids[@]-}"; do
-        if [[ " ${deliverable_ready_ids[*]-} " != *" $id "* ]]; then
-          deliverable_complete=0
+        count=$(get_stale_count "$id")
+        if (( count < AUTO_EXIT_POLLS )); then
+          ready=0
           break
         fi
+        exit_ids_formatted+=" $id(${count})"
       done
-    fi
-
-    if (( deliverable_complete == 1 )); then
-      auto_exit_candidate=1
-      auto_exit_ids_str="${deliverable_ready_ids[*]}"
-      auto_exit_message="[monitor] Deliverables ready for ${auto_exit_ids_str}; exiting monitor."
-      auto_exit_reason="deliverable"
-    else
-      all_stale=1
-      for id in "${running_ids[@]-}"; do
-        if [[ "$stale_lookup" != *" $id "* ]]; then
-          all_stale=0
-          break
-        fi
-      done
-      if (( all_stale == 1 )); then
-        ready=1
-        exit_ids_formatted=""
-        for id in "${running_ids[@]-}"; do
-          count=$(get_stale_count "$id")
-          if (( count < AUTO_EXIT_POLLS )); then
-            ready=0
-            break
-          fi
-          exit_ids_formatted+=" $id(${count})"
-        done
-        if (( ready == 1 )); then
-          auto_exit_candidate=1
-          auto_exit_ids_str="${exit_ids_formatted# }"
-          auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
-          auto_exit_reason="stale"
-        fi
+      if (( ready == 1 )); then
+        auto_exit_candidate=1
+        auto_exit_ids_str="${exit_ids_formatted# }"
+        auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
+        auto_exit_reason="stale"
       fi
     fi
   fi
