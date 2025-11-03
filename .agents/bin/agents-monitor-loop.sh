@@ -45,7 +45,7 @@ OVERALL_ALERT=0
 
 AUTO_EXIT_POLLS_RAW=${MONITOR_AUTO_EXIT_STALE_POLLS:-3}
 if [[ "$AUTO_EXIT_POLLS_RAW" =~ ^[0-9]+$ ]]; then
-  AUTO_EXIT_POLLS=$AUTO_EXIT_POLLS_RAW
+  AUTO_EXIT_POLLS=$((10#$AUTO_EXIT_POLLS_RAW))
 else
   AUTO_EXIT_POLLS=0
 fi
@@ -376,8 +376,9 @@ printf "\n"
 poll_count=0
 while true; do
   poll_count=$((poll_count + 1))
-  now=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-  echo "--- ${now} ---"
+  now_display=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+  now_iso=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+  echo "--- ${now_display} ---"
   output=$("${STATUS_CMD[@]}")
   if ! grep -q ' running ' <<<"$output"; then
     echo "$output"
@@ -416,7 +417,8 @@ PY
     echo "No running subagents detected. Exiting monitor loop."
     break
   fi
-formatted=$(MONITOR_TABLE="$output" MONITOR_REGISTRY="$REGISTRY" python3 - "$THRESHOLD" "$RUNTIME_THRESHOLD" <<'PY'
+formatted=$(MONITOR_NOW_ISO="$now_iso" MONITOR_TABLE="$output" MONITOR_REGISTRY="$REGISTRY" python3 - "$THRESHOLD" "$RUNTIME_THRESHOLD" <<'PY'
+import datetime
 import json
 import os
 import sys
@@ -424,6 +426,13 @@ import sys
 threshold = int(sys.argv[1])
 runtime_threshold = int(sys.argv[2])
 table = os.environ.get("MONITOR_TABLE", "")
+now_iso = os.environ.get("MONITOR_NOW_ISO")
+current_dt = None
+if now_iso:
+    try:
+        current_dt = datetime.datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+    except Exception:
+        current_dt = None
 registry_path = os.environ.get("MONITOR_REGISTRY")
 registry_entries = []
 if registry_path and os.path.exists(registry_path):
@@ -495,6 +504,36 @@ for row in rows:
         effective_log_path = session_log_path
     elif entry.get("log_path"):
         effective_log_path = entry.get("log_path")
+    meaningful_age = None
+    if session_log_path and os.path.exists(session_log_path) and current_dt is not None:
+        try:
+            with open(session_log_path, "r", encoding="utf-8") as fh:
+                for raw_line in fh:
+                    raw_line = raw_line.strip()
+                    if not raw_line:
+                        continue
+                    try:
+                        event = json.loads(raw_line)
+                    except Exception:
+                        continue
+                    ts = event.get("ts")
+                    if not ts:
+                        continue
+                    kind = (event.get("kind") or "").lower()
+                    if kind == "app_event":
+                        variant = (event.get("variant") or "").lower()
+                        if variant == "committick":
+                            continue
+                    meaningful_ts = ts
+                    try:
+                        event_dt = datetime.datetime.fromisoformat(meaningful_ts.replace("Z", "+00:00"))
+                        delta = current_dt - event_dt
+                        meaningful_age = max(int(delta.total_seconds()), 0)
+                    except Exception:
+                        meaningful_age = None
+        except Exception:
+            meaningful_age = None
+
     rows_payload.append({
         "id": ident,
         "status": status,
@@ -507,6 +546,7 @@ for row in rows:
         "launcher_handle": entry.get("launcher_handle"),
         "deliverables_status": entry.get("deliverables_status"),
         "title": entry.get("window_title"),
+        "meaningful_age_seconds": meaningful_age,
     })
     if status == "running":
         if runtime_seconds is not None and runtime_seconds > runtime_threshold:
@@ -551,16 +591,20 @@ rows_json="[]"
 auto_exit_candidate=0
 auto_exit_ids_str=""
 auto_exit_message=""
+running_ids=()
+stale_meaningful_ids=()
+deliverable_ready_ids=()
 if (( AUTO_EXIT_POLLS > 0 )); then
-  stale_info=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
+  state_lines=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
 import json
 import os
 import sys
 
-rows = json.loads(os.environ.get("ROWS_JSON") or "[]")
 threshold = int(sys.argv[1])
+rows = json.loads(os.environ.get("ROWS_JSON") or "[]")
 running = []
-stale = []
+stale_meaningful = []
+deliverable_ready = []
 for row in rows:
     if (row.get("status") or "").lower() != "running":
         continue
@@ -568,21 +612,32 @@ for row in rows:
     if not ident:
         continue
     running.append(ident)
-    log_seconds = row.get("log_seconds")
-    if log_seconds is None or (isinstance(log_seconds, int) and log_seconds > threshold):
-        stale.append(ident)
-print(" ".join(running))
-print(" ".join(stale))
+    meaningful = row.get("meaningful_age_seconds")
+    if meaningful is None or meaningful > threshold:
+        stale_meaningful.append(ident)
+    deliverable_status = (row.get("deliverables_status") or "").lower()
+    if deliverable_status and deliverable_status not in {"", "-", "waiting", "harvested"}:
+        deliverable_ready.append(ident)
+
+print("RUNNING " + " ".join(running))
+print("STALE_MEANINGFUL " + " ".join(stale_meaningful))
+print("DELIV_READY " + " ".join(deliverable_ready))
 PY
-  ) || stale_info=$'\n'
-  running_ids=()
-  IFS=$'\n' read -r running_line stale_line <<<"$stale_info"
-  IFS=' ' read -r -a running_ids <<<"${running_line:-}"
-  IFS=$' \t\n'
-  stale_line=${stale_line:-}
-  stale_lookup=" $stale_line "
+  ) || state_lines=""
+  while IFS= read -r line; do
+    key=${line%% *}
+    rest=${line#${key}}
+    rest=${rest# }
+    case "$key" in
+      RUNNING) [[ -n "$rest" ]] && read -r -a running_ids <<<"$rest" || running_ids=() ;;
+      STALE_MEANINGFUL) [[ -n "$rest" ]] && read -r -a stale_meaningful_ids <<<"$rest" || stale_meaningful_ids=() ;;
+      DELIV_READY) [[ -n "$rest" ]] && read -r -a deliverable_ready_ids <<<"$rest" || deliverable_ready_ids=() ;;
+    esac
+  done <<<"$state_lines"
+
+  stale_lookup=" ${stale_meaningful_ids[*]} "
   prune_non_running "${running_ids[@]}"
-  for id in $stale_line; do
+  for id in "${stale_meaningful_ids[@]}"; do
     [[ -z "$id" ]] && continue
     current=$(get_stale_count "$id")
     current=$((current + 1))
@@ -594,31 +649,48 @@ PY
       set_stale_count "$id" 0
     fi
   done
+
   if (( ${#running_ids[@]} > 0 )); then
-    all_stale=1
-    for id in "${running_ids[@]}"; do
-      [[ -z "$id" ]] && continue
-      if [[ "$stale_lookup" != *" $id "* ]]; then
-        all_stale=0
-        break
-      fi
-    done
-    if (( all_stale == 1 )); then
-      ready=1
-      exit_ids_formatted=""
+    deliverable_complete=1
+    if (( ${#deliverable_ready_ids[@]} == 0 )); then
+      deliverable_complete=0
+    else
       for id in "${running_ids[@]}"; do
-        [[ -z "$id" ]] && continue
-        count=$(get_stale_count "$id")
-        if (( count < AUTO_EXIT_POLLS )); then
-          ready=0
+        if [[ " ${deliverable_ready_ids[*]} " != *" $id "* ]]; then
+          deliverable_complete=0
           break
         fi
-        exit_ids_formatted+=" $id(${count})"
       done
-      if (( ready == 1 )); then
-        auto_exit_candidate=1
-        auto_exit_ids_str="${exit_ids_formatted# }"
-        auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
+    fi
+
+    if (( deliverable_complete == 1 )); then
+      auto_exit_candidate=1
+      auto_exit_ids_str="${deliverable_ready_ids[*]}"
+      auto_exit_message="[monitor] Deliverables ready for ${auto_exit_ids_str}; exiting monitor."
+    else
+      all_stale=1
+      for id in "${running_ids[@]}"; do
+        if [[ "$stale_lookup" != *" $id "* ]]; then
+          all_stale=0
+          break
+        fi
+      done
+      if (( all_stale == 1 )); then
+        ready=1
+        exit_ids_formatted=""
+        for id in "${running_ids[@]}"; do
+          count=$(get_stale_count "$id")
+          if (( count < AUTO_EXIT_POLLS )); then
+            ready=0
+            break
+          fi
+          exit_ids_formatted+=" $id(${count})"
+        done
+        if (( ready == 1 )); then
+          auto_exit_candidate=1
+          auto_exit_ids_str="${exit_ids_formatted# }"
+          auto_exit_message="[monitor] Auto-exit triggered after ${AUTO_EXIT_POLLS} consecutive stale polls: ${auto_exit_ids_str}"
+        fi
       fi
     fi
   fi

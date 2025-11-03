@@ -50,26 +50,44 @@ if [[ -z "$ID" || -z "$TEXT" ]]; then
   exit 1
 fi
 
-pane_id=$(python3 - "$REGISTRY" "$ID" <<'PY'
+current_commit=$(git rev-parse HEAD 2>/dev/null || true)
+
+pane_info=$(python3 - "$REGISTRY" "$ID" "$current_commit" <<'PY'
 import json, sys
-registry_path, entry_id = sys.argv[1:3]
+registry_path, entry_id, head_commit = sys.argv[1:4]
 with open(registry_path, "r", encoding="utf-8") as fh:
     data = json.load(fh)
 for row in data:
     if row.get("id") == entry_id:
         handle = row.get("launcher_handle") or {}
-        pane = handle.get("pane_id")
-        if not pane:
-            window = handle.get("window_id")
-            if window:
-                print(window)
-        else:
-            print(pane)
+        pane = handle.get("pane_id") or handle.get("window_id") or ""
+        source_commit = row.get("source_commit") or ""
+        print(json.dumps({"pane": pane, "source_commit": source_commit}))
         break
 else:
     sys.exit("subagent_send_keys.sh: unknown id {}".format(entry_id))
 PY
 )
+
+pane_id=$(python3 - <<'PY' "$pane_info"
+import json, sys
+data = json.loads(sys.argv[1])
+print(data.get("pane", ""))
+PY
+)
+
+source_commit=$(python3 - <<'PY' "$pane_info"
+import json, sys
+data = json.loads(sys.argv[1])
+print(data.get("source_commit", ""))
+PY
+)
+
+if [[ -n "$source_commit" && -n "$current_commit" && "$source_commit" != "$current_commit" ]]; then
+  echo "subagent_send_keys.sh: refusing to send keys to $ID; sandbox commit $source_commit differs from current HEAD $current_commit." >&2
+  echo "Launch a fresh subagent so it picks up the latest changes." >&2
+  exit 1
+fi
 
 if [[ -z "$pane_id" ]]; then
   echo "subagent_send_keys.sh: no tmux pane recorded for $ID" >&2

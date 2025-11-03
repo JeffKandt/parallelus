@@ -82,6 +82,16 @@ EOF
 20251009-000020-monitor worktree   monitor-loop-stale       running          pending      00:00     -         -              -
 EOF
         """
+    elif scenario == "deliverable":
+        body = f"""
+            #!/usr/bin/env bash
+            set -euo pipefail
+            cat <<'EOF'
+{HEADER}
+{SEPARATOR}
+20251009-000040-monitor worktree   monitor-loop-review      running          pending      00:10     00:04     %3/@3          2025-10-09 19:20:00 [session]
+EOF
+        """
     elif scenario == "nudge-failure":
         body = f"""
             #!/usr/bin/env bash
@@ -171,6 +181,27 @@ def _setup_repo(scenario: str) -> Path:
                 "path": str(sandbox),
                 "launcher_kind": "tmux-pane",
                 "launcher_handle": {"pane_id": "%2", "window_id": "@7"},
+            }
+        )
+    elif scenario == "deliverable":
+        sandbox = tmp_dir / ".parallelus" / "subagents" / "sandboxes" / "monitor-loop-review"
+        sandbox.mkdir(parents=True, exist_ok=True)
+        (sandbox / "subagent.session.jsonl").write_text("[]\n", encoding="utf-8")
+        registry_entries.append(
+            {
+                "id": "20251009-000040-monitor",
+                "type": "throwaway",
+                "slug": "monitor-loop-review",
+                "status": "running",
+                "path": str(sandbox),
+                "deliverables_status": "pending",
+                "deliverables": [
+                    {
+                        "source": "docs/reviews/feature-test-2025-10-09.md",
+                        "target": "docs/reviews/feature-test-2025-10-09.md",
+                        "status": "pending",
+                    }
+                ],
             }
         )
     (registry_dir / "subagent-registry.json").write_text(json.dumps(registry_entries, indent=2) + "\n", encoding="utf-8")
@@ -276,6 +307,22 @@ def test_auto_exit_after_consecutive_stale_polls() -> None:
     assert result.stdout.count("---") <= 4, result.stdout
 
 
+def test_auto_exit_accepts_leading_zero_value() -> None:
+    repo = _setup_repo("heartbeat")
+    try:
+        env = {
+            "MONITOR_AUTO_EXIT_STALE_POLLS": "08",
+            "MONITOR_RECHECK_DELAY": "0",
+            "MONITOR_NUDGE_DELAY": "0",
+        }
+        result = _run_monitor(repo, "--iterations", "10", env=env)
+    finally:
+        shutil.rmtree(repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Auto-exit triggered" in result.stdout, result.stdout
+
+
 def test_nudge_helper_failure_reports_manual_attention() -> None:
     repo = _setup_repo("nudge-failure")
     try:
@@ -292,6 +339,17 @@ def test_nudge_helper_failure_reports_manual_attention() -> None:
     assert result.returncode != 0, result.stdout + result.stderr
     assert "nudge helper failed" in result.stdout, result.stdout
     assert "requires manual attention" in result.stdout, result.stdout
+
+
+def test_auto_exit_on_deliverable_ready() -> None:
+    repo = _setup_repo("deliverable")
+    try:
+        result = _run_monitor(repo, "--iterations", "2")
+    finally:
+        shutil.rmtree(repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Deliverables ready" in result.stdout, result.stdout
 
 
 if __name__ == "__main__":

@@ -954,6 +954,7 @@ PY
 
   local entry_json
   local deliverables_payload="[]"
+  local senior_review_meta=""
   if ((${#deliverables_specs[@]})); then
     deliverables_payload=$(python3 - <<'PY' "${deliverables_specs[@]}"
 import json
@@ -992,13 +993,55 @@ print(json.dumps(items))
 PY
     ) || return 1
   fi
+  if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
+    senior_review_meta=$(python3 - <<'PY' "$sandbox" "$parent_branch"
+import glob
+import json
+import os
+import sys
+
+sandbox = sys.argv[1]
+parent_branch = sys.argv[2]
+branch_slug = parent_branch.replace('/', '-')
+pattern = f"docs/reviews/{branch_slug}-*.md"
+glob_pattern = os.path.join(sandbox, pattern)
+baseline = []
+for path in sorted(glob.glob(glob_pattern)):
+    baseline.append(os.path.relpath(path, sandbox))
+print(json.dumps({
+    "source_glob": pattern,
+    "baseline": baseline,
+}))
+PY
+    ) || return 1
+  fi
+  if [[ -n "$senior_review_meta" ]]; then
+    deliverables_payload=$(python3 - <<'PY' "$deliverables_payload" "$senior_review_meta"
+import json
+import sys
+
+existing = json.loads(sys.argv[1] or "[]")
+meta = json.loads(sys.argv[2] or "{}")
+if meta:
+    deliverable = {
+        "id": "senior-review-report",
+        "kind": "review_markdown",
+        "source_glob": meta.get("source_glob"),
+        "baseline": meta.get("baseline") or [],
+        "status": "waiting",
+    }
+    existing.append(deliverable)
+print(json.dumps(existing))
+PY
+    ) || return 1
+  fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
 import json
 import sys
 import shlex
 
-entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt, deliverables_json = sys.argv[1:13]
+entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt, deliverables_json, source_commit = sys.argv[1:14]
 payload = {
     "id": entry_id,
     "type": type_,
@@ -1022,7 +1065,13 @@ if deliverables_json:
     deliverables = json.loads(deliverables_json)
     if deliverables:
         payload["deliverables"] = deliverables
-        payload["deliverables_status"] = "pending"
+        statuses = {((item.get("status") or "pending").lower()) for item in deliverables}
+        if statuses and statuses <= {"waiting"}:
+            payload["deliverables_status"] = "waiting"
+        else:
+            payload["deliverables_status"] = "pending"
+if source_commit:
+    payload["source_commit"] = source_commit
 
 print(json.dumps(payload))
 PY
@@ -1147,6 +1196,7 @@ PY
 
   local harvest_payload
   harvest_payload=$(python3 - <<'PY' "$entry_json" "$dest_root_abs"
+import glob
 import json
 import os
 import shutil
@@ -1171,33 +1221,59 @@ dest_root_with_sep = dest_root + os.sep
 for item in deliverables:
     status = (item.get("status") or "pending").lower()
     source_rel = item.get("source")
-    target_rel = item.get("target") or source_rel
-    if not source_rel:
-        continue
+    source_glob = item.get("source_glob")
+    baseline = set(item.get("baseline") or [])
+    targets: List[str] = []
+
     if status == "harvested":
         continue
-    source_path = os.path.normpath(os.path.join(sandbox_root, source_rel))
-    target_path = os.path.normpath(os.path.join(dest_root, target_rel))
-    if not (source_path == sandbox_root or source_path.startswith(sandbox_root_with_sep)):
-        raise SystemExit(f"subagent_manager harvest: deliverable source escapes sandbox: {source_rel}")
-    if not (target_path == dest_root or target_path.startswith(dest_root_with_sep)):
-        raise SystemExit(f"subagent_manager harvest: deliverable target escapes repo: {target_rel}")
-    if not os.path.exists(source_path):
-        raise SystemExit(f"subagent_manager harvest: deliverable not found: {source_rel}")
 
-    target_parent = os.path.dirname(target_path)
-    if target_parent:
-        os.makedirs(target_parent, exist_ok=True)
-
-    if os.path.isdir(source_path):
-        shutil.copytree(source_path, target_path, dirs_exist_ok=True)
+    if source_rel:
+        targets.append((source_rel, item.get("target") or source_rel))
+    elif source_glob:
+        matches = []
+        glob_pattern = os.path.join(sandbox_root, source_glob)
+        for path in sorted(glob.glob(glob_pattern)):
+            rel = os.path.relpath(path, sandbox_root)
+            if rel in baseline:
+                continue
+            matches.append(rel)
+        for rel in matches:
+            targets.append((rel, item.get("target") or rel))
+        if not matches:
+            # No new files yet; leave status as-is so the monitor keeps waiting.
+            continue
     else:
-        shutil.copy2(source_path, target_path)
+        continue
 
-    item["status"] = "harvested"
-    item["harvested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    item["target_path"] = target_rel
-    copied.append(target_rel)
+    for source_rel_path, target_rel in targets:
+        source_path = os.path.normpath(os.path.join(sandbox_root, source_rel_path))
+        target_path = os.path.normpath(os.path.join(dest_root, target_rel))
+        if not (source_path == sandbox_root or source_path.startswith(sandbox_root_with_sep)):
+            raise SystemExit(f"subagent_manager harvest: deliverable source escapes sandbox: {source_rel_path}")
+        if not (target_path == dest_root or target_path.startswith(dest_root_with_sep)):
+            raise SystemExit(f"subagent_manager harvest: deliverable target escapes repo: {target_rel}")
+        if not os.path.exists(source_path):
+            raise SystemExit(f"subagent_manager harvest: deliverable not found: {source_rel_path}")
+
+        target_parent = os.path.dirname(target_path)
+        if target_parent:
+            os.makedirs(target_parent, exist_ok=True)
+
+        if os.path.isdir(source_path):
+            shutil.copytree(source_path, target_path, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source_path, target_path)
+
+        copied.append(target_rel)
+
+    if targets:
+        item["status"] = "harvested"
+        item["harvested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        item["target_path"] = targets[-1][1]
+        if source_glob and baseline:
+            baseline.update(source_rel_path for source_rel_path, _ in targets)
+            item["baseline"] = sorted(baseline)
 
 payload = {
     "deliverables": deliverables,

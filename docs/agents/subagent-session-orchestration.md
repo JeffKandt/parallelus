@@ -219,6 +219,9 @@ The helper also tracks consecutive stale-heartbeat polls. If every running subag
 `MONITOR_AUTO_EXIT_STALE_POLLS` polls in a row (default: 3), the monitor exits immediately—even
 when `--iterations` is set—so the main agent can intervene. Set
 `MONITOR_AUTO_EXIT_STALE_POLLS=0` to suppress this guardrail during debugging sessions.
+When a subagent declares deliverables (for example, the senior architect review helper now
+auto-registers its markdown report), the loop will short-circuit even faster so you can harvest
+and clean up without babysitting an idle pane.
 
 When the loop exits (the helper highlights any registry IDs with pending deliverables):
 1. Run `./.agents/bin/subagent_manager.sh status --id <registry-id>` to confirm which
