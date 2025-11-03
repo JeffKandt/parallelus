@@ -1,7 +1,7 @@
 {
-  "timestamp": "2025-11-03T20:56:51.184024+00:00",
-  "branch": "main",
-  "head": "252dc2149cf719620e99aea641e267be9a41672d",
+  "timestamp": "2025-11-03T20:57:11.640177+00:00",
+  "branch": "feature/sa-review-reset",
+  "head": "b4a046a634144a1458ed51b5d668607ec36b1533",
   "plan_path": null,
   "plan_lines": 0,
   "progress_path": null,

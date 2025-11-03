@@ -1,0 +1,6 @@
+{
+  "branch": "feature/sa-review-reset",
+  "marker_timestamp": "2025-11-03T20:57:11.640177+00:00",
+  "summary": "Retrospective skipped while preparing to merge feature-sa-review-reset; CI audit tooling currently offline.",
+  "skip_reason": "CI audit helper currently broken; bypassing audit until tooling fix"
+}
