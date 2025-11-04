@@ -2,42 +2,44 @@
 
 ## 2025-11-03
 
-### 17:13:45 UTC — feature/sa-review-subagent-guardrail
+### 23:26:54 UTC — feature/branch-audit-report
 
 **Summary**
-- Updated merge guardrails so doc-only follow-up commits after an approved review are allowed both in `agents-merge` messaging and the pre-merge hook.
-- Documented the “no history rewrites after senior review” rule in `AGENTS.md` to prevent resets that invalidate approval provenance.
-- Re-ran the monitor and merge smoke suites to confirm the guardrail adjustments pass.
+- Tightened the branch audit helper to list only branches with unmerged commits and show guidance only when actions are required.
+- Enforced turn-end markers before folding progress notebooks via `.agents/bin/fold-progress` and refreshed operator documentation (`AGENTS.md`, `docs/agents/git-workflow.md`, `docs/PLAN.md`).
+- Removed duplicate `local` exports in the subagent launcher and added a reusable senior architect scope for this branch.
+
+**Artifacts**
+- `.agents/bin/report_branches.py`, `.agents/bin/fold-progress`, `.agents/bin/launch_subagent.sh`
+- `AGENTS.md`, `docs/PLAN.md`, `docs/PROGRESS.md`, `docs/agents/git-workflow.md`
+- `docs/agents/scopes/feature-branch-audit-report-senior.md`
 
 **Next Actions**
-- Restore the CI audit helper once the underlying failures are fixed so `AGENTS_MERGE_SKIP_CI` can be removed from the merge path.
+- Launch the senior architect review and merge the branch back to `main`.
 
-## 2025-10-19 16:46:00 UTC — feature/sa-review-reset
+### 23:58:42 UTC — feature/branch-audit-report
+
 **Summary**
-- Archived the manually authored 2025-10-19 senior architect reviews under `archive/manual-reviews/` so active docs remain subagent-generated.
-- Updated the project domain guide to emphasise the “fix it once, fix it forever” expectation and point readers at the continuous-improvement playbook.
-- Added `git-rebase-continue` / `grc` aliases in `.agents/agentrc` so rebases resume through the guarded helper without hanging on interactive editors.
+- Added a launcher guard that blocks redundant senior architect reviews when the latest review already covers `HEAD` or only doc-only paths changed.
+- Updated `.agents/bin/fold-progress` to validate turn-end markers by commit and timestamp so folding only proceeds after a fresh checkpoint.
+
+**Artifacts**
+- `.agents/bin/subagent_manager.sh`, `.agents/bin/fold-progress`
+- `AGENTS.md`, `docs/agents/git-workflow.md`
 
 **Next Actions**
-- Remove branch-specific plan/progress notebooks after merge (completed).
+- Rerun the senior architect review once (the guard now enforces the reuse policy), then proceed to merge.
 
-## 2025-10-31
+### 2025-11-04 03:55:44 UTC — feature/branch-audit-report
 
-### 17:59:00 UTC — feature/sa-review-subagent-guardrail
+**Summary**
+- Harvested senior architect approval (`docs/reviews/feature-branch-audit-report-2025-11-03.md`) against commit `a875c786c89fca11fb070ae7cf6c091dd41856e3` confirming the guardrail updates.
 
-**Objectives**
-- Prevent rebase hangs by codifying the non-interactive continuation workflow.
-
-**Work Performed**
-- Added `.agents/bin/agents-rebase-continue`, a helper that exports `GIT_EDITOR=true` before calling `git rebase --continue`, ensuring the guardrail works in sandboxed shells.
-- Documented the helper in `AGENTS.md` so operators reach for it instead of the raw Git command.
-- Updated the senior architect manual to reference `.agents/bin/subagent_manager.sh` explicitly, preventing path resolution failures.
-- Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes (now suffix-matched to avoid false positives). Updated `.agents/bin/agents-merge` to validate retrospectives before notebook cleanup so audits fail before guardrail artifacts vanish.
-- Clarified the senior architect manual with explicit close-after-harvest guidance, standardized monitoring via `make monitor_subagents`, and restored/enhanced the reviewer prompt's "Subagent Operating Context" guardrails (manual-reading boundaries, fresh-review reminder).
-- Added a temporary retrospective skip flow that logs justifications under `.parallelus/retro-skip-logs/`; TODO: reinstate full CI audit enforcement once the new merge workflow lands.
+**Artifacts**
+- `docs/reviews/feature-branch-audit-report-2025-11-03.md`
 
 **Next Actions**
-- Roll the helper into normal rebase docs and update any manuals referencing the old interactive flow if they appear.
+- Merge `feature/branch-audit-report` into `main`.
 
 ## 2025-10-12
 
@@ -527,6 +529,7 @@
 - Share the updated docs with maintainers and gather feedback on the folding workflow and queue improvements.
 - Monitor tmux helper behaviour in daily use and refine the codex launcher recommendations as needed.
 
+
 ## 2025-10-28
 
 ### 00:19:00 UTC — feature/claude-review
@@ -554,3 +557,44 @@
 
 **Next Actions**
 - Pilot the capsule workflow alongside standard progress logging, socialise prompt usage, and scope implementation spikes for automation.
+
+
+## 2025-10-31
+
+### 17:59:00 UTC — feature/sa-review-subagent-guardrail
+
+**Objectives**
+- Prevent rebase hangs by codifying the non-interactive continuation workflow.
+
+**Work Performed**
+- Added `.agents/bin/agents-rebase-continue`, a helper that exports `GIT_EDITOR=true` before calling `git rebase --continue`, ensuring the guardrail works in sandboxed shells.
+- Documented the helper in `AGENTS.md` so operators reach for it instead of the raw Git command.
+- Updated the senior architect manual to reference `.agents/bin/subagent_manager.sh` explicitly, preventing path resolution failures.
+- Prevented double-launches by blocking `subagent_manager launch` when a slug has uncleared registry entries or stale tmux panes (now suffix-matched to avoid false positives). Updated `.agents/bin/agents-merge` to validate retrospectives before notebook cleanup so audits fail before guardrail artifacts vanish.
+- Clarified the senior architect manual with explicit close-after-harvest guidance, standardized monitoring via `make monitor_subagents`, and restored/enhanced the reviewer prompt's "Subagent Operating Context" guardrails (manual-reading boundaries, fresh-review reminder).
+- Added a temporary retrospective skip flow that logs justifications under `.parallelus/retro-skip-logs/`; TODO: reinstate full CI audit enforcement once the new merge workflow lands.
+
+**Next Actions**
+- Roll the helper into normal rebase docs and update any manuals referencing the old interactive flow if they appear.
+
+
+## 2025-11-03
+
+### 17:13:45 UTC — feature/sa-review-subagent-guardrail
+
+**Summary**
+- Updated merge guardrails so doc-only follow-up commits after an approved review are allowed both in `agents-merge` messaging and the pre-merge hook.
+- Documented the “no history rewrites after senior review” rule in `AGENTS.md` to prevent resets that invalidate approval provenance.
+- Re-ran the monitor and merge smoke suites to confirm the guardrail adjustments pass.
+
+**Next Actions**
+- Restore the CI audit helper once the underlying failures are fixed so `AGENTS_MERGE_SKIP_CI` can be removed from the merge path.
+
+## 2025-10-19 16:46:00 UTC — feature/sa-review-reset
+**Summary**
+- Archived the manually authored 2025-10-19 senior architect reviews under `archive/manual-reviews/` so active docs remain subagent-generated.
+- Updated the project domain guide to emphasise the “fix it once, fix it forever” expectation and point readers at the continuous-improvement playbook.
+- Added `git-rebase-continue` / `grc` aliases in `.agents/agentrc` so rebases resume through the guarded helper without hanging on interactive editors.
+
+**Next Actions**
+- Remove branch-specific plan/progress notebooks after merge (completed).

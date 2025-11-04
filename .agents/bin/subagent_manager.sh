@@ -97,6 +97,69 @@ ensure_clean_worktree() {
   fi
 }
 
+is_doc_only_path() {
+  local path=$1
+  case "$path" in
+    docs/guardrails/runs/*|\
+    docs/reviews/*|\
+    docs/PLAN.md|\
+    docs/PROGRESS.md|\
+    docs/plans/*|\
+    docs/progress/*|\
+    docs/agents/*|\
+    docs/self-improvement/*)
+      return 0 ;;
+  esac
+  return 1
+}
+
+ensure_senior_review_needed() {
+  local branch_slug reviewed_commit head_commit latest_review diff_files non_doc_change=0
+  branch_slug=${1//\//-}
+  head_commit=$2
+
+  latest_review=$(ls -1t "$ROOT/docs/reviews/${branch_slug}-"*.md 2>/dev/null | head -n1 || true)
+  if [[ -z "$latest_review" ]]; then
+    return 0
+  fi
+
+  reviewed_commit=$(awk -F': ' '$1=="Reviewed-Commit"{print $2; exit}' "$latest_review")
+  if [[ -z "$reviewed_commit" ]]; then
+    return 0
+  fi
+  if ! git rev-parse --verify --quiet "$reviewed_commit" >/dev/null; then
+    return 0
+  fi
+
+  if [[ "$reviewed_commit" == "$head_commit" ]]; then
+    echo "subagent_manager: latest review $(basename "$latest_review") already covers commit $head_commit." >&2
+    echo "  Re-run the senior architect review only after landing new code changes." >&2
+    exit 1
+  fi
+
+  if ! diff_files=$(git diff --name-only "$reviewed_commit" "$head_commit" 2>/dev/null); then
+    return 0
+  fi
+  if [[ -z "$diff_files" ]]; then
+    echo "subagent_manager: no file changes since reviewed commit $reviewed_commit; reuse the existing review." >&2
+    exit 1
+  fi
+
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    if ! is_doc_only_path "$path"; then
+      non_doc_change=1
+      break
+    fi
+  done <<<"$diff_files"
+
+  if (( ! non_doc_change )); then
+    echo "subagent_manager: only doc-only paths changed since the last review (see $(basename "$latest_review"))." >&2
+    echo "  Doc-only updates do not require a new senior architect review; skip the launch or add code changes first." >&2
+    exit 1
+  fi
+}
+
 ensure_slug_clean() {
   local slug=$1
   ensure_registry
@@ -928,6 +991,7 @@ USAGE
 
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
     ensure_clean_worktree
+    ensure_senior_review_needed "$current_branch" "$current_commit"
   fi
 
   if [[ "$type" == "throwaway" ]]; then

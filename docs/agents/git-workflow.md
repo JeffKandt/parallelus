@@ -83,14 +83,19 @@ ask whether to merge or archive. Two main flows:
   updated `senior_architect` role prompt; populate the configuration header
   (model, sandbox, approval mode) before launch so the review artifact records
   provenance.
+- The launcher refuses to rerun when the latest review already references the
+  current commit or only doc-only paths have changed. Skip relaunches unless new
+  code, tests, or tooling changes landed after the most recent approval.
 - Set `AGENTS_MERGE_FORCE=1` when you must override the guardrail in an
   emergency (document the reason in the progress log), and optionally specify a
   different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
 - The helper refuses to run when any branch notebooks are still present (for
   example `docs/plans/feature-*.md` or `docs/progress/feature-*.md`). Before
-  deleting them, run `.agents/bin/fold-progress apply` so every timestamped
-  entry lands in the canonical docs verbatim—summaries or rewritten blurbs are
-  not allowed. The helper also blocks on a dirty working tree.
+  deleting them, run `make turn_end m="summary"` (or similar) so the latest
+  marker is recorded under `docs/self-improvement/markers/`, then execute
+  `.agents/bin/fold-progress apply` to fold entries verbatim into the canonical
+  log—summaries or rewritten blurbs are not allowed. The helper also blocks on a
+  dirty working tree.
 
 Do **not** run `git merge` directly; the helper is the enforcement mechanism for
 the merge-and-close checklist. If someone tries it anyway, the managed
@@ -213,9 +218,12 @@ the final commit before merging.
   the feature branch.
 - If orphaned notebooks are detected on `main`, remove them immediately or fold
   them into canonical docs.
-- When folding progress logs, preserve every entry verbatim—run
+- When folding progress logs, preserve every entry verbatim—run `make turn_end`
+  first so the current marker is captured, then execute
   `.agents/bin/fold-progress apply` and only edit notebook text before folding
-  (never summarise directly inside `docs/PROGRESS.md`).
+  (never summarise directly inside `docs/PROGRESS.md`). The helper now fails if
+  the marker is missing (override with `AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1`
+  only when absolutely necessary).
 - Always commit branch notebooks and session logs before merging to prevent
   orphaned state.
 

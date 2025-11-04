@@ -72,12 +72,6 @@ create_runner() {
   local constraints_export=""
   local writes_export=""
   local config_export=""
-  local model_export=""
-  local sandbox_export=""
-  local approval_export=""
-  local session_export=""
-  local constraints_export=""
-  local writes_export=""
   if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     printf -v profile_export 'export SUBAGENT_CODEX_PROFILE=%q\n' "$SUBAGENT_CODEX_PROFILE"
   fi
