@@ -8,6 +8,11 @@
 - Overlay deployment workflow refined (preserve project docs, optional backup suppression, shared senior review template).
 - Monitor deliverable gating tightened and smoke tests expanded, with senior architect approval captured for `feature/sa-review-subagent-guardrail`.
 - Manual senior-review artefacts archived and non-interactive rebase guardrail enforced (`feature/sa-review-reset`).
+- Turn-end markers enforced before folding notebooks; fold-progress now checks
+  for fresh markers and docs instruct operators to run `make turn_end` first
+  (`feature/branch-audit-report`).
+- Duplicate `local` declarations removed from the subagent launcher
+  (`.agents/bin/launch_subagent.sh`) to match current tooling (`feature/branch-audit-report`).
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
@@ -25,12 +30,8 @@
 - Define pruning/archival guidance for long-lived artefacts like `docs/progress/*.md` and `docs/agents/subagent-registry.json`.
 - Prototype a subagent completion sentinel so the monitor loop no longer relies solely on log heartbeats.
 - Remove the unused `docs/logs` deliverable from senior-review templates and scripts.
-- Clean up duplicate `local` declarations in `.agents/bin/launch_subagent.sh:create_runner`.
 - Update `docs/agents/templates/senior_architect_scope.md` to reference `origin/feature/publish-repo`.
-- Import the senior architect operations manual from `feature/sa-review-subagent-guardrail` / `feature/sa-review-reset` into `docs/agents/manuals/` so subagent-only review expectations are documented on `main`.
 - Assess the role configuration YAMLs introduced on `feature/my-feature` / `feature/senior-review` and, if useful, wire them into `subagent_manager.sh` to centralise default model/sandbox settings.
 - Rationalise backlog management across `docs/PLAN.md`, branch checklists, and Next Actions so TODOs appear in a single canonical location.
-- Add automated guardrails so `make turn_end` runs (and markers exist) before plan/progress notebooks are folded.
-- Provide a checklist/tooling update for the folding workflow to block notebook deletion when fresh markers or reports are missing.
 - Automate senior-review log harvest so sandbox cleanup records transcripts before panes close (preventing evidence loss).
 - Pilot the context capsule workflow (design/templates/helpers) introduced on codex/investigate-context-cloning-for-subagents and evaluate integration points with existing progress logging.

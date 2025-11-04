@@ -9,8 +9,8 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Optional
+import os
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -50,18 +50,73 @@ def run(cmd: List[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, text=True, capture_output=True, check=False)
 
 
-def list_branches(ref: str) -> List[str]:
-    result = run(["git", "branch", ref])
+def detect_default_branch(remote: str) -> str:
+    result = run(["git", "symbolic-ref", f"refs/remotes/{remote}/HEAD"])
+    if result.returncode == 0:
+        ref = result.stdout.strip()
+        prefix = f"refs/remotes/{remote}/"
+        if ref.startswith(prefix):
+            return ref[len(prefix) :]
+    return "main"
+
+
+def verify_ref(ref: str) -> bool:
+    return run(["git", "rev-parse", "--verify", ref]).returncode == 0
+
+
+def resolve_base_ref(remote: str) -> Tuple[str, str]:
+    default_branch = detect_default_branch(remote)
+    candidates = [
+        f"{remote}/{default_branch}",
+        default_branch,
+        "origin/main",
+        "main",
+    ]
+    for candidate in candidates:
+        if verify_ref(candidate):
+            if "/" in candidate:
+                branch = candidate.split("/", 1)[1]
+            else:
+                branch = candidate
+            return candidate, branch
+    return "main", "main"
+
+
+def normalize_ref(ref: str, remote: str) -> Optional[str]:
+    ref = ref.strip()
+    if not ref:
+        return None
+    local_prefix = "refs/heads/"
+    remote_prefix = f"refs/remotes/{remote}/"
+    if ref.startswith(local_prefix):
+        return ref[len(local_prefix) :]
+    if ref.startswith(remote_prefix):
+        suffix = ref[len(remote_prefix) :]
+        if suffix == "HEAD":
+            return None
+        return suffix
+    return None
+
+
+def list_unmerged(prefix: str, base_ref: str, remote: str) -> List[str]:
+    result = run(
+        [
+            "git",
+            "for-each-ref",
+            "--format=%(refname)",
+            "--no-merged",
+            base_ref,
+            prefix,
+        ]
+    )
     if result.returncode != 0:
         return []
     names = []
     for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line:
+        name = normalize_ref(line, remote)
+        if not name:
             continue
-        if line.startswith("*"):
-            line = line[1:].strip()
-        names.append(line)
+        names.append(name)
     return names
 
 
@@ -77,24 +132,32 @@ def list_prs() -> List[Dict]:
 
 
 def build_report() -> List[BranchInfo]:
-    remote_branches = list_branches("-r")
-    local_branches = list_branches("")
-    prs = list_prs()
+    remote_name = os.environ.get("BASE_REMOTE", "origin")
+    base_ref, base_branch = resolve_base_ref(remote_name)
+    remote_branches = list_unmerged(f"refs/remotes/{remote_name}", base_ref, remote_name)
+    local_branches = list_unmerged("refs/heads", base_ref, remote_name)
 
+    branches_to_include = set(remote_branches) | set(local_branches)
+    filtered = {
+        name
+        for name in branches_to_include
+        if name and name != base_branch and not name.startswith("archive/")
+    }
+
+    prs = list_prs()
     branch_map: Dict[str, BranchInfo] = {}
 
-    for rb in remote_branches:
-        key = rb.replace("origin/", "", 1) if rb.startswith("origin/") else rb
-        info = branch_map.setdefault(key, BranchInfo(name=key))
-        info.remote = True
-
-    for lb in local_branches:
-        key = lb
-        info = branch_map.setdefault(key, BranchInfo(name=key))
-        info.local = True
+    for name in sorted(filtered):
+        info = branch_map.setdefault(name, BranchInfo(name=name))
+        if name in remote_branches:
+            info.remote = True
+        if name in local_branches:
+            info.local = True
 
     for pr in prs:
         head = pr.get("headRefName") or ""
+        if head not in filtered:
+            continue
         info = branch_map.setdefault(head, BranchInfo(name=head))
         info.pr_number = pr.get("number")
         info.pr_title = pr.get("title")
@@ -106,6 +169,10 @@ def build_report() -> List[BranchInfo]:
 
 def format_report(branches: List[BranchInfo]) -> str:
     lines = []
+    if not branches:
+        lines.append("No branches with unmerged commits relative to main.")
+        return "\n".join(lines)
+
     header = f"{'Branch':40} {'Status':18} {'PR':45} {'Action'}"
     lines.append(header)
     lines.append("-" * len(header))
@@ -116,15 +183,16 @@ def format_report(branches: List[BranchInfo]) -> str:
         lines.append(
             f"{info.name:40} {info.status:18} {pr_part:45} {info.action}"
         )
+    lines.append("")
+    lines.append("Tips:")
+    lines.append(" - Request a quality review with `Senior review request: <branch-name>`")
+    lines.append(" - Request an orientation with `Branch overview request: <branch-name>`")
     return "\n".join(lines)
 
 
 def main() -> None:
     report = build_report()
     print(format_report(report))
-    print("\nTips:")
-    print(" - Request a quality review with `Senior review request: <branch-name>`")
-    print(" - Request an orientation with `Branch overview request: <branch-name>`")
 
 
 if __name__ == "__main__":

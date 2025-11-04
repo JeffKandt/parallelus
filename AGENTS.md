@@ -34,7 +34,9 @@ commands beyond `make read_bootstrap`.
 
 ### Recon & Planning (read-only)
 - Run `make read_bootstrap` immediately; report repo mode, branch, remotes, and
-  orphaned notebooks before continuing.
+  orphaned notebooks before continuing. Echo the complete branch snapshot table
+  (names plus action guidance) back to the user—do not elide or summarise the
+  entries.
 - Open the active plan and progress notebooks (`docs/plans/<branch>.md`,
   `docs/progress/<branch>.md`) or confirm they do not exist yet.
 - If the tmux environment changed (new machine, updated launcher), reread
@@ -107,6 +109,10 @@ commands beyond `make read_bootstrap`.
   `AGENTS_MERGE_SKIP_RETRO_REASON="<why>"`. The merge helper records a skip log under
   `.parallelus/retro-skip-logs/` (next to the repo) for follow-up, and a TODO exists to
   reinstate the guardrail.
+- Before folding branch notebooks into canonical logs, run
+  `make turn_end m="summary"` (or another checkpoint note) so the latest marker
+  lands in `docs/self-improvement/markers/`; the folding helper now enforces
+  this requirement.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import pathlib
 import re
 import subprocess
@@ -165,7 +166,24 @@ def git_show(ref: str, path: str) -> Optional[str]:
     return data.decode("utf-8")
 
 
+def git_root() -> pathlib.Path:
+    out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True)
+    return pathlib.Path(out.strip())
+
+
 def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
+    allow_without_turn_end = os.environ.get("AGENTS_ALLOW_FOLD_WITHOUT_TURN_END") == "1"
+    repo_root = git_root()
+    markers_dir = repo_root / "docs" / "self-improvement" / "markers"
+    if not allow_without_turn_end and not markers_dir.exists():
+        rel_dir = markers_dir.relative_to(repo_root)
+        print(
+            f"fold-progress apply: expected markers directory {rel_dir} is missing.\n"
+            "Run `make turn_end m=\"summary\"` on the feature branch before folding progress notebooks.",
+            file=sys.stderr,
+        )
+        return 1
+
     canonical_existing = read_file(target)
     entries: Dict[Tuple[dt.datetime, str], ProgressEntry] = {}
     if canonical_existing:
@@ -177,7 +195,24 @@ def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
         content = read_file(notebook)
         if not content:
             continue
-        for entry in parse_branch_progress(content, notebook):
+        notebook_entries = parse_branch_progress(content, notebook)
+        if not notebook_entries:
+            continue
+        if not allow_without_turn_end:
+            slug = notebook.stem
+            marker_path = markers_dir / f"{slug}.json"
+            if not marker_path.exists():
+                rel_marker = marker_path.relative_to(repo_root)
+                branch_name = notebook_entries[0].branch
+                print(
+                    "fold-progress apply: missing latest turn-end marker.\n"
+                    f"Expected: {rel_marker}\n"
+                    f"Run `make turn_end m=\"summary\"` (or another checkpoint message) on branch {branch_name} before folding.\n"
+                    "Set AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1 to override.",
+                    file=sys.stderr,
+                )
+                return 1
+        for entry in notebook_entries:
             entries[(entry.timestamp, entry.branch)] = entry
 
     rendered = render_entries(entries.values())
