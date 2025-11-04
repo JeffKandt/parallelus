@@ -131,7 +131,7 @@ def list_prs() -> List[Dict]:
     return data
 
 
-def build_report() -> List[BranchInfo]:
+def build_report() -> Tuple[List[BranchInfo], str]:
     remote_name = os.environ.get("BASE_REMOTE", "origin")
     base_ref, base_branch = resolve_base_ref(remote_name)
     remote_branches = list_unmerged(f"refs/remotes/{remote_name}", base_ref, remote_name)
@@ -164,13 +164,13 @@ def build_report() -> List[BranchInfo]:
         info.pr_state = pr.get("state")
         info.pr_created_at = pr.get("createdAt")
 
-    return sorted(branch_map.values(), key=lambda x: x.name)
+    return sorted(branch_map.values(), key=lambda x: x.name), base_branch
 
 
-def format_report(branches: List[BranchInfo]) -> str:
+def format_report(branches: List[BranchInfo], base_branch: str) -> str:
     lines = []
     if not branches:
-        lines.append("No branches with unmerged commits relative to main.")
+        lines.append(f"No branches with unmerged commits relative to {base_branch}.")
         return "\n".join(lines)
 
     header = f"{'Branch':40} {'Status':18} {'PR':45} {'Action'}"
@@ -191,8 +191,8 @@ def format_report(branches: List[BranchInfo]) -> str:
 
 
 def main() -> None:
-    report = build_report()
-    print(format_report(report))
+    report, base_branch = build_report()
+    print(format_report(report, base_branch))
 
 
 if __name__ == "__main__":
