@@ -87,6 +87,10 @@ commands beyond `make read_bootstrap`.
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
   the prompt’s YAML front matter (defaults defined at the top of
   `.agents/prompts/agent_roles/senior_architect.md`).
+- Before launching a senior architect review, confirm the latest review file
+  already references the current `HEAD`; the launcher now refuses to rerun when
+  the review is current or only doc-only tweaks have landed since the last
+  approval.
 - Capture or refresh the senior architect review *after* the final commit on
   the feature branch; if additional commits are required, regenerate the review
   so `Reviewed-Commit` matches `HEAD` before attempting to merge.

@@ -13,6 +13,8 @@
   (`feature/branch-audit-report`).
 - Duplicate `local` declarations removed from the subagent launcher
   (`.agents/bin/launch_subagent.sh`) to match current tooling (`feature/branch-audit-report`).
+- Senior review launcher now blocks redundant reruns when the latest approval
+  already covers `HEAD` or only doc-only follow-ups landed (`feature/branch-audit-report`).
 
 ## Next Focus Areas
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).

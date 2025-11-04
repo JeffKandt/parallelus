@@ -83,6 +83,9 @@ ask whether to merge or archive. Two main flows:
   updated `senior_architect` role prompt; populate the configuration header
   (model, sandbox, approval mode) before launch so the review artifact records
   provenance.
+- The launcher refuses to rerun when the latest review already references the
+  current commit or only doc-only paths have changed. Skip relaunches unless new
+  code, tests, or tooling changes landed after the most recent approval.
 - Set `AGENTS_MERGE_FORCE=1` when you must override the guardrail in an
   emergency (document the reason in the progress log), and optionally specify a
   different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
