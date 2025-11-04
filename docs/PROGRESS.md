@@ -21,9 +21,10 @@
 
 **Summary**
 - Added a launcher guard that blocks redundant senior architect reviews when the latest review already covers `HEAD` or only doc-only paths changed.
+- Updated `.agents/bin/fold-progress` to validate turn-end markers by commit and timestamp so folding only proceeds after a fresh checkpoint.
 
 **Artifacts**
-- `.agents/bin/subagent_manager.sh`
+- `.agents/bin/subagent_manager.sh`, `.agents/bin/fold-progress`
 - `AGENTS.md`, `docs/agents/git-workflow.md`
 
 **Next Actions**
