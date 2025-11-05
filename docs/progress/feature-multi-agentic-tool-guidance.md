@@ -10,11 +10,14 @@
 - bootstrapped branch `feature/multi-agentic-tool-guidance` and opened session `20251043-20251105172610-051c51`
 - documented objectives and tasks in the branch plan/progress notebooks
 - converted the shared HTML export into `docs/agents/prototypes/Centralizing guidance across tools.md` and removed the obsolete HTML file
+- distilled the conversation into `docs/agents/prototypes/tool-agnostic-guidance.md`, a detailed implementation plan
+- refreshed the branch plan to align with the new objectives and outstanding follow-ups
 
 **Artifacts**
 - docs/plans/feature-multi-agentic-tool-guidance.md
 - docs/progress/feature-multi-agentic-tool-guidance.md
 - docs/agents/prototypes/Centralizing guidance across tools.md
+- docs/agents/prototypes/tool-agnostic-guidance.md
 
 **Next Actions**
-- circulate the markdown plan for review and capture any feedback in follow-up commits
+- circulate the implementation plan for review, capture feedback, and translate accepted tasks into tracked work items
