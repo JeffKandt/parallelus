@@ -68,3 +68,11 @@
 
 **Work Performed**
 - improved the exec event renderer to unwrap `/bin/zsh -lc '…'` and `/bin/bash -lc '…'` wrappers (including multiline commands) into a single-line summary suitable for tmux capture-pane
+
+## 2026-01-23 05:39:12 UTC
+**Objectives**
+- validate the exec-mode renderer in a real tmux subagent pane
+
+**Work Performed**
+- launched a senior architect review subagent (`20260123-053350-senior-review`) and verified the pane output is now capture-pane-friendly with readable `Run …` / `Ran … (exit …)` lines
+- harvested `docs/reviews/feature-subagent-exec-monitoring-2026-01-23.md` and forced cleanup after confirming the tmux pane had exited
