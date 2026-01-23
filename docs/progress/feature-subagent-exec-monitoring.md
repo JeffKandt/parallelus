@@ -29,3 +29,13 @@
 
 **Next Actions**
 - launch a senior architect review subagent and confirm exec output and cleanup behavior
+
+## 2026-01-23 05:19:53 UTC
+**Objectives**
+- validate exec-mode output and cleanup end-to-end
+
+**Work Performed**
+- identified the root cause of “TUI launches”: `launch_subagent.sh` wrote literal `\n` into exports and the generated inner script called `is_enabled` without defining it, so exec-mode was never entered
+- fixed `launch_subagent.sh` to emit real newlines for exec exports and define `is_enabled`/`is_falsey` inside the generated inner script
+- reran a senior architect review subagent and confirmed the pane shows exec-mode summaries with command/exit/output hints
+- confirmed cleanup closes the tmux pane after harvest/cleanup
