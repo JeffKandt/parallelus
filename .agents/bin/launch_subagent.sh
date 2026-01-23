@@ -138,13 +138,13 @@ create_runner() {
     printf -v approval_export 'export SUBAGENT_CODEX_APPROVAL_POLICY=%q\n' "$SUBAGENT_CODEX_APPROVAL_POLICY"
   fi
   if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" || -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
-    alt_screen_export='export SUBAGENT_CODEX_NO_ALT_SCREEN=1\n'
+    alt_screen_export=$'export SUBAGENT_CODEX_NO_ALT_SCREEN=1\n'
   fi
   if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" || is_enabled "${PARALLELUS_CODEX_USE_EXEC:-}"; then
-    exec_export='export SUBAGENT_CODEX_USE_EXEC=1\n'
+    exec_export=$'export SUBAGENT_CODEX_USE_EXEC=1\n'
   fi
   if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}" || is_enabled "${PARALLELUS_CODEX_EXEC_JSON:-}"; then
-    exec_json_export='export SUBAGENT_CODEX_EXEC_JSON=1\n'
+    exec_json_export=$'export SUBAGENT_CODEX_EXEC_JSON=1\n'
   fi
   if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
     printf -v session_export 'export SUBAGENT_CODEX_SESSION_MODE=%q\n' "$SUBAGENT_CODEX_SESSION_MODE"
@@ -207,6 +207,23 @@ PROMPT_FILE="${PARALLELUS_PROMPT_FILE:?}"
 WORKDIR="${PARALLELUS_WORKDIR:?}"
 
 prompt_content="$(<"$PROMPT_FILE")"
+
+is_falsey() {
+  local raw=${1:-}
+  local lowered
+  lowered=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+  case "$lowered" in
+    0|false|no|off)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_enabled() {
+  local raw=${1:-}
+  [[ -n "$raw" ]] && ! is_falsey "$raw"
+}
 
 export TERM="${PARALLELUS_ORIG_TERM:-xterm-256color}"
 export SUBAGENT=1
