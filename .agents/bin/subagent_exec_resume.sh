@@ -215,7 +215,15 @@ PY
 
 cmd="cd $sandbox_q && codex exec resume --json $session_q $prompt_q | python3 $filter_q --mode json --events-path $events_q --last-message-path $last_q"
 
-new_pane=$("$TMUX_BIN" split-window -h -p 50 -d -P -F '#{pane_id}' -t "${WINDOW_ID:-}" -c "$SANDBOX_PATH" "bash -lc $cmd") || {
+tmux_cmd=$(python3 - <<'PY' "$cmd"
+import shlex
+import sys
+
+print(f"bash -lc {shlex.quote(sys.argv[1])}")
+PY
+)
+
+new_pane=$("$TMUX_BIN" split-window -h -p 50 -d -P -F '#{pane_id}' -t "${WINDOW_ID:-}" -c "$SANDBOX_PATH" "$tmux_cmd") || {
   echo "subagent_exec_resume.sh: failed to launch tmux pane" >&2
   exit 1
 }
