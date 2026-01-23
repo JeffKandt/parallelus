@@ -1,5 +1,21 @@
 # Project Progress
 
+## 2026-01-23
+
+### 04:54:04 UTC — feature/subagent-exec-default
+
+**Summary**
+- Defaulted subagent launches to `codex exec` for cleaner tmux capture/tailing, while preserving an opt-in interactive TUI (`PARALLELUS_CODEX_USE_TUI=1`).
+- Added exec-mode monitoring artifacts (`subagent.exec_events.jsonl`, `subagent.exec_session_id`, `subagent.last_message.txt`) plus an exec resume helper for follow-up prompts.
+- Hardened merge/test ergonomics (pytest discovery excludes `out/`, smoke test uses `SUBAGENT_REGISTRY_FILE` so it doesn’t mutate the tracked registry).
+
+**Artifacts**
+- `.agents/bin/launch_subagent.sh`, `.agents/bin/subagent_manager.sh`, `.agents/bin/subagent_tail.sh`, `.agents/bin/subagent_exec_resume.sh`, `.agents/bin/codex_exec_stream_filter.py`
+- `AGENTS.md`, `docs/agents/subagent-session-orchestration.md`, `docs/reviews/feature-subagent-exec-default-2026-01-23.md`, `pytest.ini`, `tests/test_basic.py`
+
+**Next Actions**
+- None (merge branch; fold notebooks + merge to `main`).
+
 ## 2025-11-03
 
 ### 23:26:54 UTC — feature/branch-audit-report
