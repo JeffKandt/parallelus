@@ -25,6 +25,9 @@ Options:
 If already inside tmux, the script runs `codex resume SESSION_ID [PROMPT]` in
 the current pane. Otherwise it attaches/creates the target tmux session and
 spawns Codex there.
+
+Environment:
+  PARALLELUS_CODEX_NO_ALT_SCREEN=1  Pass `--no-alt-screen` to Codex.
 USAGE
 }
 
@@ -83,7 +86,11 @@ if [[ -z "$session_id" ]]; then
 fi
 
 build_cmd() {
-  local cmd=("codex" "resume" "$session_id")
+  local cmd=("codex")
+  if [[ -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
+    cmd+=("--no-alt-screen")
+  fi
+  cmd+=("resume" "$session_id")
   if [[ -n "$PROMPT" ]]; then
     cmd+=("$PROMPT")
   fi
@@ -92,10 +99,14 @@ build_cmd() {
 
 if [[ -n "${TMUX:-}" ]]; then
   echo "[info] Already inside tmux (TMUX=$TMUX). Running codex resume $session_id here." >&2
+  args=()
+  if [[ -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
+    args+=("--no-alt-screen")
+  fi
   if [[ -n "$PROMPT" ]]; then
-    exec codex resume "$session_id" "$PROMPT"
+    exec codex "${args[@]}" resume "$session_id" "$PROMPT"
   else
-    exec codex resume "$session_id"
+    exec codex "${args[@]}" resume "$session_id"
   fi
 fi
 

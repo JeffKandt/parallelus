@@ -18,7 +18,7 @@ if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" && -n "$TMUX_BIN" ]]; t
     fi
 fi
 
-REGISTRY_FILE="docs/agents/subagent-registry.json"
+REGISTRY_FILE=${SUBAGENT_REGISTRY_FILE:-docs/agents/subagent-registry.json}
 SCOPE_TEMPLATE="docs/agents/templates/subagent_scope_template.md"
 SANDBOX_ROOT="$ROOT/.parallelus/subagents/sandboxes"
 WORKTREE_ROOT="$ROOT/.parallelus/subagents/worktrees"
@@ -27,6 +27,7 @@ DEPLOY_HELPER="$ROOT/.agents/bin/deploy_agents_process.sh"
 VERIFY_HELPER="$ROOT/.agents/bin/verify_process_run.py"
 SESSION_HELPER="$ROOT/.agents/bin/get_current_session_id.sh"
 RESUME_HELPER="$ROOT/.agents/bin/resume_in_tmux.sh"
+EXEC_RESUME_HELPER="$ROOT/.agents/bin/subagent_exec_resume.sh"
 MONITOR_HELPER="$ROOT/.agents/bin/agents-monitor-loop.sh"
 SUBAGENT_LANGS=${SUBAGENT_LANGS:-python}
 ROLE_PROMPTS_DIR="$ROOT/.agents/prompts/agent_roles"
@@ -37,6 +38,7 @@ Usage: subagent_manager.sh <command> [options]
 Commands:
   launch   Create a sandbox/worktree and launch a subagent session
   status   List registry entries (optionally filter by --id)
+  resume   Resume an exec-mode subagent session (follow-up prompt)
   verify   Validate a completed subagent sandbox/worktree
   harvest  Copy recorded deliverables from a sandbox/worktree into the repo
   cleanup  Remove sandbox/worktree and update registry status
@@ -598,6 +600,8 @@ allowed_keys = {
     "allowed_writes",
     "profile",
     "config_overrides",
+    "use_exec",
+    "exec_json",
 }
 
 unexpected = sorted(set(data.keys()) - allowed_keys)
@@ -632,6 +636,8 @@ mapping = {
     "allowed_writes": "SUBAGENT_CODEX_ALLOWED_WRITES",
     "profile": "SUBAGENT_CODEX_PROFILE",
     "config_overrides": "SUBAGENT_CODEX_CONFIG_OVERRIDES",
+    "use_exec": "SUBAGENT_CODEX_USE_EXEC",
+    "exec_json": "SUBAGENT_CODEX_EXEC_JSON",
 }
 
 for key, env in mapping.items():
@@ -952,6 +958,10 @@ cmd_launch() {
       --help)
         cat <<'USAGE'
 Usage: subagent_manager.sh launch --type {throwaway|worktree} --slug <branch-slug> [--scope FILE] [--launcher MODE] [--profile CODEX_PROFILE] [--role ROLE_PROMPT] [--deliverable SRC[:DEST]]...
+
+Environment:
+  PARALLELUS_CODEX_USE_TUI=1  Opt in to the interactive Codex TUI (default is `codex exec`).
+                              Use the TUI only when you need interactive, in-session exploration.
 USAGE
         return 0 ;;
       *)
@@ -1030,6 +1040,8 @@ USAGE
     SUBAGENT_CODEX_ADDITIONAL_CONSTRAINTS
     SUBAGENT_CODEX_ALLOWED_WRITES
     SUBAGENT_CODEX_CONFIG_OVERRIDES
+    SUBAGENT_CODEX_USE_EXEC
+    SUBAGENT_CODEX_EXEC_JSON
   )
   local restore_env_cmds=()
   for _var in "${tracked_env_vars[@]}"; do
@@ -1065,6 +1077,15 @@ PY
 
   if [[ -z "$codex_profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     codex_profile="$SUBAGENT_CODEX_PROFILE"
+  fi
+
+  # Default to exec-mode for subagents to improve transcript quality and machine-readable monitoring.
+  # Opt out by setting PARALLELUS_CODEX_USE_TUI=1 (or explicitly unsetting SUBAGENT_CODEX_USE_EXEC).
+  if [[ -z "${PARALLELUS_CODEX_USE_TUI:-}" && -z "${SUBAGENT_CODEX_USE_EXEC:-}" ]]; then
+    export SUBAGENT_CODEX_USE_EXEC=1
+  fi
+  if [[ -z "${PARALLELUS_CODEX_USE_TUI:-}" && -n "${SUBAGENT_CODEX_USE_EXEC:-}" && -z "${SUBAGENT_CODEX_EXEC_JSON:-}" ]]; then
+    export SUBAGENT_CODEX_EXEC_JSON=1
   fi
 
   local entry_json
@@ -1262,6 +1283,58 @@ cmd_verify() {
     update_registry "$entry_id" "row['status'] = 'ready_for_merge'"
   fi
   echo "Verified $entry_id ($type)"
+}
+
+cmd_resume() {
+  local entry_id=""
+  local prompt=""
+  local prompt_file=""
+  local launcher="tmux"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --id)
+        entry_id=$2; shift 2 ;;
+      --prompt)
+        prompt=$2; shift 2 ;;
+      --prompt-file)
+        prompt_file=$2; shift 2 ;;
+      --launcher)
+        launcher=$2; shift 2 ;;
+      --help)
+        cat <<'USAGE'
+Usage: subagent_manager.sh resume --id ID (--prompt TEXT | --prompt-file FILE) [--launcher tmux|manual]
+
+Resume a subagent launched via `codex exec` by sending a follow-up prompt using
+the recorded exec session id (thread_id).
+USAGE
+        return 0 ;;
+      *)
+        echo "Unknown option $1" >&2; return 1 ;;
+    esac
+  done
+  if [[ -z "$entry_id" ]]; then
+    echo "subagent_manager resume: --id required" >&2
+    return 1
+  fi
+  if [[ -z "$prompt" && -z "$prompt_file" ]]; then
+    echo "subagent_manager resume: --prompt or --prompt-file required" >&2
+    return 1
+  fi
+  if [[ -n "$prompt" && -n "$prompt_file" ]]; then
+    echo "subagent_manager resume: choose --prompt or --prompt-file (not both)" >&2
+    return 1
+  fi
+  if [[ ! -x "$EXEC_RESUME_HELPER" ]]; then
+    echo "subagent_manager resume: exec resume helper missing: $EXEC_RESUME_HELPER" >&2
+    return 1
+  fi
+  local args=(--id "$entry_id" --launcher "$launcher")
+  if [[ -n "$prompt" ]]; then
+    args+=(--prompt "$prompt")
+  else
+    args+=(--prompt-file "$prompt_file")
+  fi
+  "$EXEC_RESUME_HELPER" "${args[@]}"
 }
 
 cmd_harvest() {
@@ -1529,6 +1602,7 @@ main() {
   case "$cmd" in
     launch) cmd_launch "$@" ;;
     status) cmd_status "$@" ;;
+    resume) cmd_resume "$@" ;;
     verify) cmd_verify "$@" ;;
     harvest) cmd_harvest "$@" ;;
     cleanup) cmd_cleanup "$@" ;;
