@@ -10,6 +10,23 @@ if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
   fi
 fi
 
+is_falsey() {
+  local raw=${1:-}
+  local lowered
+  lowered=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+  case "$lowered" in
+    0|false|no|off)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_enabled() {
+  local raw=${1:-}
+  [[ -n "$raw" ]] && ! is_falsey "$raw"
+}
+
 print_manual() {
   local path=$1
   local prompt=$2
@@ -30,10 +47,10 @@ print_manual() {
   if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" || -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
     alt_screen_arg=" --no-alt-screen"
   fi
-  if [[ -n "${SUBAGENT_CODEX_USE_EXEC:-}" || -n "${PARALLELUS_CODEX_USE_EXEC:-}" ]]; then
+  if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" || is_enabled "${PARALLELUS_CODEX_USE_EXEC:-}"; then
     exec_mode=1
   fi
-  if [[ -n "${SUBAGENT_CODEX_EXEC_JSON:-}" || -n "${PARALLELUS_CODEX_EXEC_JSON:-}" ]]; then
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}" || is_enabled "${PARALLELUS_CODEX_EXEC_JSON:-}"; then
     exec_json=1
   fi
   local dangerous_args=""
@@ -123,10 +140,10 @@ create_runner() {
   if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" || -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
     alt_screen_export='export SUBAGENT_CODEX_NO_ALT_SCREEN=1\n'
   fi
-  if [[ -n "${SUBAGENT_CODEX_USE_EXEC:-}" || -n "${PARALLELUS_CODEX_USE_EXEC:-}" ]]; then
+  if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" || is_enabled "${PARALLELUS_CODEX_USE_EXEC:-}"; then
     exec_export='export SUBAGENT_CODEX_USE_EXEC=1\n'
   fi
-  if [[ -n "${SUBAGENT_CODEX_EXEC_JSON:-}" || -n "${PARALLELUS_CODEX_EXEC_JSON:-}" ]]; then
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}" || is_enabled "${PARALLELUS_CODEX_EXEC_JSON:-}"; then
     exec_json_export='export SUBAGENT_CODEX_EXEC_JSON=1\n'
   fi
   if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
@@ -234,12 +251,12 @@ if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
   args+=("--profile" "${SUBAGENT_CODEX_PROFILE}")
 fi
 
-if [[ -n "${SUBAGENT_CODEX_USE_EXEC:-}" ]]; then
+if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}"; then
   last_message_path="$WORKDIR/subagent.last_message.txt"
   exec_session_id_path="$WORKDIR/subagent.exec_session_id"
   exec_events_path="$WORKDIR/subagent.exec_events.jsonl"
   exec_filter="$WORKDIR/.agents/bin/codex_exec_stream_filter.py"
-  if [[ -n "${SUBAGENT_CODEX_EXEC_JSON:-}" ]]; then
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}"; then
     # JSONL mode: persist raw events + render agent messages + lightweight event summaries.
     printf '%s' "$prompt_content" | codex exec "${args[@]}" --color never --json --output-last-message "$last_message_path" - | python3 "$exec_filter" --mode json --events-path "$exec_events_path" --session-id-path "$exec_session_id_path" --last-message-path "$last_message_path"
     exit $?

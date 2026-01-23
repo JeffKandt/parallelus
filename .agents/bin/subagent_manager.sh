@@ -75,6 +75,23 @@ tmux_available() {
   return 1
 }
 
+is_falsey() {
+  local raw=${1:-}
+  local lowered
+  lowered=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+  case "$lowered" in
+    0|false|no|off)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_enabled() {
+  local raw=${1:-}
+  [[ -n "$raw" ]] && ! is_falsey "$raw"
+}
+
 current_branch() {
   git rev-parse --abbrev-ref HEAD
 }
@@ -1081,10 +1098,10 @@ PY
 
   # Default to exec-mode for subagents to improve transcript quality and machine-readable monitoring.
   # Opt out by setting PARALLELUS_CODEX_USE_TUI=1 (or explicitly unsetting SUBAGENT_CODEX_USE_EXEC).
-  if [[ -z "${PARALLELUS_CODEX_USE_TUI:-}" && -z "${SUBAGENT_CODEX_USE_EXEC:-}" ]]; then
+  if ! is_enabled "${PARALLELUS_CODEX_USE_TUI:-}" && [[ -z "${SUBAGENT_CODEX_USE_EXEC+x}" ]]; then
     export SUBAGENT_CODEX_USE_EXEC=1
   fi
-  if [[ -z "${PARALLELUS_CODEX_USE_TUI:-}" && -n "${SUBAGENT_CODEX_USE_EXEC:-}" && -z "${SUBAGENT_CODEX_EXEC_JSON:-}" ]]; then
+  if ! is_enabled "${PARALLELUS_CODEX_USE_TUI:-}" && is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" && [[ -z "${SUBAGENT_CODEX_EXEC_JSON+x}" ]]; then
     export SUBAGENT_CODEX_EXEC_JSON=1
   fi
 
