@@ -22,8 +22,8 @@ def _append_bytes(path: str, data: bytes) -> None:
         fh.write(data)
 
 
-_SHELL_WRAPPER_RE = re.compile(r"^\s*(?:/bin/)?(?:ba)?sh\s+-lc\s+(.+)\s*$")
-_ZSH_WRAPPER_RE = re.compile(r"^\s*(?:/bin/)?zsh\s+-lc\s+(.+)\s*$")
+_SHELL_WRAPPER_RE = re.compile(r"^\s*(?:/bin/)?(?:ba)?sh\s+-lc\s+(.+)\s*$", re.DOTALL)
+_ZSH_WRAPPER_RE = re.compile(r"^\s*(?:/bin/)?zsh\s+-lc\s+(.+)\s*$", re.DOTALL)
 
 
 def _truthy_env(name: str) -> bool:
@@ -55,7 +55,11 @@ def _unwrap_shell_command(command: str) -> str:
             inner = inner[1:-1]
         if inner.startswith('"') and inner.endswith('"'):
             inner = inner[1:-1]
-        return inner.strip()
+        inner = inner.replace("\r\n", "\n").strip()
+        parts = [p.strip() for p in inner.splitlines() if p.strip()]
+        if parts and parts[0] == "set -euo pipefail":
+            parts = parts[1:]
+        return "; ".join(parts).strip()
     return cmd
 
 

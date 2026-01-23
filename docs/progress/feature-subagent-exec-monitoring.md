@@ -61,3 +61,10 @@
 **Work Performed**
 - re-read `docs/agents/subagent-session-orchestration.md` (subagent gate)
 - re-read `docs/agents/manuals/senior-architect.md` (review gate)
+
+## 2026-01-23 05:35:16 UTC
+**Objectives**
+- make exec-mode command summaries match TUI readability
+
+**Work Performed**
+- improved the exec event renderer to unwrap `/bin/zsh -lc '…'` and `/bin/bash -lc '…'` wrappers (including multiline commands) into a single-line summary suitable for tmux capture-pane
