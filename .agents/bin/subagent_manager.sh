@@ -479,30 +479,34 @@ for row in entries:
         effective_path = session_path
         source_label = "[session]"
     else:
-        candidates = []
         progress_path = row.get("progress_path") or (os.path.join(sandbox_path, "subagent.progress.md") if sandbox_path else "")
         last_message_path = os.path.join(sandbox_path, "subagent.last_message.txt") if sandbox_path else ""
         exec_events_path = os.path.join(sandbox_path, "subagent.exec_events.jsonl") if sandbox_path else ""
-        if progress_path:
-            candidates.append(("[checkpoint]", progress_path))
-        if last_message_path:
-            candidates.append(("[last_message]", last_message_path))
-        if exec_events_path:
-            candidates.append(("[exec]", exec_events_path))
-        if log_path:
-            candidates.append(("[raw]", log_path))
 
-        best = None
-        for label, path in candidates:
+        def is_nonempty(path: str) -> bool:
             try:
-                if path and os.path.exists(path):
-                    ts = os.path.getmtime(path)
-                    if best is None or ts > best[0]:
-                        best = (ts, path, label)
+                return bool(path) and os.path.exists(path) and os.path.getsize(path) > 0
             except Exception:
-                continue
-        if best is not None:
-            effective_timestamp, effective_path, source_label = best
+                return False
+
+        # Prioritise human-readable checkpoints over raw command noise so the
+        # monitor loop alerts when the subagent stops narrating progress.
+        if is_nonempty(progress_path):
+            effective_timestamp = os.path.getmtime(progress_path)
+            effective_path = progress_path
+            source_label = "[checkpoint]"
+        elif is_nonempty(last_message_path):
+            effective_timestamp = os.path.getmtime(last_message_path)
+            effective_path = last_message_path
+            source_label = "[last_message]"
+        elif exec_events_path and os.path.exists(exec_events_path):
+            effective_timestamp = os.path.getmtime(exec_events_path)
+            effective_path = exec_events_path
+            source_label = "[exec]"
+        elif log_path and os.path.exists(log_path):
+            effective_timestamp = os.path.getmtime(log_path)
+            effective_path = log_path
+            source_label = "[raw]"
         elif log_path:
             effective_path = log_path
     if effective_timestamp is not None:
@@ -804,10 +808,13 @@ EOF
 	   task so reviewers see the finished state.
 	7. Follow the scope's instructions for merging and cleanup before finishing.
 	8. Leave a detailed summary in the progress notebook before exiting.
-	9. Maintain a lightweight checkpoint log at '${progress_path}'. Append 1–3 bullets
-	   after each meaningful work unit (what you just did, why, and what's next).
-	   Keep it brief, human-readable, and free of secrets. This file is used for
-	   mid-flight monitoring.
+	9. Maintain a lightweight checkpoint log at '${progress_path}' (also available as
+	   \$SUBAGENT_PROGRESS_PATH). After each meaningful work unit, append 1–3 short
+	   bullets: what you did, why, and what's next. Keep it brief, human-readable,
+	   and free of secrets. This file is used for mid-flight monitoring.
+	
+	   Example (recommended):
+	     printf -- "- %s\n" "$(date -u +%H:%MZ) <what> — <why> — <next>" >> "$SUBAGENT_PROGRESS_PATH"
 	10. You already have approval to run commands. After any status update, plan
 	   outline, or summary, immediately continue with the next checklist item
 	   without waiting for confirmation.
@@ -1218,28 +1225,43 @@ PY
     ) || return 1
   fi
   entry_json=$(
-	    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
-	import json
-	import sys
-	import shlex
-	
-	entry_id, type_, slug, path, scope, prompt, log_path, progress_path, launcher, timestamp, profile, role_prompt, deliverables_json, source_commit = sys.argv[1:15]
-	payload = {
-	    "id": entry_id,
-	    "type": type_,
-	    "slug": slug,
-	    "path": path,
-	    "scope_path": scope,
-	    "prompt_path": prompt,
-	    "log_path": log_path,
-	    "progress_path": progress_path,
-	    "launcher": launcher,
-	    "status": "running",
-	    "launched_at": timestamp,
-	    "window_title": "",
-	    "launcher_kind": "",
-	    "launcher_handle": None,
-	}
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
+import json
+import sys
+
+(
+    entry_id,
+    type_,
+    slug,
+    path,
+    scope,
+    prompt,
+    log_path,
+    progress_path,
+    launcher,
+    timestamp,
+    profile,
+    role_prompt,
+    deliverables_json,
+    source_commit,
+) = sys.argv[1:15]
+
+payload = {
+    "id": entry_id,
+    "type": type_,
+    "slug": slug,
+    "path": path,
+    "scope_path": scope,
+    "prompt_path": prompt,
+    "log_path": log_path,
+    "progress_path": progress_path,
+    "launcher": launcher,
+    "status": "running",
+    "launched_at": timestamp,
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": None,
+}
 if profile:
     payload["codex_profile"] = profile
 if role_prompt:

@@ -32,5 +32,27 @@
     ],
     "deliverables_status": "harvested",
     "source_commit": "54ea40ad8a15640b2e6b7dc2a88b5daea938ea44"
+  },
+  {
+    "id": "20260123-055644-checkpoint-demo",
+    "type": "throwaway",
+    "slug": "checkpoint-demo",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/subagent.progress.md",
+    "launcher": "tmux",
+    "status": "cleaned",
+    "launched_at": "20260123-055644",
+    "window_title": "20260123-055644-checkpoint-demo",
+    "launcher_kind": "tmux-pane",
+    "launcher_handle": {
+      "launcher": "tmux-pane",
+      "title": "20260123-055644-checkpoint-demo",
+      "window_id": "@0",
+      "pane_id": "%48"
+    },
+    "source_commit": "00013fec7ad299e998e5645a660b6483fd745727"
   }
 ]

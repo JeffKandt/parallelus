@@ -87,3 +87,15 @@
 - updated `subagent_manager.sh status` to treat `subagent.progress.md` mtime as a heartbeat source
 - exported `SUBAGENT_PROGRESS_PATH` inside the sandbox runner and ensured the file exists
 - documented the new checkpoint artifact in `docs/agents/subagent-session-orchestration.md` and the scope template
+
+## 2026-01-23 06:01:16 UTC
+**Objectives**
+- validate checkpoint-based monitoring and fix any launch/monitor regressions
+
+**Work Performed**
+- fixed an indentation regression in the `subagent_manager.sh` registry payload generator (blocked launches)
+- ran a throwaway `checkpoint-demo` subagent to confirm:
+  - `SUBAGENT_PROGRESS_PATH` is set inside the sandbox
+  - `subagent.progress.md` is created and tail-able
+  - `subagent_manager.sh status` prefers checkpoint timestamps for log age
+  - `subagent_tail.sh` prefers last message, then checkpoints, then event streams

@@ -7,8 +7,8 @@
 ## Checklist
 - [x] render exec events in a TUI-like, human readable format (no hidden reasoning text)
 - [x] add cleanup fallback to kill panes by title when registry handle is missing
-- [ ] add mid-flight checkpoint log (`subagent.progress.md`) and prefer it in status/tailing
-- [ ] update notebooks and validate changes
+- [x] add mid-flight checkpoint log (`subagent.progress.md`) and prefer it in status/tailing
+- [x] update notebooks and validate changes
 
 ## Next Actions
-- wire checkpoint log into prompts and monitoring, then validate on a real subagent run
+- keep iterating on checkpoint UX (formatting + redaction) as needed
