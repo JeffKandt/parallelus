@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-23T04:19:02.637090+00:00",
+  "branch": "feature/subagent-exec-default",
+  "head": "13a6c1299955b5af0042a85f6d2586595db70124",
+  "plan_path": "docs/plans/feature-subagent-exec-default.md",
+  "plan_lines": 16,
+  "progress_path": "docs/progress/feature-subagent-exec-default.md",
+  "progress_lines": 25,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
+}

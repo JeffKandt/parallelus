@@ -143,6 +143,8 @@ commands beyond `make read_bootstrap`.
   Senior architect reviews are executed inside subagents, so when one is
   requested you must review this manual (even if you've read it earlier in the
   session) and record the acknowledgement in the progress log before continuing.
+  Note: subagents default to `codex exec` for better tmux capture/tailing; opt in
+  to the interactive TUI only when needed via `PARALLELUS_CODEX_USE_TUI=1`.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`,
   `make archive`, or evaluating unmerged branches, revisit
   `docs/agents/git-workflow.md`. Merge requests now require an approved senior

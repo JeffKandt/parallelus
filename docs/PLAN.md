@@ -8,6 +8,7 @@
 - Overlay deployment workflow refined (preserve project docs, optional backup suppression, shared senior review template).
 - Monitor deliverable gating tightened and smoke tests expanded, with senior architect approval captured for `feature/sa-review-subagent-guardrail`.
 - Manual senior-review artefacts archived and non-interactive rebase guardrail enforced (`feature/sa-review-reset`).
+- Subagents defaulted to `codex exec` with structured monitoring artifacts and an opt-in interactive TUI override (`feature/subagent-exec-default`).
 - Turn-end markers enforced before folding notebooks; fold-progress now checks
   for fresh markers and docs instruct operators to run `make turn_end` first
   (`feature/branch-audit-report`).

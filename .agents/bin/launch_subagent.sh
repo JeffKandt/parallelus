@@ -10,6 +10,23 @@ if [[ -z "${TMUX:-}" && -n "${PARALLELUS_TMUX_SOCKET:-}" ]]; then
   fi
 fi
 
+is_falsey() {
+  local raw=${1:-}
+  local lowered
+  lowered=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+  case "$lowered" in
+    0|false|no|off)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_enabled() {
+  local raw=${1:-}
+  [[ -n "$raw" ]] && ! is_falsey "$raw"
+}
+
 print_manual() {
   local path=$1
   local prompt=$2
@@ -17,12 +34,24 @@ print_manual() {
   local model_arg=""
   local sandbox_arg=""
   local approval_arg=""
+  local alt_screen_arg=""
+  local exec_mode=0
+  local exec_json=0
   local config_args=""
   if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     profile_arg=" --profile ${SUBAGENT_CODEX_PROFILE}"
   fi
   if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
     model_arg=" --model ${SUBAGENT_CODEX_MODEL}"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" || -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
+    alt_screen_arg=" --no-alt-screen"
+  fi
+  if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" || is_enabled "${PARALLELUS_CODEX_USE_EXEC:-}"; then
+    exec_mode=1
+  fi
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}" || is_enabled "${PARALLELUS_CODEX_EXEC_JSON:-}"; then
+    exec_json=1
   fi
   local dangerous_args=""
   if [[ -n "${SUBAGENT_CODEX_SANDBOX_MODE:-}" ]]; then
@@ -48,8 +77,20 @@ PY
 Unable to auto-launch a terminal for the subagent. Run the following manually:
 
   cd '$path'
-  codex --cd '$path'$profile_arg$model_arg$sandbox_arg$approval_arg$config_args$dangerous_args "$(cat "$prompt")"
 EOF
+  if ((exec_mode == 1)); then
+    local json_arg=""
+    if ((exec_json == 1)); then
+      json_arg=" --json"
+    fi
+    cat <<EOF >&2
+  codex exec --cd '$path'$profile_arg$model_arg$sandbox_arg$config_args$dangerous_args$json_arg - < "$prompt"
+EOF
+  else
+    cat <<EOF >&2
+  codex --cd '$path'$alt_screen_arg$profile_arg$model_arg$sandbox_arg$approval_arg$config_args$dangerous_args "$(cat "$prompt")"
+EOF
+  fi
 }
 
 create_runner() {
@@ -58,6 +99,15 @@ create_runner() {
   local log=$3
   local runner="$path/.parallelus_run_subagent.sh"
   local inner="$path/.parallelus_run_subagent_inner.sh"
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+  # Ensure exec-mode helpers are available inside the sandbox even when the
+  # sandbox is created from a different git commit than the current working tree.
+  if [[ -f "$repo_root/.agents/bin/codex_exec_stream_filter.py" ]]; then
+    mkdir -p "$path/.agents/bin"
+    cp "$repo_root/.agents/bin/codex_exec_stream_filter.py" "$path/.agents/bin/" 2>/dev/null || true
+  fi
 
   local path_q prompt_q log_q inner_q
   printf -v path_q "%q" "$path"
@@ -68,6 +118,9 @@ create_runner() {
   local model_export=""
   local sandbox_export=""
   local approval_export=""
+  local alt_screen_export=""
+  local exec_export=""
+  local exec_json_export=""
   local session_export=""
   local constraints_export=""
   local writes_export=""
@@ -83,6 +136,15 @@ create_runner() {
   fi
   if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
     printf -v approval_export 'export SUBAGENT_CODEX_APPROVAL_POLICY=%q\n' "$SUBAGENT_CODEX_APPROVAL_POLICY"
+  fi
+  if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" || -n "${PARALLELUS_CODEX_NO_ALT_SCREEN:-}" ]]; then
+    alt_screen_export='export SUBAGENT_CODEX_NO_ALT_SCREEN=1\n'
+  fi
+  if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}" || is_enabled "${PARALLELUS_CODEX_USE_EXEC:-}"; then
+    exec_export='export SUBAGENT_CODEX_USE_EXEC=1\n'
+  fi
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}" || is_enabled "${PARALLELUS_CODEX_EXEC_JSON:-}"; then
+    exec_json_export='export SUBAGENT_CODEX_EXEC_JSON=1\n'
   fi
   if [[ -n "${SUBAGENT_CODEX_SESSION_MODE:-}" ]]; then
     printf -v session_export 'export SUBAGENT_CODEX_SESSION_MODE=%q\n' "$SUBAGENT_CODEX_SESSION_MODE"
@@ -125,7 +187,7 @@ fi
 # Capture structured Codex session log alongside the raw TTY transcript.
 export CODEX_TUI_RECORD_SESSION=1
 export CODEX_TUI_SESSION_LOG_PATH="\$PARALLELUS_WORKDIR/subagent.session.jsonl"
-${profile_export}${model_export}${sandbox_export}${approval_export}${session_export}${constraints_export}${writes_export}${config_export}
+${profile_export}${model_export}${sandbox_export}${approval_export}${alt_screen_export}${exec_export}${exec_json_export}${session_export}${constraints_export}${writes_export}${config_export}
 {
   echo "Launching Codex subagent in \$PARALLELUS_WORKDIR"
   echo "Scope file: \$PARALLELUS_PROMPT_FILE"
@@ -165,12 +227,12 @@ fi
 
 args+=("--cd" "$WORKDIR")
 
-if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
-  args+=("--model" "${SUBAGENT_CODEX_MODEL}")
+if [[ -n "${SUBAGENT_CODEX_NO_ALT_SCREEN:-}" ]]; then
+  args+=("--no-alt-screen")
 fi
 
-if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
-  args+=("--ask-for-approval" "${SUBAGENT_CODEX_APPROVAL_POLICY}")
+if [[ -n "${SUBAGENT_CODEX_MODEL:-}" ]]; then
+  args+=("--model" "${SUBAGENT_CODEX_MODEL}")
 fi
 
 if [[ -n "${SUBAGENT_CODEX_CONFIG_OVERRIDES:-}" ]]; then
@@ -187,6 +249,26 @@ fi
 
 if [[ -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
   args+=("--profile" "${SUBAGENT_CODEX_PROFILE}")
+fi
+
+if is_enabled "${SUBAGENT_CODEX_USE_EXEC:-}"; then
+  last_message_path="$WORKDIR/subagent.last_message.txt"
+  exec_session_id_path="$WORKDIR/subagent.exec_session_id"
+  exec_events_path="$WORKDIR/subagent.exec_events.jsonl"
+  exec_filter="$WORKDIR/.agents/bin/codex_exec_stream_filter.py"
+  if is_enabled "${SUBAGENT_CODEX_EXEC_JSON:-}"; then
+    # JSONL mode: persist raw events + render agent messages + lightweight event summaries.
+    printf '%s' "$prompt_content" | codex exec "${args[@]}" --color never --json --output-last-message "$last_message_path" - | python3 "$exec_filter" --mode json --events-path "$exec_events_path" --session-id-path "$exec_session_id_path" --last-message-path "$last_message_path"
+    exit $?
+  fi
+
+  # Plain text mode: stream output while capturing the exec session id for later resume.
+  printf '%s' "$prompt_content" | codex exec "${args[@]}" --color never --output-last-message "$last_message_path" - | python3 "$exec_filter" --mode text --session-id-path "$exec_session_id_path"
+  exit $?
+fi
+
+if [[ -n "${SUBAGENT_CODEX_APPROVAL_POLICY:-}" ]]; then
+  args+=("--ask-for-approval" "${SUBAGENT_CODEX_APPROVAL_POLICY}")
 fi
 
 exec codex "${args[@]}" "$prompt_content"
@@ -311,18 +393,19 @@ rebalance_subagent_column() {
   local window_id=$1
   local panes_string=$2
   [[ -z "$panes_string" ]] && return 0
+  local -a panes observed_ids observed_heights valid_panes
   IFS=' ' read -r -a panes <<< "$panes_string"
   local pane_count=${#panes[@]}
   ((pane_count == 0)) && return 0
 
-  local observed_ids=()
-  local observed_heights=()
+  observed_ids=()
+  observed_heights=()
   while IFS=' ' read -r pane_id pane_height; do
     observed_ids+=("$pane_id")
     observed_heights+=("$pane_height")
   done < <(tmux list-panes -t "$window_id" -F '#{pane_id} #{pane_height}')
 
-  local valid_panes=()
+  valid_panes=()
   local total_height=0
   local pane h i
   for pane in "${panes[@]}"; do
@@ -337,7 +420,11 @@ rebalance_subagent_column() {
     [[ $h -eq 0 ]] && continue
     total_height=$((total_height + h))
   done
-  panes=("${valid_panes[@]}")
+  if (( ${#valid_panes[@]} )); then
+    panes=("${valid_panes[@]}")
+  else
+    panes=()
+  fi
   pane_count=${#panes[@]}
   if ((pane_count == 0 || total_height == 0)); then
     unset_window_option "$window_id" @parallelus_subagent_panes
@@ -562,6 +649,14 @@ main() {
         cat <<'USAGE'
 Usage: launch_subagent.sh --path DIR --prompt FILE [--log FILE] [--launcher MODE]
 Launchers: auto, iterm-window, terminal-window, tmux, manual
+
+Environment:
+  PARALLELUS_CODEX_NO_ALT_SCREEN=1  Pass `--no-alt-screen` to Codex (test-only toggle).
+  PARALLELUS_CODEX_USE_EXEC=1       Launch Codex via `codex exec` instead of the interactive TUI (test-only toggle).
+  PARALLELUS_CODEX_EXEC_JSON=1      When using exec mode, store JSONL events and exec session id (test-only toggle).
+  SUBAGENT_CODEX_NO_ALT_SCREEN=1    Equivalent toggle scoped to subagents.
+  SUBAGENT_CODEX_USE_EXEC=1         Equivalent toggle scoped to subagents.
+  SUBAGENT_CODEX_EXEC_JSON=1        Equivalent toggle scoped to subagents.
 USAGE
         exit 0;;
       *) echo "launch_subagent: unknown option $1" >&2; exit 1;;
@@ -572,7 +667,15 @@ USAGE
     echo "launch_subagent: --path and --prompt are required" >&2
     exit 1
   fi
-  mkdir -p "$(dirname "$log")"
+  # Normalize to absolute paths so tmux launchers resolve the same filesystem
+  # locations regardless of the caller's cwd.
+  path=$(cd "$path" && pwd -P)
+  prompt=$(cd "$(dirname "$prompt")" && pwd -P)/"$(basename "$prompt")"
+  if [[ -n "$log" ]]; then
+    mkdir -p "$(dirname "$log")"
+    log=$(cd "$(dirname "$log")" && pwd -P)/"$(basename "$log")"
+  fi
+
   local runner
   runner=$(create_runner "$path" "$prompt" "${log:-$path/subagent.log}")
 

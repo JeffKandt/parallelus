@@ -7,8 +7,21 @@ that you reviewed this document prior to running `make monitor_subagents`,
 
 This manual describes how a primary Codex CLI session can delegate work to an
 interactive "subagent" while maintaining traceability. Use this flow when
-non-interactive execution is unavailable or when you want a human-supervised
-agent to take ownership of a scoped task.
+you want a scoped agent to take ownership of a delegated task while the main
+agent retains monitoring and cleanup responsibility.
+
+## Exec vs TUI (Monitoring Fidelity)
+
+Parallelus subagents default to **`codex exec`** because it produces
+tail/capture-pane-friendly output and can persist structured artifacts that the
+main agent can consume deterministically.
+
+Use the interactive Codex TUI only when you specifically need in-session,
+interactive affordances (tight back-and-forth exploration, interactive triage,
+or other workflows where a non-interactive turn model is a poor fit).
+
+Override (opt-in TUI):
+- Set `PARALLELUS_CODEX_USE_TUI=1` before launching a subagent.
 
 **Human communication:** When proposing or running subagents, describe the
 intent and expected outcomes to the user ("I'll launch a dedicated worktree
@@ -185,14 +198,17 @@ Start the looping monitor immediately after launching a subagent:
 make monitor_subagents
 ```
 
-Every sandbox now emits two transcripts:
+Every sandbox now emits transcripts for monitoring:
 
-- `subagent.session.jsonl` – structured Codex events, recorded via the TUI session logging env vars.
-- `subagent.log` – the legacy raw TTY capture (still available for replay).
+- `subagent.last_message.txt` – preferred snapshot when present (clean last agent response; written for exec-mode subagents).
+- `subagent.exec_events.jsonl` – structured `codex exec --json` event stream (exec-mode subagents).
+- `subagent.session.jsonl` – structured Codex events when using the interactive TUI logging (legacy / fallback).
+- `subagent.log` – raw TTY capture (legacy / last-resort).
 
-When inspecting activity, default to the structured JSONL file. The helper
-`.agents/bin/subagent_tail.sh --id <registry-id>` prints the latest entries (and
-falls back to the raw log automatically if JSONL is missing). If you decide a
+When inspecting activity, default to the cleanest snapshot available. The helper
+`.agents/bin/subagent_tail.sh --id <registry-id>` prefers `subagent.last_message.txt`,
+then `subagent.exec_events.jsonl`, then `subagent.session.jsonl`, and finally
+falls back to `subagent.log`. If you decide a
 nudge is necessary, use `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "Proceed"`
 so prompt clearing and the bracketed-paste sequence stay consistent. The monitor
 loop now raises alerts and captures snapshots only—it no longer injects keystrokes.
@@ -231,7 +247,7 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
    `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` (repeat for each ID)
    so review reports, logs, and evidence land in version control before cleanup.
 3. Capture the latest transcript via
-   `./.agents/bin/subagent_tail.sh --id <registry-id> --lines 120`. Do **not** use the `--follow` flag; persistent tails stall the parent agent. The helper prefers `subagent.session.jsonl` for clean JSON output and falls back to `subagent.log` only when the structured file is unavailable. Grab a snapshot, review it, and return to command mode immediately.
+   `./.agents/bin/subagent_tail.sh --id <registry-id> --lines 120`. Do **not** use the `--follow` flag; persistent tails stall the parent agent. The helper prefers the clean exec-mode snapshot files when present and falls back to legacy TUI/TTY logs only when needed. Grab a snapshot, review it, and return to command mode immediately.
    The monitor now prints a short log tail automatically when it exits with a manual-attention alert; use that snippet (or run the tail helper yourself) rather than relying on tmux pane captures.
 4. Review the transcript to decide the next step:
    - If the buffer is waiting for input, send any follow-up instructions with `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "…"`.

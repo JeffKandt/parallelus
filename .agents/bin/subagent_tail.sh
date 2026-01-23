@@ -2,15 +2,16 @@
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-REGISTRY="$ROOT/docs/agents/subagent-registry.json"
+REGISTRY=${SUBAGENT_REGISTRY_FILE:-"$ROOT/docs/agents/subagent-registry.json"}
 
 usage() {
   cat <<'USAGE'
 Usage: subagent_tail.sh --id SUBAGENT_ID [--lines N] [--follow] [--raw]
 
 Stream the latest entries from a subagent log. By default this reads the
-structured Codex transcript (subagent.session.jsonl) when available and falls
-back to the raw TTY log.
+structured Codex transcript when available and falls back to the raw TTY log.
+When a `subagent.last_message.txt` file exists (for example, subagents run via
+`codex exec`), that file is preferred because it is the cleanest snapshot.
 
 Options:
   --id ID       Subagent registry id (required)
@@ -63,10 +64,20 @@ SANDBOX_PATH=$(printf '%s\n' "$info" | sed -n '1p')
 RAW_LOG=$(printf '%s\n' "$info" | sed -n '2p')
 
 SESSION_LOG="$SANDBOX_PATH/subagent.session.jsonl"
+LAST_MESSAGE="$SANDBOX_PATH/subagent.last_message.txt"
+EXEC_EVENTS="$SANDBOX_PATH/subagent.exec_events.jsonl"
 
 target=""
-if [[ "$RAW" -eq 0 && -f "$SESSION_LOG" ]]; then
-  target="$SESSION_LOG"
+if [[ "$RAW" -eq 0 ]]; then
+  if [[ -s "$LAST_MESSAGE" ]]; then
+    target="$LAST_MESSAGE"
+  elif [[ -f "$SESSION_LOG" ]]; then
+    target="$SESSION_LOG"
+  elif [[ -f "$EXEC_EVENTS" ]]; then
+    target="$EXEC_EVENTS"
+  else
+    target="$RAW_LOG"
+  fi
 else
   target="$RAW_LOG"
 fi
@@ -74,6 +85,20 @@ fi
 if [[ ! -f "$target" ]]; then
   echo "subagent_tail.sh: log file not found: $target" >&2
   exit 1
+fi
+
+if [[ "$RAW" -eq 0 && "$target" == "$EXEC_EVENTS" ]]; then
+  FILTER="$ROOT/.agents/bin/codex_exec_stream_filter.py"
+  if [[ ! -f "$FILTER" ]]; then
+    echo "subagent_tail.sh: exec events filter not found: $FILTER" >&2
+    exit 1
+  fi
+  if [[ "$FOLLOW" -eq 1 ]]; then
+    tail -n "$LINES" -f "$target" | python3 "$FILTER" --mode json
+  else
+    tail -n "$LINES" "$target" | python3 "$FILTER" --mode json
+  fi
+  exit $?
 fi
 
 if [[ "$FOLLOW" -eq 1 ]]; then
