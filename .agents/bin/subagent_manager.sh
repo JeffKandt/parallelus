@@ -478,12 +478,33 @@ for row in entries:
         effective_timestamp = session_event.timestamp()
         effective_path = session_path
         source_label = "[session]"
-    elif log_path and os.path.exists(log_path):
-        effective_timestamp = os.path.getmtime(log_path)
-        effective_path = log_path
-        source_label = "[raw]"
-    elif log_path:
-        effective_path = log_path
+    else:
+        candidates = []
+        progress_path = row.get("progress_path") or (os.path.join(sandbox_path, "subagent.progress.md") if sandbox_path else "")
+        last_message_path = os.path.join(sandbox_path, "subagent.last_message.txt") if sandbox_path else ""
+        exec_events_path = os.path.join(sandbox_path, "subagent.exec_events.jsonl") if sandbox_path else ""
+        if progress_path:
+            candidates.append(("[checkpoint]", progress_path))
+        if last_message_path:
+            candidates.append(("[last_message]", last_message_path))
+        if exec_events_path:
+            candidates.append(("[exec]", exec_events_path))
+        if log_path:
+            candidates.append(("[raw]", log_path))
+
+        best = None
+        for label, path in candidates:
+            try:
+                if path and os.path.exists(path):
+                    ts = os.path.getmtime(path)
+                    if best is None or ts > best[0]:
+                        best = (ts, path, label)
+            except Exception:
+                continue
+        if best is not None:
+            effective_timestamp, effective_path, source_label = best
+        elif log_path:
+            effective_path = log_path
     if effective_timestamp is not None:
         delta = int(now - effective_timestamp)
         minutes, seconds = divmod(max(delta, 0), 60)
@@ -696,6 +717,7 @@ create_prompt_file() {
   local profile=${6:-}
   local role_prompt=${7:-}
   local parent_branch=${8:-}
+  local progress_path=${9:-"$sandbox/subagent.progress.md"}
   local role_text=""
   local role_config=""
   local profile_display="default (danger-full-access)"
@@ -767,27 +789,31 @@ EOF
 4. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
 5. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
 EOF
-  else
-    read -r -d '' instructions <<EOF || true
-1. Read AGENTS.md and all referenced docs.
-2. Review the scope file, then run 'make bootstrap slug=${slug}' to create the
-   feature branch.
-3. Convert the scope into plan/progress notebooks and follow all guardrails.
-4. Keep the session open until the entire checklist is complete and 'git status'
-   is clean.
-5. Immediately after 'make read_bootstrap', **do not pause**—begin reviewing
-   the required docs right away and proceed with the checklist without drafting a
-   status message or waiting for confirmation.
-6. Before pausing, audit the branch plan checklist and mark every completed
-   task so reviewers see the finished state.
-7. Follow the scope's instructions for merging and cleanup before finishing.
-8. Leave a detailed summary in the progress notebook before exiting.
-9. You already have approval to run commands. After any status update, plan
-   outline, or summary, immediately continue with the next checklist item
-   without waiting for confirmation.
-10. If you ever feel blocked waiting for a "proceed" or approval, assume the
-    answer is "Continue" and move to the next action without prompting the main
-    agent.
+	  else
+	    read -r -d '' instructions <<EOF || true
+	1. Read AGENTS.md and all referenced docs.
+	2. Review the scope file, then run 'make bootstrap slug=${slug}' to create the
+	   feature branch.
+	3. Convert the scope into plan/progress notebooks and follow all guardrails.
+	4. Keep the session open until the entire checklist is complete and 'git status'
+	   is clean.
+	5. Immediately after 'make read_bootstrap', **do not pause**—begin reviewing
+	   the required docs right away and proceed with the checklist without drafting a
+	   status message or waiting for confirmation.
+	6. Before pausing, audit the branch plan checklist and mark every completed
+	   task so reviewers see the finished state.
+	7. Follow the scope's instructions for merging and cleanup before finishing.
+	8. Leave a detailed summary in the progress notebook before exiting.
+	9. Maintain a lightweight checkpoint log at '${progress_path}'. Append 1–3 bullets
+	   after each meaningful work unit (what you just did, why, and what's next).
+	   Keep it brief, human-readable, and free of secrets. This file is used for
+	   mid-flight monitoring.
+	10. You already have approval to run commands. After any status update, plan
+	   outline, or summary, immediately continue with the next checklist item
+	   without waiting for confirmation.
+	11. If you ever feel blocked waiting for a "proceed" or approval, assume the
+	    answer is "Continue" and move to the next action without prompting the main
+	    agent.
 ---
 
 Keep working even after 'make read_bootstrap', 'make bootstrap', and the initial
@@ -831,12 +857,13 @@ EOF
     overrides_section+=$'\n'
   fi
 
-  cat <<EOF >"$dest"
-You are operating inside sandbox: $sandbox
-Scope file: $scope
-Sandbox type: $type
-Codex profile: $profile_display
-$overrides_section
+	  cat <<EOF >"$dest"
+	You are operating inside sandbox: $sandbox
+	Scope file: $scope
+	Sandbox type: $type
+	Codex profile: $profile_display
+	Checkpoint log: $progress_path
+	$overrides_section
 
 $instructions
 EOF
@@ -1009,7 +1036,7 @@ USAGE
     normalized_role="${role_prompt}.md"
   fi
 
-  local timestamp entry_id sandbox scope_path prompt_path log_path
+	  local timestamp entry_id sandbox scope_path prompt_path log_path progress_path
   local current_branch current_commit
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   current_commit=$(git rev-parse HEAD)
@@ -1070,8 +1097,8 @@ USAGE
     restore_env_cmds+=("$_cmd")
   done
 
-  scope_path="$sandbox/SUBAGENT_SCOPE.md"
-  create_scope_file "$scope_path" "$scope_override"
+	  scope_path="$sandbox/SUBAGENT_SCOPE.md"
+	  create_scope_file "$scope_path" "$scope_override"
   python3 - <<'PY' "$scope_path" "$parent_branch"
 import sys
 from pathlib import Path
@@ -1087,10 +1114,12 @@ if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text:
     text = text.replace("{{MARKER_PATH}}", marker_path)
     path.write_text(text, encoding="utf-8")
 PY
-  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch"
-  log_path="$sandbox/subagent.log"
-  : >"$log_path"
+	  progress_path="$sandbox/subagent.progress.md"
+	  : >"$progress_path"
+	  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
+	  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch" "$progress_path"
+	  log_path="$sandbox/subagent.log"
+	  : >"$log_path"
 
   if [[ -z "$codex_profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     codex_profile="$SUBAGENT_CODEX_PROFILE"
@@ -1189,27 +1218,28 @@ PY
     ) || return 1
   fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
-import json
-import sys
-import shlex
-
-entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt, deliverables_json, source_commit = sys.argv[1:14]
-payload = {
-    "id": entry_id,
-    "type": type_,
-    "slug": slug,
-    "path": path,
-    "scope_path": scope,
-    "prompt_path": prompt,
-    "log_path": log_path,
-    "launcher": launcher,
-    "status": "running",
-    "launched_at": timestamp,
-    "window_title": "",
-    "launcher_kind": "",
-    "launcher_handle": None,
-}
+	    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
+	import json
+	import sys
+	import shlex
+	
+	entry_id, type_, slug, path, scope, prompt, log_path, progress_path, launcher, timestamp, profile, role_prompt, deliverables_json, source_commit = sys.argv[1:15]
+	payload = {
+	    "id": entry_id,
+	    "type": type_,
+	    "slug": slug,
+	    "path": path,
+	    "scope_path": scope,
+	    "prompt_path": prompt,
+	    "log_path": log_path,
+	    "progress_path": progress_path,
+	    "launcher": launcher,
+	    "status": "running",
+	    "launched_at": timestamp,
+	    "window_title": "",
+	    "launcher_kind": "",
+	    "launcher_handle": None,
+	}
 if profile:
     payload["codex_profile"] = profile
 if role_prompt:

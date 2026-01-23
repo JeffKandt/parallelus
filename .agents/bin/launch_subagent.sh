@@ -181,6 +181,9 @@ export PARALLELUS_LOG_PATH
 export PARALLELUS_ORIG_TERM="\${TERM:-xterm-256color}"
 export PARALLELUS_SUPPRESS_TMUX_EXPORT=1
 export SUBAGENT=1
+# Human-readable checkpoint log for mid-flight monitoring.
+export SUBAGENT_PROGRESS_PATH="\$PARALLELUS_WORKDIR/subagent.progress.md"
+: >"\$SUBAGENT_PROGRESS_PATH" 2>/dev/null || true
 if [[ -z "\${CI:-}" ]]; then
   export CI=true
 fi

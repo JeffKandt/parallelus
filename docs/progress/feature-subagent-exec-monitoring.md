@@ -76,3 +76,14 @@
 **Work Performed**
 - launched a senior architect review subagent (`20260123-053350-senior-review`) and verified the pane output is now capture-pane-friendly with readable `Run …` / `Ran … (exit …)` lines
 - harvested `docs/reviews/feature-subagent-exec-monitoring-2026-01-23.md` and forced cleanup after confirming the tmux pane had exited
+
+## 2026-01-23 05:54:29 UTC
+**Objectives**
+- add a mid-flight checkpoint log so monitoring sees “why/what/next” during exec runs
+
+**Work Performed**
+- updated subagent prompt generation to require checkpoint updates in `subagent.progress.md`
+- updated `subagent_tail.sh` to prefer `subagent.progress.md` before event streams
+- updated `subagent_manager.sh status` to treat `subagent.progress.md` mtime as a heartbeat source
+- exported `SUBAGENT_PROGRESS_PATH` inside the sandbox runner and ensured the file exists
+- documented the new checkpoint artifact in `docs/agents/subagent-session-orchestration.md` and the scope template

@@ -5,10 +5,10 @@
 - ensure subagent cleanup reliably closes leftover tmux panes
 
 ## Checklist
-- [ ] update exec stream filter summaries (command + exit + output hint)
-- [ ] render exec events in a TUI-like, human readable format (no hidden reasoning text)
-- [ ] add cleanup fallback to kill panes by title when registry handle is missing
+- [x] render exec events in a TUI-like, human readable format (no hidden reasoning text)
+- [x] add cleanup fallback to kill panes by title when registry handle is missing
+- [ ] add mid-flight checkpoint log (`subagent.progress.md`) and prefer it in status/tailing
 - [ ] update notebooks and validate changes
 
 ## Next Actions
-- implement TUI-like exec visibility + validate on a real subagent run
+- wire checkpoint log into prompts and monitoring, then validate on a real subagent run

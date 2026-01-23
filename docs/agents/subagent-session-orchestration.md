@@ -200,6 +200,7 @@ make monitor_subagents
 
 Every sandbox now emits transcripts for monitoring:
 
+- `subagent.progress.md` – checkpoint log (short “what/why/next” notes appended during execution for mid-flight monitoring).
 - `subagent.last_message.txt` – preferred snapshot when present (clean last agent response; written for exec-mode subagents).
 - `subagent.exec_events.jsonl` – structured `codex exec --json` event stream (exec-mode subagents).
 - `subagent.session.jsonl` – structured Codex events when using the interactive TUI logging (legacy / fallback).
@@ -207,7 +208,7 @@ Every sandbox now emits transcripts for monitoring:
 
 When inspecting activity, default to the cleanest snapshot available. The helper
 `.agents/bin/subagent_tail.sh --id <registry-id>` prefers `subagent.last_message.txt`,
-then `subagent.exec_events.jsonl`, then `subagent.session.jsonl`, and finally
+then `subagent.progress.md`, then `subagent.exec_events.jsonl`, then `subagent.session.jsonl`, and finally
 falls back to `subagent.log`. If you decide a
 nudge is necessary, use `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "Proceed"`
 so prompt clearing and the bracketed-paste sequence stay consistent. The monitor
