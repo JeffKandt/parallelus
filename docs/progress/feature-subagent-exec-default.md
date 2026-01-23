@@ -23,3 +23,18 @@
 - run retrospective marker + auditor report required for merge
 - launch senior architect review subagent and address findings
 - fold branch notebooks into canonical docs and merge into `main`
+
+## 2026-01-23 04:19:18 UTC
+**Objectives**
+- satisfy merge guardrails (retrospective + review + notebook folding)
+
+**Work Performed**
+- reviewed `docs/agents/git-workflow.md` and `docs/agents/subagent-session-orchestration.md` before running merge-gated steps
+- recorded a retrospective marker for this merge branch
+
+**Artifacts**
+- `docs/self-improvement/markers/feature-subagent-exec-default.json`
+
+**Next Actions**
+- run the Continuous Improvement Auditor and commit the JSON report for the marker timestamp
+- launch the senior architect review subagent after the final non-doc commit is in place
