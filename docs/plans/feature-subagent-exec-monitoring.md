@@ -6,8 +6,9 @@
 
 ## Checklist
 - [ ] update exec stream filter summaries (command + exit + output hint)
+- [ ] render exec events in a TUI-like, human readable format (no hidden reasoning text)
 - [ ] add cleanup fallback to kill panes by title when registry handle is missing
 - [ ] update notebooks and validate changes
 
 ## Next Actions
-- implement exec visibility + cleanup fixes
+- implement TUI-like exec visibility + validate on a real subagent run
