@@ -1,0 +1,33 @@
+{
+  "branch": "feature/subagent-exec-default",
+  "marker_timestamp": "2026-01-23T04:19:02.637090+00:00",
+  "summary": "Blocking: the required Continuous Improvement Auditor report for the recorded marker timestamp is not present in docs/self-improvement/reports and therefore cannot satisfy merge guardrails. Additional concerns: session capture is missing (marker has session_id/session_console null), and the working tree is dirty with an uncommitted update to docs/agents/subagent-registry.json.",
+  "issues": [
+    {
+      "id": "retro-report-missing-for-marker",
+      "root_cause": "After recording the marker (docs/self-improvement/markers/feature-subagent-exec-default.json), no corresponding auditor JSON report was created and committed under docs/self-improvement/reports for that marker timestamp.",
+      "mitigation": "Generate the auditor JSON report for marker timestamp 2026-01-23T04:19:02.637090+00:00, save it to docs/self-improvement/reports/feature-subagent-exec-default--2026-01-23T04:19:02.637090+00:00.json, and commit it on feature/subagent-exec-default.",
+      "prevention": "Make the turn-end/merge workflow enforce existence + commit of docs/self-improvement/reports/<branch>--<marker-timestamp>.json before proceeding past marker creation (hard gate).",
+      "evidence": "docs/self-improvement/markers/feature-subagent-exec-default.json contains timestamp 2026-01-23T04:19:02.637090+00:00; docs/progress/feature-subagent-exec-default.md explicitly lists 'run the Continuous Improvement Auditor and commit the JSON report for the marker timestamp' as Next Actions; docs/self-improvement/reports contained no entries for feature-subagent-exec-default at audit time."
+    },
+    {
+      "id": "session-capture-missing-in-marker",
+      "root_cause": "The marker file indicates no session capture was recorded for the audited turn (session_id/session_console are null), reducing traceability of commands and outputs for retrospective review.",
+      "mitigation": "Ensure sessions are started for the branch so marker files include session_id and session_console metadata (capture shell transcript/console where applicable).",
+      "prevention": "Add a guardrail check when recording markers to warn/fail if session_id is null unless explicitly acknowledged in progress logs.",
+      "evidence": "docs/self-improvement/markers/feature-subagent-exec-default.json shows \"session_id\": null, \"session_console\": null, \"session_console_size\": null."
+    },
+    {
+      "id": "working-tree-dirty-subagent-registry",
+      "root_cause": "Running subagent workflows updated the tracked file docs/agents/subagent-registry.json, but the change was not committed (and not mentioned in the branch progress log) at audit time.",
+      "mitigation": "Decide whether docs/agents/subagent-registry.json updates are intended to be committed; if not, restore it so the working tree stays clean for merge-gated steps.",
+      "prevention": "Automate subagent-registry hygiene (auto-restore before merge gates or keep the registry out of tracked files) and enforce clean git status before review/merge gates.",
+      "evidence": "The auditor observed git status reporting a modified docs/agents/subagent-registry.json entry for the retro-audit run."
+    }
+  ],
+  "follow_ups": [
+    "Create and commit docs/self-improvement/reports/feature-subagent-exec-default--2026-01-23T04:19:02.637090+00:00.json to satisfy the retrospective merge gate.",
+    "Ensure session artifacts are captured so future marker files include session_id/session_console (or explicitly acknowledge missing session capture).",
+    "Resolve uncommitted docs/agents/subagent-registry.json changes promptly (commit if intended, or restore)."
+  ]
+}
