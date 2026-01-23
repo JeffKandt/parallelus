@@ -18,3 +18,14 @@
 **Next Actions**
 - update exec stream summaries to include command + exit code
 - add a cleanup fallback that kills tmux panes by title when registry metadata is missing
+
+## 2026-01-23 05:06:00 UTC
+**Objectives**
+- validate the exec-mode monitoring output on a real senior architect review run
+
+**Work Performed**
+- re-read `docs/agents/subagent-session-orchestration.md` (subagent gate)
+- re-read `docs/agents/manuals/senior-architect.md` (review gate)
+
+**Next Actions**
+- launch a senior architect review subagent and confirm exec output and cleanup behavior
