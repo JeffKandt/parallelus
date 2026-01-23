@@ -51,6 +51,27 @@ def _summarize_event(evt: dict[str, Any]) -> Optional[str]:
     if typ == "item.completed":
         item = evt.get("item") or {}
         item_type = item.get("type")
+        if item_type == "command_execution":
+            cmd = str(item.get("command") or "").strip()
+            exit_code = item.get("exit_code")
+            out = str(item.get("aggregated_output") or "")
+            out = out.rstrip("\n")
+            tail = ""
+            if out:
+                lines = out.splitlines()
+                tail_line = lines[-1].strip()
+                if len(tail_line) > 160:
+                    tail_line = tail_line[:157] + "..."
+                tail = f" last={tail_line!r}"
+            if cmd:
+                if len(cmd) > 160:
+                    cmd = cmd[:157] + "..."
+                suffix = f" cmd={cmd!r}"
+            else:
+                suffix = ""
+            if exit_code is not None:
+                suffix += f" exit={exit_code}"
+            return f"[exec] item.completed type=command_execution{suffix}{tail}"
         if item_type and item_type != "agent_message":
             return f"[exec] item.completed type={item_type}"
         return None
@@ -148,4 +169,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

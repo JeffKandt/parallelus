@@ -1603,6 +1603,15 @@ PY
           "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
         fi
       fi
+    else
+      # Fallback: if registry metadata is missing, kill any tmux pane whose title
+      # matches the entry id.
+      while IFS='|' read -r pane_id pane_title; do
+        [[ -z "$pane_id" || -z "$pane_title" ]] && continue
+        if [[ "$pane_title" == "$entry_id" ]]; then
+          "$TMUX_BIN" kill-pane -t "$pane_id" >/dev/null 2>&1 || true
+        fi
+      done < <("$TMUX_BIN" list-panes -a -F '#{pane_id}|#{pane_title}' 2>/dev/null || true)
     fi
   fi
   echo "Cleaned $entry_id ($type)"
