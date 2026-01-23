@@ -8,7 +8,7 @@
 - [ ] update plan/progress notebooks with scope + status
 - [ ] run targeted validation (python smoke + script sanity checks)
 - [x] run retrospective marker + audit report for merge guardrails
-- [ ] run senior architect review subagent and commit approval
+- [x] run senior architect review subagent and commit approval
 - [ ] fold branch notebooks into canonical docs and remove the notebooks
 - [ ] merge into `main`
 
