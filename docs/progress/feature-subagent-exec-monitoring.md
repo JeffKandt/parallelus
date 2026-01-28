@@ -335,3 +335,14 @@
 
 **Work Performed**
 - reviewed `.agents/custom/README.md`
+
+## 2026-01-28 17:26:59 UTC
+**Objectives**
+- bring worktree hook fixes into main feature branch
+
+**Work Performed**
+- cherry-picked worktree-safe hook installation changes from `feature/audit-workflow-validate`
+
+**Artifacts**
+- `.agents/bin/agents-merge`
+- `.agents/bin/install-hooks`
