@@ -7,9 +7,13 @@ PLAN_DIR ?= docs/plans
 PROGRESS_DIR ?= docs/progress
 SESSION_DIR ?= sessions
 
-.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path
+.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures
 
 read_bootstrap:
+	@if [ "$${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ] && [ -z "$${AGENTS_SESSION_LOGGING:-}" ]; then \
+		echo "read_bootstrap: session logging is not active. Run: eval \"\$$\(make start_session\)\"" >&2; \
+		exit 1; \
+	fi
 	@if [ -z "$${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ] && command -v tmux >/dev/null 2>&1; then \
 		tmux_args=""; \
 		if [ -n "$${PARALLELUS_TMUX_SOCKET:-}" ] && [ -S "$${PARALLELUS_TMUX_SOCKET}" ]; then \
@@ -42,11 +46,13 @@ endif
 	@$(AGENTS_BIN)/agents-ensure-feature $(slug)
 
 start_session:
-	@eval "$$($(AGENTS_BIN)/agents-session-start)"
+	@$(AGENTS_BIN)/agents-session-start
 
 turn_end:
-	@$(AGENTS_BIN)/verify-retrospective
 	@$(AGENTS_BIN)/agents-turn-end "${m}"
+
+collect_failures:
+	@$(AGENTS_BIN)/collect_failures.py
 
 archive:
 ifndef b

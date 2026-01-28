@@ -262,7 +262,7 @@ warn_overlay_overwrites() {
     fi
     local collisions=()
     local path
-    for path in AGENTS.md .agents docs/agents docs/reviews; do
+    for path in AGENTS.md .agents docs/agents docs/reviews Makefile .gitignore; do
         if diff_exists "$SOURCE_REPO/$path" "$TARGET_DIR/$path"; then
             collisions+=("$path")
         fi
@@ -279,6 +279,22 @@ warn_overlay_overwrites() {
     if [[ $FORCE -eq 0 ]]; then
         fail "Re-run with --force after reviewing the warning above"
     fi
+}
+
+backup_in_place_file() {
+    local path="$1"
+    if [[ "$MODE" != "overlay" || $OVERLAY_BACKUP -eq 0 ]]; then
+        return
+    fi
+    if [[ ! -f "$path" ]]; then
+        return
+    fi
+    local backup="${path}.bak"
+    if [[ -f "$backup" ]]; then
+        return
+    fi
+    cp "$path" "$backup"
+    warn "Backed up $(basename "$path") to $(basename "$backup")"
 }
 
 backup_existing_git_hooks() {
@@ -357,6 +373,70 @@ EOF
     fi
 }
 
+ensure_canonical_docs() {
+    local plan="$TARGET_DIR/docs/PLAN.md"
+    local progress="$TARGET_DIR/docs/PROGRESS.md"
+    if [[ ! -f "$plan" ]]; then
+        mkdir -p "$(dirname "$plan")"
+        cat > "$plan" <<'EOF'
+# Project Plan
+
+## Next Focus Areas
+- TODO: capture long-term priorities and backlog items here.
+EOF
+    fi
+    if [[ ! -f "$progress" ]]; then
+        mkdir -p "$(dirname "$progress")"
+        cat > "$progress" <<'EOF'
+# Project Progress
+
+## YYYY-MM-DD
+
+### HH:MM:SS UTC — feature/<slug>
+
+**Summary**
+- TODO: record branch summary.
+
+**Artifacts**
+- TODO: list touched files.
+
+**Next Actions**
+- TODO: follow-up items.
+EOF
+    fi
+}
+
+ensure_self_improvement_scaffold() {
+    local base="$TARGET_DIR/docs/self-improvement"
+    mkdir -p "$base/markers" "$base/reports" "$base/failures"
+    local readme="$base/README.md"
+    if [[ ! -f "$readme" ]]; then
+        cat > "$readme" <<'EOF'
+# Self-Improvement Retrospectives
+
+This directory stores two types of artifacts:
+
+1. **Turn markers** (`markers/<branch>.json`) created automatically by
+   `.agents/bin/retro-marker` when the main agent runs `make turn_end`.
+   Markers record the timestamp, plan/progress snapshot, session console offset,
+   and current commit so retrospective auditors know exactly where to resume
+   analysis.
+2. **Retrospective reports** (`reports/<branch>--<marker-timestamp>.json`)
+   written by the Retrospective Auditor subagent. Each report must follow the
+   schema described in `.agents/prompts/agent_roles/continuous_improvement_auditor.md` and is
+   committed by the main agent after review.
+
+Merge guardrails require that the latest marker for a branch has a corresponding
+report committed before `make merge slug=<slug>` will succeed.
+EOF
+    fi
+    for keep in "$base/markers/.gitkeep" "$base/reports/.gitkeep" "$base/failures/.gitkeep"; do
+        if [[ ! -f "$keep" ]]; then
+            printf '%s\n' "" > "$keep"
+        fi
+    done
+}
+
 copy_base_assets() {
     info "Copying agent process assets"
     backup_existing_git_hooks
@@ -378,6 +458,8 @@ copy_base_assets() {
     mkdir -p "$TARGET_DIR/sessions"
     ensure_dir_with_readme "$TARGET_DIR/docs/plans" "Branch Plans" "feature/my-feature.md" "plan"
     ensure_dir_with_readme "$TARGET_DIR/docs/progress" "Branch Progress" "feature/my-feature.md" "progress"
+    ensure_canonical_docs
+    ensure_self_improvement_scaffold
 
     if [[ $project_preserved -eq 1 ]]; then
         warn "Preserved existing docs/agents/project/ content (merge templates manually if desired)."
@@ -512,6 +594,7 @@ EOF
         return
     fi
 
+    backup_in_place_file "$makefile"
     if grep -q '# >>> agent-process integration >>>' "$makefile"; then
         python3 - <<'PY' "$makefile" "$tmp"
 import sys
@@ -582,6 +665,7 @@ ensure_gitignore() {
         ".DS_Store"
     )
 
+    backup_in_place_file "$file"
     if [[ ! -f "$file" ]]; then
         {
             for entry in "${entries[@]}"; do
@@ -596,6 +680,23 @@ ensure_gitignore() {
             printf '%s\n' "$entry" >> "$file"
         fi
     done
+}
+
+copy_helper_scripts() {
+    local makefile="$TARGET_DIR/Makefile"
+    if [[ ! -f "$SOURCE_REPO/scripts/remember_later.py" && ! -f "$SOURCE_REPO/scripts/capsule_prompt.py" ]]; then
+        return
+    fi
+    if [[ "$MODE" == "scaffold" ]]; then
+        rsync_copy "$SOURCE_REPO/scripts/" "$TARGET_DIR/scripts/"
+        return
+    fi
+    if [[ ! -f "$makefile" ]]; then
+        return
+    fi
+    if grep -q -E 'remember_later|capsule_prompt' "$makefile"; then
+        rsync_copy "$SOURCE_REPO/scripts/" "$TARGET_DIR/scripts/" --ignore-existing
+    fi
 }
 
 apply_python_overlay() {
@@ -778,6 +879,7 @@ main() {
     ensure_makefile
     ensure_readme
     ensure_gitignore
+    copy_helper_scripts
     apply_language_overlays
     run_verification
     create_initial_commit

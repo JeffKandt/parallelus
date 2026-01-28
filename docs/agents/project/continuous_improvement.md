@@ -5,6 +5,7 @@ Continuous improvement is the heartbeat of Parallelus. When the agent falls shor
 ## Investigation Discipline
 - **Stop the line.** When behaviour diverges from expectations (missed guardrail, incorrect output, user confusion), halt new work and investigate.
 - **Document evidence.** Save logs, notebook entries, and transcripts in the branch progress file so the context is preserved.
+- **Capture failures.** Before merging, run `make collect_failures` so failed tool calls are summarized and can be audited for mitigation guidance.
 - **Root cause over symptoms.** Ask "why" repeatedly until you understand the systemic gap (missing check, unclear instruction, tool limitation, human-agent misunderstanding).
 
 ## Durable Mitigations

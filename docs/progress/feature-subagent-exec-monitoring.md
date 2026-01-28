@@ -99,3 +99,239 @@
   - `subagent.progress.md` is created and tail-able
   - `subagent_manager.sh status` prefers checkpoint timestamps for log age
   - `subagent_tail.sh` prefers last message, then checkpoints, then event streams
+
+## 2026-01-27 17:32:51 UTC
+**Objectives**
+- assess deploy/upgrade safety and artifact layout options
+
+**Work Performed**
+- reviewed deployment docs/script, subagent orchestration manual, and current repo artifact layout
+- identified deployment parity gaps (canonical plan/progress + self-improvement scaffolding) and upgrade risks (AGENTS.md + Makefile overlays)
+- recorded proposed direction for safer upgrades (split upstream vs project-specific guardrails) and layout options in `docs/deployment-upgrade-and-layout-notes.md`
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-notes.md`
+- `docs/plans/README.md`
+- `docs/progress/README.md`
+- `docs/plans/feature-subagent-exec-monitoring.md`
+
+**Next Actions**
+- [ ] decide on a safe AGENTS.md customization/upgrades policy (project overlay file vs inline edits)
+- [ ] update deploy script/docs to scaffold canonical `docs/PLAN.md`, `docs/PROGRESS.md`, and `docs/self-improvement/` on initial deployment
+
+## 2026-01-27 17:34:25 UTC
+**Objectives**
+- confirm guardrails before deployment work
+
+**Work Performed**
+- reviewed `AGENTS.md` and `.agents/custom/README.md` prior to editing process artifacts
+
+## 2026-01-27 17:38:12 UTC
+**Objectives**
+- close deployment parity gaps and harden overlay safety
+
+**Work Performed**
+- updated deploy script to scaffold canonical `docs/PLAN.md`, `docs/PROGRESS.md`, and `docs/self-improvement/` plus `.gitkeep` files
+- added overlay backups for in-place edits (Makefile and `.gitignore`) and expanded overlay collision warnings
+- added optional helper-script copy when a target Makefile references `remember_later` or `capsule_prompt`
+- refreshed deployment documentation to reflect the new scaffolding and helper-script behavior
+
+**Artifacts**
+- `.agents/bin/deploy_agents_process.sh`
+- `docs/agents/deployment.md`
+- `docs/deployment-upgrade-and-layout-notes.md`
+
+**Next Actions**
+- [ ] decide on a safe AGENTS.md customization/upgrades policy (project overlay file vs inline edits)
+
+## 2026-01-27 17:41:30 UTC
+**Objectives**
+- implement AGENTS.md split (upstream vs project-specific)
+
+**Work Performed**
+- updated `AGENTS.md` to reference a project-specific guardrails file
+- added `PROJECT_AGENTS.md` as the recommended home for project-specific policies
+
+**Artifacts**
+- `AGENTS.md`
+- `PROJECT_AGENTS.md`
+
+## 2026-01-27 17:43:20 UTC
+**Objectives**
+- require project guardrails review at session start
+
+**Work Performed**
+- updated `AGENTS.md` to mandate reading `PROJECT_AGENTS.md` (or `AGENTS.project.md`) when present
+
+**Artifacts**
+- `AGENTS.md`
+
+## 2026-01-27 17:54:10 UTC
+**Objectives**
+- move retrospective audit to merge time and capture failed tool calls
+
+**Work Performed**
+- removed turn-end audit requirement and added merge-time failures collection (`make collect_failures`)
+- added failures summary generator and merge guardrails requiring it before merge
+- updated auditor prompt, scope template, and core docs to review failures and run audits before merge
+- scaffolded failures directory during deployment
+
+**Artifacts**
+- `.agents/bin/collect_failures.py`
+- `.agents/make/agents.mk`
+- `.agents/bin/agents-merge`
+- `.agents/bin/retro-marker`
+- `.agents/agentrc`
+- `.agents/prompts/agent_roles/continuous_improvement_auditor.md`
+- `.agents/bin/subagent_manager.sh`
+- `docs/agents/templates/ci_audit_scope.md`
+- `docs/agents/core.md`
+- `docs/agents/git-workflow.md`
+- `docs/agents/subagent-session-orchestration.md`
+- `docs/self-improvement/README.md`
+- `docs/agents/deployment.md`
+- `docs/deployment-upgrade-and-layout-notes.md`
+
+## 2026-01-27 18:01:15 UTC
+**Objectives**
+- finish merge-time audit rollout and scaffolds
+
+**Work Performed**
+- added failures scaffold (`docs/self-improvement/failures/.gitkeep`) and updated structure/CI guidance
+- updated subagent scope templating to include failures summary path
+- updated continuous improvement notes to emphasize failures capture
+
+**Artifacts**
+- `docs/self-improvement/failures/.gitkeep`
+- `docs/agents/project/structure.md`
+- `docs/agents/project/continuous_improvement.md`
+- `.agents/bin/subagent_manager.sh`
+
+## 2026-01-27 18:04:30 UTC
+**Objectives**
+- refresh branch plan after audit workflow changes
+
+**Work Performed**
+- updated branch plan to reflect merge-time audit validation steps
+
+**Artifacts**
+- `docs/plans/feature-subagent-exec-monitoring.md`
+
+## 2026-01-27 18:08:05 UTC
+**Objectives**
+- enforce CI audit before senior architect review
+
+**Work Performed**
+- added merge guardrail to require audit report + failures summary in the senior review commit
+- updated process docs to require audit before the senior review
+
+**Artifacts**
+- `.agents/bin/agents-merge`
+- `AGENTS.md`
+- `docs/agents/git-workflow.md`
+- `docs/agents/subagent-session-orchestration.md`
+
+## 2026-01-27 18:12:20 UTC
+**Objectives**
+- block senior review when audit is missing
+
+**Work Performed**
+- added pre-launch guard in subagent manager to require failures summary + audit report
+- documented the new guard in subagent orchestration manual
+
+**Artifacts**
+- `.agents/bin/subagent_manager.sh`
+- `docs/agents/subagent-session-orchestration.md`
+
+## 2026-01-27 18:20:30 UTC
+**Objectives**
+- make session logs mandatory
+
+**Work Performed**
+- added auto-logging setup to `make start_session` and enforced non-empty session logs at `make turn_end`
+- documented mandatory session logging in core guardrails and Codex integration notes
+
+**Artifacts**
+- `.agents/bin/agents-session-start`
+- `.agents/bin/agents-turn-end`
+- `.agents/agentrc`
+- `AGENTS.md`
+- `docs/agents/core.md`
+- `docs/agents/integrations/codex.md`
+- `docs/agents/project/structure.md`
+
+## 2026-01-27 18:26:15 UTC
+**Objectives**
+- enforce `make start_session` before turn_end
+
+**Work Performed**
+- added session-required markers on `make bootstrap` and cleared them on `make start_session`
+- blocked `make turn_end` if the session marker is still present
+- documented the enforcement in core workflow docs
+
+**Artifacts**
+- `.agents/bin/agents-ensure-feature`
+- `.agents/bin/agents-session-start`
+- `.agents/bin/agents-turn-end`
+- `docs/agents/core.md`
+- `docs/agents/git-workflow.md`
+
+## 2026-01-27 18:34:40 UTC
+**Objectives**
+- require session start via eval and run read_bootstrap automatically
+
+**Work Performed**
+- changed `make start_session` to output shell exports (for `eval` usage)
+- made session start print `make read_bootstrap` so recon runs after logging is enabled
+- updated core docs and manuals to instruct `eval "$(make start_session)"` as the session entrypoint
+
+**Artifacts**
+- `.agents/make/agents.mk`
+- `.agents/bin/agents-session-start`
+- `.agents/agentrc`
+- `AGENTS.md`
+- `docs/agents/core.md`
+- `docs/agents/integrations/codex.md`
+- `docs/agents/git-workflow.md`
+- `docs/agents/adapters/python.md`
+- `docs/agents/runtime-matrix.md`
+- `docs/agents/subagent-session-orchestration.md`
+- `docs/agents/deployment.md`
+
+## 2026-01-27 18:39:10 UTC
+**Objectives**
+- block `make read_bootstrap` without logging
+
+**Work Performed**
+- added guard to `make read_bootstrap` to require active session logging
+- updated core guardrails to reflect the new requirement
+
+**Artifacts**
+- `.agents/make/agents.mk`
+- `AGENTS.md`
+- `docs/agents/core.md`
+
+## 2026-01-27 18:41:05 UTC
+**Objectives**
+- fix guardrails typo after logging changes
+
+**Work Performed**
+- corrected a stray bullet prefix in `AGENTS.md`
+
+**Artifacts**
+- `AGENTS.md`
+
+## 2026-01-28 13:50:34 UTC
+**Objectives**
+- start session and confirm guardrails
+
+**Work Performed**
+- reviewed `AGENTS.md` and `PROJECT_AGENTS.md`
+- started session `20251046-20260128134959-2a223d`
+
+## 2026-01-28 13:52:28 UTC
+**Objectives**
+- capture custom guardrails acknowledgement before workflow validation
+
+**Work Performed**
+- reviewed `.agents/custom/README.md`

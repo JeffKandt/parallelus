@@ -47,6 +47,29 @@ if [[ ! -f "$plan_file" ]]; then
   exit 1
 fi
 
+session_marker="${repo_root}/.agents/session-required.${slugged_branch}"
+if [[ -f "$session_marker" ]]; then
+  echo "agents-turn-end: session not started for $current_branch; run make start_session before turn_end" >&2
+  exit 1
+fi
+
+if [[ "${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ]]; then
+  if [[ -z "${SESSION_ID:-}" ]]; then
+    echo "agents-turn-end: SESSION_ID is not set; run make start_session before turn_end" >&2
+    exit 1
+  fi
+  session_path="${SESSION_DIR%/}/$SESSION_ID"
+  console_path="$session_path/console.log"
+  if [[ ! -f "$console_path" ]]; then
+    echo "agents-turn-end: session console log missing at $console_path" >&2
+    exit 1
+  fi
+  if [[ ! -s "$console_path" ]]; then
+    echo "agents-turn-end: session console log is empty; ensure logging is enabled before turn_end" >&2
+    exit 1
+  fi
+fi
+
 message="${*:-Updated progress}"
 
 timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')

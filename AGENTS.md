@@ -4,6 +4,13 @@ This document is mandatory reading at the start of every session. Record in the
 branch progress notebook that you reviewed it before running any project
 commands beyond `make read_bootstrap`.
 
+You must also read `PROJECT_AGENTS.md` (or `AGENTS.project.md`) at the start of
+every session if it exists and record that acknowledgement in the progress log.
+
+> **Project-specific guardrails:** Do **not** customize this file directly.
+> Place project-specific policies in `PROJECT_AGENTS.md` (or `AGENTS.project.md`)
+> and keep this file upstream-managed so upgrades can safely overwrite it.
+
 ## 1. Purpose & Usage
 - Internalise these guardrails during Recon & Planning; they apply to every
   turn regardless of scope.
@@ -33,7 +40,9 @@ commands beyond `make read_bootstrap`.
 ## 2. Session Cadence & Core Checklists
 
 ### Recon & Planning (read-only)
-- Run `make read_bootstrap` immediately; report repo mode, branch, remotes, and
+- Start every session with `eval "$(make start_session)"`, which enables session
+  logging and runs `make read_bootstrap`. Direct `make read_bootstrap` is blocked
+  unless logging is active. Report repo mode, branch, remotes, and
   orphaned notebooks before continuing. Echo the complete branch snapshot table
   (names plus action guidance) back to the user—do not elide or summarise the
   entries.
@@ -43,7 +52,7 @@ commands beyond `make read_bootstrap`.
   `docs/agents/manuals/tmux-setup.md` before continuing to confirm sockets and
   binaries align with Parallelus expectations.
 - List recent `sessions/` entries. If none match today (2025-10-12), seed a new
-  session with `SESSION_PROMPT="..." make start_session` **before** leaving
+  session with `SESSION_PROMPT="..." eval "$(make start_session)"` **before** leaving
   Recon & Planning.
 - Inspect repo state, answer questions, plan next moves. Do not edit tracked
   files or run bootstrap helpers during this phase.
@@ -52,8 +61,10 @@ commands beyond `make read_bootstrap`.
 1. Ensure the Recon checklist above is complete.
 2. Create or switch to a feature branch via `make bootstrap slug=<slug>`; never
    edit directly on `main`.
-3. Export `SESSION_PROMPT` (optional) and run `make start_session` to capture
-   turn context.
+3. Export `SESSION_PROMPT` (optional) and run `eval "$(make start_session)"` to capture
+   turn context. Session logs are mandatory; `make start_session` enables
+   `sessions/<ID>/console.log` logging by default and `make turn_end` will fail
+   if the log is empty.
 4. Update the branch plan/progress notebooks with current objectives before
    editing code or docs.
 5. Run required environment diagnostics (see Operational Gates for details) and
@@ -121,17 +132,17 @@ commands beyond `make read_bootstrap`.
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
-- Before calling `make turn_end`, launch the Continuous Improvement Auditor prompt (see
-  `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the previous marker. The
-  auditor responds with JSON; save it to
+- Before the senior architect review, launch the Continuous Improvement Auditor
+  prompt (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the latest
+  marker. The auditor responds with JSON; save it to
   `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
-  TODOs into the branch plan. Only then run `make turn_end`, which records the
-  next marker in `docs/self-improvement/markers/`.
+  TODOs into the branch plan. Run `make collect_failures` before the audit so
+  failed tool calls are reviewed and mitigations are documented.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
 - `make bootstrap slug=<slug>` – create/switch feature branch and seed notebooks.
-- `SESSION_PROMPT="..." make start_session` – initialise session artifacts.
+- `SESSION_PROMPT="..." eval "$(make start_session)"` – initialise session artifacts and logging.
 - `make turn_end m="summary"` – checkpoint plan/progress + session meta.
 - `make ci` – run lint, tests, and smoke suite inside the configured adapters.
 - `.agents/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.

@@ -12,3 +12,6 @@
 
 ## Next Actions
 - keep iterating on checkpoint UX (formatting + redaction) as needed
+- validate merge-time audit workflow:
+  - run `make turn_end`, `make collect_failures`, and a CI auditor subagent on a throwaway branch
+  - confirm `make merge` blocks when failures summary or audit report is missing

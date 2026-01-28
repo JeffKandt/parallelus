@@ -130,4 +130,7 @@ EOF_PROGRESS
   printf '[agents-ensure-feature] Ensured %s\n' "$file" >&2
 done
 
+session_marker="$repo_root/.agents/session-required.${feature_branch//\//-}"
+printf '%s\n' "branch=$feature_branch" "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$session_marker"
+
 echo "✅ Ready on branch ${feature_branch}"

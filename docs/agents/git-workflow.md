@@ -14,7 +14,8 @@ merge closure workflows.
   describe progress and results.
 
 ## 1. Repository Mode Detection
-Run `make read_bootstrap` (or `.agents/bin/agents-detect`) from the repo root.
+Start every session with `eval "$(make start_session)"`, which enables logging
+and runs `make read_bootstrap`.
 The helper emits `KEY=VAL` pairs suitable for `eval`, plus guidance on stderr.
 
 Detection order:
@@ -30,7 +31,7 @@ Outputs include:
   merged into the base (excluding `archive/**`, `dependabot/**`, `renovate/**`).
 - `ORPHANED_NOTEBOOKS` — plan/progress files lingering outside active work.
 
-Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so your status summary reflects the latest objectives, TODOs, and blockers noted by previous turns. List the most recent session directories (`ls -1 sessions/ | tail -5`) and seed a fresh `make start_session` if the top entry predates today.
+Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so your status summary reflects the latest objectives, TODOs, and blockers noted by previous turns. List the most recent session directories (`ls -1 sessions/ | tail -5`) and seed a fresh `eval "$(make start_session)"` if the top entry predates today.
 
 If the repository includes `.agents/custom/README.md`, read it now and incorporate any project-specific expectations (extra checks, restricted paths, custom adapters) into your plan. Treat those instructions as an extension of this manual.
 
@@ -44,6 +45,8 @@ The helper:
 - Creates or switches to `feature/<slug>`.
 - Scaffolds matching plan/progress notebooks under `docs/plans/` and
   `docs/progress/`.
+- Requires a `make start_session` on the new branch before `make turn_end`
+  (enforced via a session-required marker).
 - Prints status to stderr so the calling shell remains quiet unless there is an
   error.
 
@@ -193,9 +196,11 @@ Run this checklist whenever the user requests a merge (even casually):
 3. Run validation inside the project venv (`pytest -m "not slow"`, `ruff
    check`, `black --check`).
 4. Align local branch name with PR slug before merging exported work.
-5. Run the retrospective workflow: consult `docs/self-improvement/markers/` to
-   confirm the latest marker, launch the Retrospective Auditor, and commit the
-   resulting JSON report under `docs/self-improvement/reports/` before merging.
+5. Run the retrospective workflow **before** the senior architect review: consult
+   `docs/self-improvement/markers/` to confirm the latest marker, run
+   `make collect_failures` to capture failed tool calls, launch the Retrospective
+   Auditor, and commit the resulting JSON report under
+   `docs/self-improvement/reports/` before running the senior review.
 6. Merge or archive per maintainer guidance; delete notebooks/sessions after
    their content lands.
 7. Treat the workspace as back in Recon & Planning once cleanup completes.

@@ -13,8 +13,8 @@ config_overrides: {}
 
 Operate strictly read-only. Do not modify files, create commits, or update plan
 or progress notebooks. Your single responsibility is to gather evidence based
-on the marker file, analyse the most recent turn, and return a JSON report
-describing any issues observed.
+on the marker file, analyse the most recent work since the marker, and return a
+JSON report describing any issues observed.
 
 ## Required JSON Schema
 
@@ -55,6 +55,7 @@ Return an object with the following fields:
    - Commands executed (shell transcript).
    - Changes recorded in plan/progress docs.
    - Test, lint, or format output.
+   - Failure summary from `docs/self-improvement/failures/<branch>--<marker>.json` (if present).
    - Any anomalies, skipped steps, or guardrail violations.
 3. For each issue found, decide whether it is **blocking**. If blocking, note it
    explicitly in the `summary` so the main agent can halt work immediately.

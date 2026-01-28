@@ -142,6 +142,53 @@ check_review() {
     echo "agents-merge: review $file must include Reviewed-Commit: <commit hash>." >&2
     exit 1
   fi
+  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a marker before the senior review." >&2
+    exit 1
+  fi
+  local audit_paths
+  audit_paths=$(
+    python3 - "$marker_file" "$slugged_branch" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+slugged = sys.argv[2]
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+report_path = f"docs/self-improvement/reports/{slugged}--{marker_ts}.json"
+failures_path = f"docs/self-improvement/failures/{slugged}--{marker_ts}.json"
+print(report_path)
+print(failures_path)
+PY
+  )
+  if [[ -z "$audit_paths" ]]; then
+    exit 1
+  fi
+  local report_path failures_path
+  report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
+  failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  if ! git cat-file -e "${review_commit}:${report_path}" 2>/dev/null; then
+    echo "agents-merge: senior review must be run after the audit report is committed." >&2
+    echo "Missing ${report_path} in review commit ${review_commit}." >&2
+    exit 1
+  fi
+  if ! git cat-file -e "${review_commit}:${failures_path}" 2>/dev/null; then
+    echo "agents-merge: senior review must be run after failures summary is committed." >&2
+    echo "Missing ${failures_path} in review commit ${review_commit}." >&2
+    exit 1
+  fi
   if [[ -n "$commit_ref" && "$review_commit" != "$commit_ref" ]]; then
     if git merge-base --is-ancestor "$review_commit" "$commit_ref" 2>/dev/null; then
       diff_names=$(git diff --name-only "$review_commit" "$commit_ref")
@@ -240,6 +287,51 @@ PY
   export AGENTS_RETRO_REPORT="$report_path"
 }
 
+check_failures_summary() {
+  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
+  local failures_dir="$repo_root/docs/self-improvement/failures"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a marker before collecting failures." >&2
+    exit 1
+  fi
+  if [[ ! -d "$failures_dir" ]]; then
+    echo "agents-merge: failures summary directory missing; run make collect_failures before merging." >&2
+    exit 1
+  fi
+  local failure_path
+  failure_path=$(
+    python3 - "$marker_file" "$failures_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+failures_dir = Path(sys.argv[2])
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+path = failures_dir / f"{marker_path.stem}--{marker_ts}.json"
+if not path.exists():
+    print("", end="")
+    sys.exit(0)
+print(path)
+PY
+  )
+  if [[ -z "$failure_path" || ! -f "$failure_path" ]]; then
+    echo "agents-merge: no failures summary found for latest marker; run make collect_failures before merging." >&2
+    exit 1
+  fi
+  echo "agents-merge: using failures summary ${failure_path#$repo_root/}" >&2
+}
+
 current_commit=$(git rev-parse HEAD)
 review_file=$(resolve_review_file "$feature_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
 
@@ -284,6 +376,7 @@ SKIP_RETRO_TIMESTAMP=""
 SKIP_RETRO_BASENAME=""
 
 if [[ -z "${AGENTS_MERGE_SKIP_RETRO:-}" ]]; then
+  check_failures_summary
   check_retrospective
 else
   SKIP_RETRO_REQUESTED=1

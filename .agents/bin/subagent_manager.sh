@@ -238,6 +238,52 @@ ensure_no_tmux_pane_for_slug() {
   fi
 }
 
+ensure_audit_ready_for_review() {
+  local branch="$1"
+  local marker_path="$ROOT/docs/self-improvement/markers/${branch//\//-}.json"
+  if [[ ! -f "$marker_path" ]]; then
+    echo "subagent_manager: run make turn_end to record a marker before the senior review." >&2
+    return 1
+  fi
+  local audit_paths
+  audit_paths=$(
+    python3 - "$marker_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"subagent_manager: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"subagent_manager: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+branch_slug = marker_path.stem
+report_path = f"docs/self-improvement/reports/{branch_slug}--{marker_ts}.json"
+failures_path = f"docs/self-improvement/failures/{branch_slug}--{marker_ts}.json"
+print(report_path)
+print(failures_path)
+PY
+  ) || return 1
+  local report_path failures_path
+  report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
+  failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  if [[ ! -f "$report_path" ]]; then
+    echo "subagent_manager: missing audit report $report_path; run the CI auditor before the senior review." >&2
+    return 1
+  fi
+  if [[ ! -f "$failures_path" ]]; then
+    echo "subagent_manager: missing failures summary $failures_path; run make collect_failures before the senior review." >&2
+    return 1
+  fi
+}
+
 append_registry() {
   local entry_json=$1
   python3 - "$REGISTRY_FILE" "$entry_json" <<'PY'
@@ -589,6 +635,7 @@ EOF
 print_role_body() {
   local file=$1
   python3 - <<'PY' "$file"
+import json
 import sys
 from pathlib import Path
 
@@ -782,7 +829,8 @@ PY
 1. Read AGENTS.md and .agents/prompts/agent_roles/continuous_improvement_auditor.md to confirm guardrails.
 2. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
 3. Gather evidence without modifying the workspace: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
-4. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
+4. Review the failures summary at docs/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
+5. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
 5. Stay read-only—do not run make bootstrap or alter files. Print the JSON report and exit.
 EOF
   elif [[ "$role_read_only" == "true" ]]; then
@@ -1052,6 +1100,7 @@ USAGE
 
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
     ensure_clean_worktree
+    ensure_audit_ready_for_review "$current_branch"
     ensure_senior_review_needed "$current_branch" "$current_commit"
   fi
 
@@ -1114,11 +1163,22 @@ path = Path(sys.argv[1])
 parent_branch = sys.argv[2]
 marker_branch = parent_branch.replace('/', '-')
 marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
+failures_path = f"docs/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
+marker_full = Path(marker_path)
+if marker_full.exists():
+    try:
+        data = json.loads(marker_full.read_text(encoding="utf-8"))
+        ts = data.get("timestamp")
+        if ts:
+            failures_path = f"docs/self-improvement/failures/{marker_branch}--{ts}.json"
+    except Exception:
+        pass
 
 text = path.read_text(encoding="utf-8")
-if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text:
+if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text or "{{FAILURES_PATH}}" in text:
     text = text.replace("{{PARENT_BRANCH}}", parent_branch)
     text = text.replace("{{MARKER_PATH}}", marker_path)
+    text = text.replace("{{FAILURES_PATH}}", failures_path)
     path.write_text(text, encoding="utf-8")
 PY
 	  progress_path="$sandbox/subagent.progress.md"
