@@ -369,3 +369,13 @@
 **Work Performed**
 - added `extract_codex_rollout.py` to locate rollout JSONL by nonce and write a redacted copy under `docs/guardrails/runs/`
 - captured the current session rollout using nonce `3e655d20-b117-42c9-94b3-7e4341dbb6d3`
+
+## 2026-01-28 21:08:04 UTC
+**Objectives**
+- keep rollout extracts out of versioned paths
+
+**Work Performed**
+- updated rollout extractor to default outputs under `sessions/extracted/` and to require a real session dir before using `SESSION_DIR`
+- added optional Markdown transcript output alongside redacted JSONL
+- documented review secret scan gate and rollout extraction note in git workflow docs
+- removed the previously committed rollout JSONL from `docs/guardrails/runs/`

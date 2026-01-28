@@ -123,7 +123,8 @@ Consider merging when:
   the senior review is missing/incomplete (override with `AGENTS_MERGE_FORCE=1`
   and optionally `AGENTS_MERGE_REVIEW_FILE=...`; acknowledge lower-severity
   findings with `AGENTS_MERGE_ACK_REVIEW=1`), or the latest retrospective report
-  for the branch marker has not been committed.
+  for the branch marker has not been committed. The merge helper also runs a
+  review secret scan to prevent sensitive strings from landing in `docs/reviews/`.
 - `post-merge` emits a reminder to rerun `make read_bootstrap` and return to the
   Recon phase on the base branch.
 - Overlay deployments prepend an **Overlay Notice** to `AGENTS.md`; audit every
@@ -231,6 +232,12 @@ the final commit before merging.
   only when absolutely necessary).
 - Always commit branch notebooks and session logs before merging to prevent
   orphaned state.
+- Optional: Codex rollout transcripts can be extracted with
+  `.agents/bin/extract_codex_rollout.py`. The default output goes to
+  `sessions/<id>/artifacts/` (gitignored) or `sessions/extracted/`. If running
+  inside a sandbox that cannot access `~/.codex/sessions`, pass `--sessions-root`
+  pointing at a mounted path or copy the rollout JSONL into an accessible
+  directory first.
 
 ## 7. Commit Hygiene
 - Prefer small narrative commits pairing code with plan/progress updates.
