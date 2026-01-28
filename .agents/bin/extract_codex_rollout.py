@@ -87,6 +87,9 @@ def render_markdown(events: list, source_path: Path) -> str:
     lines.append(f"- Events: {len(events)}")
     lines.append("")
 
+    def dump_json(obj) -> str:
+        return json.dumps(obj, ensure_ascii=True, indent=2, sort_keys=True)
+
     for ev in events:
         etype = ev.get("type") or ev.get("event") or ev.get("kind")
         msg = ev.get("msg") or ev.get("message") or ev.get("payload")
@@ -102,6 +105,13 @@ def render_markdown(events: list, source_path: Path) -> str:
             cwd = ev.get("cwd") or (msg.get("cwd") if isinstance(msg, dict) else None)
             if cwd:
                 lines.append(f"- {prefix}[context] cwd: `{cwd}`")
+            continue
+
+        if etype in {"session_meta", "event_msg", "response_item"}:
+            lines.append(f"- {prefix}[{etype}]")
+            lines.append("```json")
+            lines.append(dump_json(ev))
+            lines.append("```")
             continue
 
         if etype == "function_call":
@@ -172,6 +182,10 @@ def render_markdown(events: list, source_path: Path) -> str:
             if text:
                 lines.append("```")
                 lines.append(text)
+                lines.append("```")
+            else:
+                lines.append("```json")
+                lines.append(dump_json(ev))
                 lines.append("```")
 
     return "\n".join(lines) + "\n"

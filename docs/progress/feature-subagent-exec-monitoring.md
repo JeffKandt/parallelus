@@ -386,3 +386,10 @@
 
 **Work Performed**
 - updated rollout Markdown rendering to avoid truncation, skip token_count, and format calls/outputs/messages as code blocks
+
+## 2026-01-28 21:51:14 UTC
+**Objectives**
+- prevent markdown transcript truncation in previews
+
+**Work Performed**
+- render `session_meta`, `event_msg`, and `response_item` entries as pretty JSON blocks to avoid inline truncation in Markdown previews
