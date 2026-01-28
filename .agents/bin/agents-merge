@@ -45,6 +45,11 @@ if [[ -n $(git status --porcelain) ]]; then
   exit 1
 fi
 
+review_scan="$repo_root/.agents/bin/review_secret_scan.py"
+if [[ -x "$review_scan" ]]; then
+  "$review_scan" || exit $?
+fi
+
 slug=$(printf '%s' "$slug_input" | tr '[:upper:]' '[:lower:]')
 slug=$(printf '%s' "$slug" | tr -c 'a-z0-9-' '-')
 slug=$(printf '%s' "$slug" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')

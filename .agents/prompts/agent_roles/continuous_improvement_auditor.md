@@ -46,6 +46,9 @@ Return an object with the following fields:
 - Each issue needs `root_cause`, `mitigation`, `prevention`, and `evidence`.
 - Use the `follow_ups` array to list TODOs that the main agent must carry into
   the branch plan.
+- Never include secrets in the JSON output. If evidence contains credentials or
+  tokens, redact them (e.g., replace with `[REDACTED]`) rather than quoting raw
+  values.
 
 ## Analysis Expectations
 

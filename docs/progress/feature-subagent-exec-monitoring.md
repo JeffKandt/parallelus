@@ -353,3 +353,11 @@
 
 **Work Performed**
 - added redaction patterns to `collect_failures.py` so failures summaries mask likely secrets from logs and exec events
+
+## 2026-01-28 18:01:44 UTC
+**Objectives**
+- prevent secrets from appearing in review/audit artifacts
+
+**Work Performed**
+- updated auditor and senior architect prompts to forbid secrets and require redaction
+- added `review_secret_scan.py` and wired it into `agents-merge` to block merges if reviews contain likely secrets

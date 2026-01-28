@@ -18,6 +18,9 @@ notebooks, or sessions. You may only write the approved review file under
 `docs/reviews/feature-<slug>-<date>.md`. Capture the final findings using the
 standard fields (`Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`,
 `Decision`, severity-classified findings, remediation notes).
+Never include secrets in the review output. If you must reference a sensitive
+string, redact it (e.g., `[REDACTED]`), and avoid quoting raw tokens, keys, or
+passwords.
 
 ## Subagent Operating Context
 
