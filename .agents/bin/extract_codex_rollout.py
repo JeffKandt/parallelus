@@ -58,45 +58,122 @@ def default_output_dir(repo_root: Path) -> Path:
 
 
 def render_markdown(events: list, source_path: Path) -> str:
+    def fmt_time(ev_obj) -> str:
+        for key in ("timestamp", "time", "ts", "created_at"):
+            value = ev_obj.get(key)
+            if value:
+                return f"{value} "
+        return ""
+
+    def extract_text(value):
+        if isinstance(value, dict):
+            if "text" in value:
+                return str(value["text"])
+            if "content" in value:
+                return extract_text(value["content"])
+        if isinstance(value, list):
+            parts = []
+            for item in value:
+                parts.append(extract_text(item))
+            return " ".join(part for part in parts if part)
+        if value is None:
+            return ""
+        return str(value)
+
     lines = []
     lines.append("# Codex Rollout Transcript")
     lines.append("")
     lines.append(f"- Source: {source_path}")
     lines.append(f"- Events: {len(events)}")
     lines.append("")
+
     for ev in events:
         etype = ev.get("type") or ev.get("event") or ev.get("kind")
         msg = ev.get("msg") or ev.get("message") or ev.get("payload")
         if not etype and isinstance(msg, dict):
             etype = msg.get("type") or msg.get("event")
+
         if etype == "token_count":
             continue
+
+        prefix = fmt_time(ev)
+
         if etype == "turn_context":
             cwd = ev.get("cwd") or (msg.get("cwd") if isinstance(msg, dict) else None)
             if cwd:
-                lines.append(f"- [context] cwd: `{cwd}`")
+                lines.append(f"- {prefix}[context] cwd: `{cwd}`")
             continue
+
         if etype == "function_call":
             name = ev.get("name") or (msg.get("name") if isinstance(msg, dict) else None)
             args = ev.get("arguments") or (msg.get("arguments") if isinstance(msg, dict) else None)
-            snippet = redact_text(str(args))[:400] if args else ""
-            lines.append(f"- [call] `{name}` {snippet}")
+            parsed_args = None
+            if isinstance(args, str):
+                try:
+                    parsed_args = json.loads(args)
+                except json.JSONDecodeError:
+                    parsed_args = None
+            command = ""
+            workdir = ""
+            if isinstance(parsed_args, dict):
+                command = parsed_args.get("command", "")
+                workdir = parsed_args.get("workdir", "")
+            lines.append(f"- {prefix}[call] `{name}`")
+            if workdir:
+                lines.append(f"  - workdir: `{redact_text(workdir)}`")
+            if command:
+                lines.append("  - command:")
+                lines.append("```")
+                lines.append(redact_text(command))
+                lines.append("```")
+            elif args:
+                lines.append("  - arguments:")
+                lines.append("```")
+                lines.append(redact_text(extract_text(args)))
+                lines.append("```")
             continue
+
         if etype == "function_call_output":
             output = ev.get("output") or (msg.get("output") if isinstance(msg, dict) else None)
-            snippet = redact_text(str(output))[:400] if output else ""
-            lines.append(f"- [output] {snippet}")
+            if output:
+                lines.append(f"- {prefix}[output]")
+                lines.append("```")
+                lines.append(redact_text(extract_text(output)))
+                lines.append("```")
             continue
+
         if etype in {"message", "agent_message"}:
             content = ev.get("message") or ev.get("content") or msg
-            if isinstance(content, list):
-                content = " ".join(str(item) for item in content)
-            snippet = redact_text(str(content))[:400] if content else ""
-            lines.append(f"- [message] {snippet}")
+            text = redact_text(extract_text(content))
+            if text:
+                lines.append(f"- {prefix}[message]")
+                lines.append("```")
+                lines.append(text)
+                lines.append("```")
             continue
+
+        if etype == "agent_reasoning":
+            text = ""
+            if isinstance(msg, dict):
+                text = msg.get("text") or ""
+            else:
+                text = extract_text(msg)
+            text = redact_text(text)
+            if text:
+                lines.append(f"- {prefix}[reasoning]")
+                lines.append("```")
+                lines.append(text)
+                lines.append("```")
+            continue
+
         if etype:
-            snippet = redact_text(str(msg))[:240] if msg else ""
-            lines.append(f"- [{etype}] {snippet}")
+            text = redact_text(extract_text(msg))
+            lines.append(f"- {prefix}[{etype}]")
+            if text:
+                lines.append("```")
+                lines.append(text)
+                lines.append("```")
+
     return "\n".join(lines) + "\n"
 
 

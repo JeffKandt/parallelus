@@ -379,3 +379,10 @@
 - added optional Markdown transcript output alongside redacted JSONL
 - documented review secret scan gate and rollout extraction note in git workflow docs
 - removed the previously committed rollout JSONL from `docs/guardrails/runs/`
+
+## 2026-01-28 21:32:48 UTC
+**Objectives**
+- improve rollout transcript readability
+
+**Work Performed**
+- updated rollout Markdown rendering to avoid truncation, skip token_count, and format calls/outputs/messages as code blocks
