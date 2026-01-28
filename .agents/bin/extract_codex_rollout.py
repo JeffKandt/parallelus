@@ -80,6 +80,18 @@ def render_markdown(events: list, source_path: Path) -> str:
             return ""
         return str(value)
 
+    def render_text_block(text: str) -> list:
+        if not text:
+            return []
+        text = text.replace("\\n", "\n").replace("\\t", "\t")
+        lines = []
+        for line in text.splitlines():
+            if line:
+                lines.append(f"  {line}")
+            else:
+                lines.append("  ")
+        return lines
+
     lines = []
     lines.append("# Codex Rollout Transcript")
     lines.append("")
@@ -157,9 +169,7 @@ def render_markdown(events: list, source_path: Path) -> str:
             text = redact_text(extract_text(content))
             if text:
                 lines.append(f"- {prefix}[message]")
-                lines.append("```")
-                lines.append(text)
-                lines.append("```")
+                lines.extend(render_text_block(text))
             continue
 
         if etype == "agent_reasoning":
@@ -171,9 +181,7 @@ def render_markdown(events: list, source_path: Path) -> str:
             text = redact_text(text)
             if text:
                 lines.append(f"- {prefix}[reasoning]")
-                lines.append("```")
-                lines.append(text)
-                lines.append("```")
+                lines.extend(render_text_block(text))
             continue
 
         if etype:

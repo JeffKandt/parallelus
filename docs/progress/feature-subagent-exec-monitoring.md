@@ -393,3 +393,10 @@
 
 **Work Performed**
 - render `session_meta`, `event_msg`, and `response_item` entries as pretty JSON blocks to avoid inline truncation in Markdown previews
+
+## 2026-01-28 21:55:57 UTC
+**Objectives**
+- render message text as readable markdown
+
+**Work Performed**
+- render message/reasoning text blocks without code fences and unescape \n for list-friendly formatting
