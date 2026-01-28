@@ -346,3 +346,10 @@
 **Artifacts**
 - `.agents/bin/agents-merge`
 - `.agents/bin/install-hooks`
+
+## 2026-01-28 17:52:22 UTC
+**Objectives**
+- redact sensitive strings in failures summaries
+
+**Work Performed**
+- added redaction patterns to `collect_failures.py` so failures summaries mask likely secrets from logs and exec events

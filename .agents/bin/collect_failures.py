@@ -46,6 +46,27 @@ def iter_jsonl(path: Path):
         return
 
 
+REDACTION_PATTERNS = [
+    (re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\\s\\S]+?-----END [A-Z ]+PRIVATE KEY-----"), "[REDACTED_PRIVATE_KEY]"),
+    (re.compile(r"\\bAKIA[0-9A-Z]{16}\\b"), "[REDACTED_AWS_ACCESS_KEY]"),
+    (re.compile(r"(?i)(aws[^\\n]{0,20}?(secret|access)?_?key)\\s*[:=]\\s*[A-Za-z0-9/+=]{20,}"), r"\\1=[REDACTED_AWS_SECRET]"),
+    (re.compile(r"\\bgh[pousr]_[A-Za-z0-9]{36,}\\b"), "[REDACTED_GH_TOKEN]"),
+    (re.compile(r"\\bxox[baprs]-[A-Za-z0-9-]+\\b"), "[REDACTED_SLACK_TOKEN]"),
+    (re.compile(r"\\bsk-[A-Za-z0-9]{20,}\\b"), "[REDACTED_API_KEY]"),
+    (re.compile(r"(?i)(bearer\\s+)[A-Za-z0-9\\-._~+/]+=*"), r"\\1[REDACTED_TOKEN]"),
+    (re.compile(r"(?i)\\b(token|api[-_]?key|secret|password|passwd|pwd)\\b\\s*[:=]\\s*[^\\s'\\\"]+"), r"\\1=[REDACTED]"),
+]
+
+
+def redact_text(value) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    for pattern, replacement in REDACTION_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def scan_exec_events(path: Path, failures: list, warnings: list) -> None:
     for event in iter_jsonl(path):
         msg = event.get("msg") or event.get("payload") or event
@@ -53,13 +74,16 @@ def scan_exec_events(path: Path, failures: list, warnings: list) -> None:
         if msg_type == "exec_command_end":
             exit_code = msg.get("exit_code")
             if exit_code is not None and int(exit_code) != 0:
+                command = msg.get("command") or msg.get("argv")
+                if isinstance(command, list):
+                    command = " ".join(str(part) for part in command)
                 failures.append(
                     {
                         "source": str(path),
                         "kind": "exec_command_end",
                         "exit_code": exit_code,
-                        "command": msg.get("command") or msg.get("argv"),
-                        "stderr": msg.get("stderr"),
+                        "command": redact_text(command),
+                        "stderr": redact_text(msg.get("stderr")),
                     }
                 )
         elif msg_type and "error" in msg_type:
@@ -67,7 +91,7 @@ def scan_exec_events(path: Path, failures: list, warnings: list) -> None:
                 {
                     "source": str(path),
                     "kind": msg_type,
-                    "error": msg.get("error") or msg.get("message") or msg,
+                    "error": redact_text(msg.get("error") or msg.get("message") or msg),
                 }
             )
         elif isinstance(msg, dict) and msg.get("error"):
@@ -75,7 +99,7 @@ def scan_exec_events(path: Path, failures: list, warnings: list) -> None:
                 {
                     "source": str(path),
                     "kind": msg.get("type") or "error",
-                    "error": msg.get("error"),
+                    "error": redact_text(msg.get("error")),
                 }
             )
     if path.exists() and path.stat().st_size == 0:
@@ -98,7 +122,7 @@ def scan_text_log(path: Path, failures: list, warnings: list) -> None:
                     {
                         "source": str(path),
                         "kind": "unstructured_log",
-                        "excerpt": line.strip()[:300],
+                        "excerpt": redact_text(line.strip())[:300],
                     }
                 )
                 hits += 1
