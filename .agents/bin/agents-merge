@@ -69,11 +69,15 @@ if [[ "$current_branch" != "$feature_branch" ]]; then
 fi
 
 # Verify retrospectives before modifying branch notebooks so audit guardrails fail fast.
-# Install/refresh merge guard hook.
+# Install/refresh merge guard hook (supports worktrees via git-path).
 hook_src="$repo_root/.agents/hooks/pre-merge-commit"
-hook_dst="$repo_root/.git/hooks/pre-merge-commit"
-if [[ -f "$hook_src" ]]; then
-  mkdir -p "$repo_root/.git/hooks"
+hooks_dir=$(git rev-parse --git-path hooks 2>/dev/null || true)
+hook_dst=""
+if [[ -n "$hooks_dir" ]]; then
+  hook_dst="$hooks_dir/pre-merge-commit"
+fi
+if [[ -f "$hook_src" && -n "$hook_dst" ]]; then
+  mkdir -p "$hooks_dir"
   cp "$hook_src" "$hook_dst"
   chmod +x "$hook_dst"
 fi
