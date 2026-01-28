@@ -361,3 +361,11 @@
 **Work Performed**
 - updated auditor and senior architect prompts to forbid secrets and require redaction
 - added `review_secret_scan.py` and wired it into `agents-merge` to block merges if reviews contain likely secrets
+
+## 2026-01-28 20:38:36 UTC
+**Objectives**
+- enable rollout transcript extraction with redaction
+
+**Work Performed**
+- added `extract_codex_rollout.py` to locate rollout JSONL by nonce and write a redacted copy under `docs/guardrails/runs/`
+- captured the current session rollout using nonce `3e655d20-b117-42c9-94b3-7e4341dbb6d3`
