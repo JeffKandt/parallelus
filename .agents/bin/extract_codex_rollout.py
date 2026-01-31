@@ -181,6 +181,7 @@ def render_markdown(events: list, source_path: Path) -> str:
             name = payload.get("name") or ev.get("name")
             args = payload.get("arguments") or ev.get("arguments")
             output = payload.get("output") if "output" in payload else ev.get("output")
+            encrypted = payload.get("encrypted_content") if isinstance(payload, dict) else None
             if name or args:
                 lines.append(f"- {prefix}[call] `{name}`")
                 if args:
@@ -200,6 +201,8 @@ def render_markdown(events: list, source_path: Path) -> str:
                 if text:
                     lines.append(f"- {prefix}[response_item]")
                     lines.extend(render_text_block(redact_text(text)))
+                elif encrypted:
+                    lines.append(f"- {prefix}[response_item] (encrypted content omitted)")
                 else:
                     lines.append(f"- {prefix}[response_item]")
                     lines.append("```json")
