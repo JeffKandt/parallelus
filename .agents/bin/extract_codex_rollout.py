@@ -119,7 +119,28 @@ def render_markdown(events: list, source_path: Path) -> str:
                 lines.append(f"- {prefix}[context] cwd: `{cwd}`")
             continue
 
-        if etype in {"session_meta", "event_msg", "response_item"}:
+        if etype == "session_meta":
+            meta = ev.get("payload") if isinstance(ev.get("payload"), dict) else ev
+            lines.append(f"- {prefix}[session_meta]")
+            for key in ("id", "timestamp", "cwd", "originator", "cli_version", "source", "model_provider"):
+                value = meta.get(key) if isinstance(meta, dict) else None
+                if value:
+                    lines.append(f"  - {key}: {redact_text(str(value))}")
+            base_text = ""
+            if isinstance(meta, dict):
+                base = meta.get("base_instructions")
+                if isinstance(base, dict):
+                    base_text = base.get("text") or ""
+            if base_text:
+                lines.append("  - base_instructions:")
+                lines.extend(render_text_block(redact_text(base_text)))
+            else:
+                lines.append("```json")
+                lines.append(dump_json(ev))
+                lines.append("```")
+            continue
+
+        if etype in {"event_msg", "response_item"}:
             lines.append(f"- {prefix}[{etype}]")
             lines.append("```json")
             lines.append(dump_json(ev))

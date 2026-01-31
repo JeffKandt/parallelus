@@ -400,3 +400,10 @@
 
 **Work Performed**
 - render message/reasoning text blocks without code fences and unescape \n for list-friendly formatting
+
+## 2026-01-31 03:48:59 UTC
+**Objectives**
+- render base instructions as readable markdown
+
+**Work Performed**
+- render session_meta base_instructions text as markdown so \n- lists are displayed as list items
