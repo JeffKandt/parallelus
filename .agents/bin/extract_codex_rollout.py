@@ -69,6 +69,10 @@ def render_markdown(events: list, source_path: Path) -> str:
         if isinstance(value, dict):
             if "text" in value:
                 return str(value["text"])
+            if "summary" in value:
+                return extract_text(value["summary"])
+            if "content" in value:
+                return extract_text(value["content"])
             if "content" in value:
                 return extract_text(value["content"])
         if isinstance(value, list):
@@ -79,6 +83,25 @@ def render_markdown(events: list, source_path: Path) -> str:
         if value is None:
             return ""
         return str(value)
+
+    def extract_response_text(ev_obj) -> str:
+        content = ev_obj.get("content")
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") in {"output_text", "summary_text"}:
+                    parts.append(str(item.get("text") or ""))
+            return "\n".join(part for part in parts if part)
+        if isinstance(content, dict) and content.get("type") in {"output_text", "summary_text"}:
+            return str(content.get("text") or "")
+        summary = ev_obj.get("summary")
+        if isinstance(summary, list):
+            parts = []
+            for item in summary:
+                if isinstance(item, dict) and item.get("type") in {"summary_text", "output_text"}:
+                    parts.append(str(item.get("text") or ""))
+            return "\n".join(part for part in parts if part)
+        return ""
 
     def render_text_block(text: str) -> list:
         if not text:
@@ -140,11 +163,23 @@ def render_markdown(events: list, source_path: Path) -> str:
                 lines.append("```")
             continue
 
-        if etype in {"event_msg", "response_item"}:
-            lines.append(f"- {prefix}[{etype}]")
+        if etype == "event_msg":
+            lines.append(f"- {prefix}[event_msg]")
             lines.append("```json")
             lines.append(dump_json(ev))
             lines.append("```")
+            continue
+
+        if etype == "response_item":
+            text = extract_response_text(ev)
+            if text:
+                lines.append(f"- {prefix}[response_item]")
+                lines.extend(render_text_block(redact_text(text)))
+            else:
+                lines.append(f"- {prefix}[response_item]")
+                lines.append("```json")
+                lines.append(dump_json(ev))
+                lines.append("```")
             continue
 
         if etype == "function_call":

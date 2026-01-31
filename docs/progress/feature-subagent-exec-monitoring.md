@@ -407,3 +407,10 @@
 
 **Work Performed**
 - render session_meta base_instructions text as markdown so \n- lists are displayed as list items
+
+## 2026-01-31 03:52:28 UTC
+**Objectives**
+- render response text as markdown
+
+**Work Performed**
+- render response_item summary/output text as markdown blocks; fallback to JSON when no text is present
