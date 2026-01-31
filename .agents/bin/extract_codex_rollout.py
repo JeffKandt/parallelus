@@ -164,22 +164,34 @@ def render_markdown(events: list, source_path: Path) -> str:
             continue
 
         if etype == "event_msg":
-            lines.append(f"- {prefix}[event_msg]")
-            lines.append("```json")
-            lines.append(dump_json(ev))
-            lines.append("```")
             continue
 
         if etype == "response_item":
-            text = extract_response_text(ev)
-            if text:
-                lines.append(f"- {prefix}[response_item]")
-                lines.extend(render_text_block(redact_text(text)))
-            else:
-                lines.append(f"- {prefix}[response_item]")
-                lines.append("```json")
-                lines.append(dump_json(ev))
+            name = ev.get("name")
+            args = ev.get("arguments")
+            output = ev.get("output")
+            if name or args:
+                lines.append(f"- {prefix}[call] `{name}`")
+                if args:
+                    lines.append("  - arguments:")
+                    lines.append("```")
+                    lines.append(redact_text(extract_text(args)))
+                    lines.append("```")
+            elif output is not None:
+                lines.append(f"- {prefix}[output]")
                 lines.append("```")
+                lines.append(redact_text(extract_text(output)))
+                lines.append("```")
+            else:
+                text = extract_response_text(ev)
+                if text:
+                    lines.append(f"- {prefix}[response_item]")
+                    lines.extend(render_text_block(redact_text(text)))
+                else:
+                    lines.append(f"- {prefix}[response_item]")
+                    lines.append("```json")
+                    lines.append(dump_json(ev))
+                    lines.append("```")
             continue
 
         if etype == "function_call":

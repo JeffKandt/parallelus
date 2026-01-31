@@ -414,3 +414,10 @@
 
 **Work Performed**
 - render response_item summary/output text as markdown blocks; fallback to JSON when no text is present
+
+## 2026-01-31 04:00:33 UTC
+**Objectives**
+- focus transcript on human-readable events
+
+**Work Performed**
+- suppress event_msg entries and render response_item function calls/outputs in the markdown transcript
