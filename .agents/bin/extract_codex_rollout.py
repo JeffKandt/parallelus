@@ -85,23 +85,33 @@ def render_markdown(events: list, source_path: Path) -> str:
         return str(value)
 
     def extract_response_text(ev_obj) -> str:
-        content = ev_obj.get("content")
-        if isinstance(content, list):
-            parts = []
-            for item in content:
-                if isinstance(item, dict) and item.get("type") in {"output_text", "summary_text"}:
-                    parts.append(str(item.get("text") or ""))
-            return "\n".join(part for part in parts if part)
-        if isinstance(content, dict) and content.get("type") in {"output_text", "summary_text"}:
-            return str(content.get("text") or "")
-        summary = ev_obj.get("summary")
-        if isinstance(summary, list):
-            parts = []
-            for item in summary:
-                if isinstance(item, dict) and item.get("type") in {"summary_text", "output_text"}:
-                    parts.append(str(item.get("text") or ""))
-            return "\n".join(part for part in parts if part)
-        return ""
+        def pull_content(container):
+            if not isinstance(container, dict):
+                return ""
+            content = container.get("content")
+            if isinstance(content, list):
+                parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") in {"input_text", "output_text", "summary_text"}:
+                        parts.append(str(item.get("text") or ""))
+                return "\n".join(part for part in parts if part)
+            if isinstance(content, dict) and content.get("type") in {"input_text", "output_text", "summary_text"}:
+                return str(content.get("text") or "")
+            summary = container.get("summary")
+            if isinstance(summary, list):
+                parts = []
+                for item in summary:
+                    if isinstance(item, dict) and item.get("type") in {"summary_text", "output_text"}:
+                        parts.append(str(item.get("text") or ""))
+                return "\n".join(part for part in parts if part)
+            return ""
+
+        payload = ev_obj.get("payload")
+        if isinstance(payload, dict):
+            text = pull_content(payload)
+            if text:
+                return text
+        return pull_content(ev_obj)
 
     def render_text_block(text: str) -> list:
         if not text:
@@ -167,9 +177,10 @@ def render_markdown(events: list, source_path: Path) -> str:
             continue
 
         if etype == "response_item":
-            name = ev.get("name")
-            args = ev.get("arguments")
-            output = ev.get("output")
+            payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+            name = payload.get("name") or ev.get("name")
+            args = payload.get("arguments") or ev.get("arguments")
+            output = payload.get("output") if "output" in payload else ev.get("output")
             if name or args:
                 lines.append(f"- {prefix}[call] `{name}`")
                 if args:

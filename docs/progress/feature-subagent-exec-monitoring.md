@@ -421,3 +421,10 @@
 
 **Work Performed**
 - suppress event_msg entries and render response_item function calls/outputs in the markdown transcript
+
+## 2026-01-31 04:06:35 UTC
+**Objectives**
+- render response messages as markdown
+
+**Work Performed**
+- extract response_item payload content (input/output/summary text) for markdown rendering
