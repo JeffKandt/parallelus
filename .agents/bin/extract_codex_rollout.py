@@ -185,14 +185,16 @@ def render_markdown(events: list, source_path: Path) -> str:
                 lines.append(f"- {prefix}[call] `{name}`")
                 if args:
                     lines.append("  - arguments:")
-                    lines.append("```")
-                    lines.append(redact_text(extract_text(args)))
-                    lines.append("```")
+                    lines.append("    ```")
+                    for line in redact_text(extract_text(args)).splitlines() or [""]:
+                        lines.append(f"    {line}")
+                    lines.append("    ```")
             elif output is not None:
                 lines.append(f"- {prefix}[output]")
-                lines.append("```")
-                lines.append(redact_text(extract_text(output)))
-                lines.append("```")
+                lines.append("  ```")
+                for line in redact_text(extract_text(output)).splitlines() or [""]:
+                    lines.append(f"  {line}")
+                lines.append("  ```")
             else:
                 text = extract_response_text(ev)
                 if text:
@@ -224,23 +226,26 @@ def render_markdown(events: list, source_path: Path) -> str:
                 lines.append(f"  - workdir: `{redact_text(workdir)}`")
             if command:
                 lines.append("  - command:")
-                lines.append("```")
-                lines.append(redact_text(command))
-                lines.append("```")
+                lines.append("    ```")
+                for line in redact_text(command).splitlines() or [""]:
+                    lines.append(f"    {line}")
+                lines.append("    ```")
             elif args:
                 lines.append("  - arguments:")
-                lines.append("```")
-                lines.append(redact_text(extract_text(args)))
-                lines.append("```")
+                lines.append("    ```")
+                for line in redact_text(extract_text(args)).splitlines() or [""]:
+                    lines.append(f"    {line}")
+                lines.append("    ```")
             continue
 
         if etype == "function_call_output":
             output = ev.get("output") or (msg.get("output") if isinstance(msg, dict) else None)
             if output:
                 lines.append(f"- {prefix}[output]")
-                lines.append("```")
-                lines.append(redact_text(extract_text(output)))
-                lines.append("```")
+                lines.append("  ```")
+                for line in redact_text(extract_text(output)).splitlines() or [""]:
+                    lines.append(f"  {line}")
+                lines.append("  ```")
             continue
 
         if etype in {"message", "agent_message"}:
