@@ -31,4 +31,4 @@ Reviewer: senior-review-gpt-5.2
 - Model: gpt-5.2 (Codex Desktop)
 - Sandbox Mode: danger-full-access
 - Approval Policy: never
-- Session Mode: single-agent (no external subagent run)
+- Session Mode: synchronous subagent
