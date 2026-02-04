@@ -49,3 +49,21 @@
 
 **Next Actions**
 - decide whether any additional “process vs runtime” layout moves are needed beyond the current “write new run artifacts to `.parallelus/`” convention
+
+## 2026-02-04 20:18:10 UTC
+**Objectives**
+- draft a concrete plan for the process/runtime reorg and future migrations without moving files yet
+
+**Work Performed**
+- added `docs/deployment-upgrade-and-layout-PLAN.md` describing the target layout:
+  - `docs/` reserved for project docs except `docs/PLAN.md`, `docs/PROGRESS.md`, and `docs/branches/<slug>/…`
+  - all other Parallelus-owned tracked artifacts move under `parallelus/…`
+  - runtime/high-churn artifacts live under `./.parallelus/…` (gitignored)
+- captured an initial mapping of existing paths to their intended destinations and recorded open questions for review
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+
+**Next Actions**
+- review and refine the `parallelus/` and `./.parallelus/` subfolder structure until the plan is final
+- confirm the migration mapping (what moves, what remains as explicit `docs/` exceptions)
