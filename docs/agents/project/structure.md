@@ -9,6 +9,7 @@
 - `docs/progress/` & `docs/plans/` -- Branch notebooks generated during bootstrap.
 - `docs/PLAN.md` & `docs/PROGRESS.md` -- Canonical backlog and cross-branch progress log.
 - `docs/self-improvement/` -- Retrospective markers, failures summaries, and audit reports.
+- `.parallelus/` -- Runtime-only artifacts (subagent sandboxes/worktrees, transient logs); gitignored by default.
 - `sessions/` -- Session logs (`console.log`, `summary.md`, `meta.json`) captured per turn.
 - `docs/agents/project/` -- These maintainer-focused notes (domain, structure, continuous improvement).
 

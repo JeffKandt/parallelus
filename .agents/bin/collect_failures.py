@@ -165,6 +165,8 @@ def main() -> None:
     candidates += list(repo.glob("sessions/*/console.log"))
     candidates += list(repo.glob(".parallelus/**/subagent.exec_events.jsonl"))
     candidates += list(repo.glob(".parallelus/**/subagent.session.jsonl"))
+    candidates += list(repo.glob(".parallelus/guardrails/runs/**/session.jsonl"))
+    candidates += list(repo.glob(".parallelus/guardrails/runs/**/subagent.exec_events.jsonl"))
     candidates += list(repo.glob("docs/guardrails/runs/**/session.jsonl"))
     candidates += list(repo.glob("docs/guardrails/runs/**/subagent.exec_events.jsonl"))
 

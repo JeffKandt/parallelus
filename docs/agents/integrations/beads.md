@@ -85,6 +85,34 @@ Parallelus’ branch hygiene reports may treat the Beads sync branch as an
 “unmerged branch” forever. If Beads is adopted, update the branch-reporting
 logic to ignore the sync branch name (or categorize it as metadata).
 
+## Branches, Worktrees, and “Done”
+
+Beads issue state and git branch state are related but not identical:
+
+- **Beads status** answers “is the work logically complete?”
+- **Git branches/PRs** answer “has the work landed and shipped?”
+
+### Recommended status convention
+
+To avoid “closed but not merged” confusion, prefer:
+
+- `in_progress` when work has started on a branch/worktree
+- `awaiting_merge` / `awaiting_review` (custom status) or a `needs-merge` label
+  when code is complete but not yet merged
+- `closed` only once the change is merged (or otherwise shipped / superseded)
+
+This aligns Beads’ “completion” with Parallelus’ merge governance.
+
+### Tracking where work is happening
+
+Beads does not require branches, but it is useful to record “where”:
+
+- Add a label like `branch:feature/foo` or an external ref like `gh-123`.
+- Update/remove the label if the work is moved, abandoned, or superseded.
+
+This makes it easy to answer “what is in progress, and where?” and to detect
+abandoned work by combining `bd stale` with branch-label checks.
+
 ## Adoption Plan (Pilot)
 
 1. Pick a Beads prefix (recommend `par`) and a sync branch name (recommend
@@ -101,9 +129,18 @@ logic to ignore the sync branch name (or categorize it as metadata).
    - update/close them through the branch lifecycle
    - confirm the merge flow remains low-friction
 
+### Pilot compatibility with Parallelus branching
+
+The pilot can be introduced on a normal Parallelus feature branch:
+
+- Land the docs pointer and any repo glue files (`.gitattributes`,
+  `.beads/.gitignore`) via the standard merge flow into `main`.
+- After that merge, Beads remains **optional**: agents/humans with `bd`
+  installed can start using it immediately; others continue with notebooks-only
+  workflows without breaking guardrails.
+
 ## Non-Goals
 
 - Mandating Beads for all users of Parallelus.
 - Replacing `docs/PLAN.md` / `docs/PROGRESS.md`.
 - Encoding merge gating inside Beads (Parallelus already owns merge governance).
-

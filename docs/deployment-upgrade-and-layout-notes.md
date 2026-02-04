@@ -59,6 +59,13 @@ One possible convention:
 - `.parallelus/` (dot) = runtime only, gitignored
 - `parallelus/` (no dot) or `docs/parallelus/` = tracked process namespace (if we decide `docs/` should remain project-doc-focused)
 
+**Recommended adjustment (to reduce PR noise):**
+- Treat new guardrail “run capture” outputs as runtime: write them under
+  `.parallelus/guardrails/runs/` (or `sessions/<id>/artifacts/`) instead of
+  `docs/guardrails/runs/`.
+- Keep any existing `docs/guardrails/runs/` content as legacy archived evidence;
+  do not add new runs there.
+
 ## Layout Options Under Discussion
 
 1. **Keep current layout** (simplest; already supported):

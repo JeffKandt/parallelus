@@ -17,3 +17,25 @@
 **Next Actions**
 - review `docs/deployment-upgrade-and-layout-notes.md` and enumerate concrete reorg changes to implement
 - update `docs/agents/integrations/beads.md` to reflect the branch/worktree semantics and “optional Beads” adoption strategy
+
+## 2026-02-04 20:12:10 UTC
+**Objectives**
+- implement initial “process vs runtime” adjustments (reduce PR noise from runtime artifacts)
+- update Beads docs based on current discussion (sync branch semantics; optional adoption)
+
+**Work Performed**
+- updated failures collection to scan runtime guardrail-run paths under `.parallelus/guardrails/runs/` (while retaining legacy `docs/guardrails/runs/` scanning)
+- updated the rollout-extraction tool default output to `.parallelus/guardrails/runs/extracted` when no active session artifacts directory is available
+- updated `docs/deployment-upgrade-and-layout-notes.md` and `docs/agents/project/structure.md` to clarify runtime-vs-tracked placement expectations
+- updated `docs/agents/integrations/beads.md` to cover branches/worktrees vs “done” semantics, and to clarify the “optional Beads” pilot flow
+
+**Artifacts**
+- `.agents/bin/collect_failures.py`
+- `.agents/bin/extract_codex_rollout.py`
+- `docs/deployment-upgrade-and-layout-notes.md`
+- `docs/agents/project/structure.md`
+- `docs/agents/integrations/beads.md`
+
+**Next Actions**
+- run `make ci` and record results
+- continue implementing any remaining reorg items from `docs/deployment-upgrade-and-layout-notes.md` that we agree are in-scope for this branch

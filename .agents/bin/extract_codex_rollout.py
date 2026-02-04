@@ -54,7 +54,7 @@ def default_output_dir(repo_root: Path) -> Path:
     session_dir = Path(os.environ.get("SESSION_DIR", "")).expanduser()
     if session_dir and (session_dir / "console.log").exists():
         return session_dir / "artifacts"
-    return repo_root / "sessions" / "extracted"
+    return repo_root / ".parallelus" / "guardrails" / "runs" / "extracted"
 
 
 def render_markdown(events: list, source_path: Path) -> str:
