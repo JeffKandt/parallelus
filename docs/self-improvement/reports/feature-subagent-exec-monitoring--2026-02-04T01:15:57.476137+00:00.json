@@ -1,0 +1,42 @@
+{
+  "branch": "feature/subagent-exec-monitoring",
+  "marker_timestamp": "2026-02-04T01:15:57.476137+00:00",
+  "summary": "No blocking issues detected. Merge readiness work uncovered three concrete guardrail/test regressions (smoke session bootstrap, heredoc env-var expansion under set -u, and a Python 3.14-incompatible redaction regex) that were fixed on this branch. One process gap (logging the AGENTS.md acknowledgement after running non-bootstrap recon commands) was documented in the branch progress log; follow-up is recommended to prevent recurrence.",
+  "issues": [
+    {
+      "id": "agents-smoke-missing-makefile",
+      "root_cause": "The agents smoke test created a temporary repo containing only `.agents/`, then evaluated `.agents/bin/agents-session-start`, which emits `make read_bootstrap`. The temp repo had no Makefile providing that target, causing `make ci` to fail during smoke.",
+      "mitigation": "Updated `.agents/tests/smoke.sh` to write a minimal Makefile that includes `.agents/make/agents.mk` before session start is evaluated.",
+      "prevention": "Keep smoke repos structurally representative of real repos (Makefile present). Consider asserting the Makefile exists before calling session start, or adding an explicit smoke-only env override when the design is to allow `.agents/`-only usage.",
+      "evidence": "`make ci` failed with \"No rule to make target `read_bootstrap'\" and the smoke output showed the failure happened immediately after `eval $(.agents/bin/agents-session-start)`."
+    },
+    {
+      "id": "subagent-manager-heredoc-unbound-var",
+      "root_cause": "A subagent instruction heredoc expanded `$SUBAGENT_PROGRESS_PATH` at string-construction time under `set -u`, causing `subagent_manager.sh launch` to exit when the variable was unset (CI test path).",
+      "mitigation": "Escaped `$SUBAGENT_PROGRESS_PATH` inside the heredoc example so it remains literal in generated instructions and no longer triggers expansion in the launcher.",
+      "prevention": "Prefer single-quoted heredoc delimiters for instruction templates, or lint for unescaped `$VARS` in heredocs when `set -u` is enabled.",
+      "evidence": "Pytest failure: `.agents/bin/subagent_manager.sh: line 845: SUBAGENT_PROGRESS_PATH: unbound variable` in `tests/test_basic.py::test_subagent_launch_without_role_succeeds`."
+    },
+    {
+      "id": "collect-failures-regex-python314",
+      "root_cause": "Redaction regexes in `.agents/bin/collect_failures.py` were over-escaped (e.g. `\\b`, `\\-` inside a character class), producing an invalid character range under Python 3.14 (`re.PatternError: bad character range \\-.`).",
+      "mitigation": "Normalized the regex patterns to correct, minimally-escaped forms compatible with current Python `re` parsing and reran `make collect_failures` successfully.",
+      "prevention": "Add a small unit test that imports `collect_failures.py` and compiles the redaction patterns (or runs `make collect_failures` against a fixture marker) under the project’s supported Python version(s).",
+      "evidence": "`make collect_failures` failed with `re.PatternError: bad character range \\\\-.` from `.agents/bin/collect_failures.py` before the fix."
+    },
+    {
+      "id": "agents-ack-now-tracked",
+      "root_cause": "The session performed additional recon commands after `make read_bootstrap` before the “AGENTS.md reviewed” acknowledgement was recorded in the branch progress notebook.",
+      "mitigation": "Documented the corrective trace item in `docs/progress/feature-subagent-exec-monitoring.md` and continued with the standard workflow (plan/progress updates, checkpoints, CI).",
+      "prevention": "Add an explicit preflight checklist entry (or helper) that appends the acknowledgement entry before any other recon commands, so the invariant is easy to satisfy consistently.",
+      "evidence": "Branch progress entry on 2026-02-04 records the acknowledgement and notes the ordering gap as a corrective item."
+    }
+  ],
+  "follow_ups": [
+    "Decide whether `.agents/bin/agents-session-start` should support a mode that omits `make read_bootstrap` for `.agents/`-only smoke scenarios, or keep the Makefile requirement as policy.",
+    "Add a lightweight test to ensure `.agents/bin/collect_failures.py` regex patterns compile (and the command runs) under the repo’s supported Python version.",
+    "Consider switching instruction heredocs in `.agents/bin/subagent_manager.sh` to single-quoted delimiters to avoid accidental env-var expansion under `set -u`.",
+    "If Beads is adopted, update branch discovery to ignore the Beads sync branch (metadata sidecar) so it doesn’t appear as perpetually unmerged."
+  ]
+}
+

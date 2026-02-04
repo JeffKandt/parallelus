@@ -47,14 +47,27 @@ def iter_jsonl(path: Path):
 
 
 REDACTION_PATTERNS = [
-    (re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\\s\\S]+?-----END [A-Z ]+PRIVATE KEY-----"), "[REDACTED_PRIVATE_KEY]"),
-    (re.compile(r"\\bAKIA[0-9A-Z]{16}\\b"), "[REDACTED_AWS_ACCESS_KEY]"),
-    (re.compile(r"(?i)(aws[^\\n]{0,20}?(secret|access)?_?key)\\s*[:=]\\s*[A-Za-z0-9/+=]{20,}"), r"\\1=[REDACTED_AWS_SECRET]"),
-    (re.compile(r"\\bgh[pousr]_[A-Za-z0-9]{36,}\\b"), "[REDACTED_GH_TOKEN]"),
-    (re.compile(r"\\bxox[baprs]-[A-Za-z0-9-]+\\b"), "[REDACTED_SLACK_TOKEN]"),
-    (re.compile(r"\\bsk-[A-Za-z0-9]{20,}\\b"), "[REDACTED_API_KEY]"),
-    (re.compile(r"(?i)(bearer\\s+)[A-Za-z0-9\\-._~+/]+=*"), r"\\1[REDACTED_TOKEN]"),
-    (re.compile(r"(?i)\\b(token|api[-_]?key|secret|password|passwd|pwd)\\b\\s*[:=]\\s*[^\\s'\\\"]+"), r"\\1=[REDACTED]"),
+    (
+        re.compile(
+            r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"
+        ),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
+    (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[REDACTED_AWS_ACCESS_KEY]"),
+    (
+        re.compile(
+            r"(?i)(aws[^\n]{0,20}?(secret|access)?_?key)\s*[:=]\s*[A-Za-z0-9/+=]{20,}"
+        ),
+        r"\1=[REDACTED_AWS_SECRET]",
+    ),
+    (re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b"), "[REDACTED_GH_TOKEN]"),
+    (re.compile(r"\bxox[baprs]-[A-Za-z0-9-]+\b"), "[REDACTED_SLACK_TOKEN]"),
+    (re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"), "[REDACTED_API_KEY]"),
+    (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9\-._~+/]+=*"), r"\1[REDACTED_TOKEN]"),
+    (
+        re.compile(r"(?i)\b(token|api[-_]?key|secret|password|passwd|pwd)\b\s*[:=]\s*[^\s'\"]+"),
+        r"\1=[REDACTED]",
+    ),
 ]
 
 

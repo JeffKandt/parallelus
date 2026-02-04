@@ -11,8 +11,8 @@
 - [x] add cleanup fallback to kill panes by title when registry handle is missing
 - [x] add mid-flight checkpoint log (`subagent.progress.md`) and prefer it in status/tailing
 - [x] update notebooks and validate changes
-- [ ] write Beads integration recommendation under `docs/`
-- [ ] run merge gates (CI, retrospective report, senior architect review)
+- [x] write Beads integration recommendation under `docs/`
+- [ ] run merge gates (retrospective report, senior architect review)
 - [ ] fold branch notebooks + merge to `main`
 
 ## Next Actions
@@ -20,5 +20,4 @@
 - validate merge-time audit workflow:
   - run `make turn_end`, `make collect_failures`, and a CI auditor subagent on a throwaway branch
   - confirm `make merge` blocks when failures summary or audit report is missing
-- write up Beads integration recommendation and adoption plan
-- land this branch: audits + senior review + fold notebooks + merge
+- land this branch: retrospective report + senior review + fold notebooks + merge
