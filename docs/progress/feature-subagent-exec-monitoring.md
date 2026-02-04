@@ -238,6 +238,7 @@
 
 **Work Performed**
 - reviewed `AGENTS.md` merge guardrails and `docs/agents/git-workflow.md` before starting merge work
+- re-read `docs/agents/subagent-session-orchestration.md` (subagent gate) before planning CI auditor + senior review runs
 - captured a Beads integration recommendation doc under `docs/agents/integrations/` (augment notebooks; prefer sync-branch mode; treat as a backlog sidecar)
 - noted that this session started with additional recon commands before logging the “AGENTS.md reviewed” acknowledgement; recorded here as a corrective trace item
 
