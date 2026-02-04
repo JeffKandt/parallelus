@@ -1,7 +1,7 @@
 # Senior Architect Review – feature/subagent-exec-monitoring
 
 Reviewed-Branch: feature/subagent-exec-monitoring
-Reviewed-Commit: ea00e7d0db6312d9c1040fe2ba3289d46d513c65
+Reviewed-Commit: 8065f7566aa8982941b4860755e159d983084891
 Reviewed-On: 2026-02-04
 Decision: approved
 Reviewer: senior-review-gpt-5.2
