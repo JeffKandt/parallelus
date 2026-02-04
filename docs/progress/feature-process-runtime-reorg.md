@@ -39,3 +39,13 @@
 **Next Actions**
 - run `make ci` and record results
 - continue implementing any remaining reorg items from `docs/deployment-upgrade-and-layout-notes.md` that we agree are in-scope for this branch
+
+## 2026-02-04 20:12:55 UTC
+**Objectives**
+- validate the branch via `make ci`
+
+**Work Performed**
+- ran `make ci` and confirmed the full suite passed
+
+**Next Actions**
+- decide whether any additional “process vs runtime” layout moves are needed beyond the current “write new run artifacts to `.parallelus/`” convention
