@@ -1,7 +1,7 @@
 # Senior Architect Review – feature/subagent-exec-monitoring
 
 Reviewed-Branch: feature/subagent-exec-monitoring
-Reviewed-Commit: 56d58d40f810ecb0e7e26849bc073db925a5567d
+Reviewed-Commit: ea00e7d0db6312d9c1040fe2ba3289d46d513c65
 Reviewed-On: 2026-02-04
 Decision: approved
 Reviewer: senior-review-gpt-5.2
@@ -32,4 +32,3 @@ Reviewer: senior-review-gpt-5.2
 - Sandbox Mode: danger-full-access
 - Approval Policy: never
 - Session Mode: single-agent (no external subagent run)
-
