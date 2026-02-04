@@ -11,6 +11,8 @@
 - [x] update Beads docs (`docs/agents/integrations/beads.md`) based on current discussion (branch/worktree semantics, optional usage strategy, pilot flow)
 - [ ] update branch plan/progress notebooks with outcomes + follow-ups
 - [ ] run `make ci` and record results in the progress log
+- [ ] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
 
 ## Next Actions
 - review `docs/deployment-upgrade-and-layout-notes.md` and decide which reorg items are in-scope for this branch
+- iterate on `docs/deployment-upgrade-and-layout-PLAN.md` (structure + mapping + open questions)
