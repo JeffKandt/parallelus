@@ -238,6 +238,52 @@ ensure_no_tmux_pane_for_slug() {
   fi
 }
 
+ensure_audit_ready_for_review() {
+  local branch="$1"
+  local marker_path="$ROOT/docs/self-improvement/markers/${branch//\//-}.json"
+  if [[ ! -f "$marker_path" ]]; then
+    echo "subagent_manager: run make turn_end to record a marker before the senior review." >&2
+    return 1
+  fi
+  local audit_paths
+  audit_paths=$(
+    python3 - "$marker_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"subagent_manager: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"subagent_manager: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+branch_slug = marker_path.stem
+report_path = f"docs/self-improvement/reports/{branch_slug}--{marker_ts}.json"
+failures_path = f"docs/self-improvement/failures/{branch_slug}--{marker_ts}.json"
+print(report_path)
+print(failures_path)
+PY
+  ) || return 1
+  local report_path failures_path
+  report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
+  failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  if [[ ! -f "$report_path" ]]; then
+    echo "subagent_manager: missing audit report $report_path; run the CI auditor before the senior review." >&2
+    return 1
+  fi
+  if [[ ! -f "$failures_path" ]]; then
+    echo "subagent_manager: missing failures summary $failures_path; run make collect_failures before the senior review." >&2
+    return 1
+  fi
+}
+
 append_registry() {
   local entry_json=$1
   python3 - "$REGISTRY_FILE" "$entry_json" <<'PY'
@@ -478,12 +524,37 @@ for row in entries:
         effective_timestamp = session_event.timestamp()
         effective_path = session_path
         source_label = "[session]"
-    elif log_path and os.path.exists(log_path):
-        effective_timestamp = os.path.getmtime(log_path)
-        effective_path = log_path
-        source_label = "[raw]"
-    elif log_path:
-        effective_path = log_path
+    else:
+        progress_path = row.get("progress_path") or (os.path.join(sandbox_path, "subagent.progress.md") if sandbox_path else "")
+        last_message_path = os.path.join(sandbox_path, "subagent.last_message.txt") if sandbox_path else ""
+        exec_events_path = os.path.join(sandbox_path, "subagent.exec_events.jsonl") if sandbox_path else ""
+
+        def is_nonempty(path: str) -> bool:
+            try:
+                return bool(path) and os.path.exists(path) and os.path.getsize(path) > 0
+            except Exception:
+                return False
+
+        # Prioritise human-readable checkpoints over raw command noise so the
+        # monitor loop alerts when the subagent stops narrating progress.
+        if is_nonempty(progress_path):
+            effective_timestamp = os.path.getmtime(progress_path)
+            effective_path = progress_path
+            source_label = "[checkpoint]"
+        elif is_nonempty(last_message_path):
+            effective_timestamp = os.path.getmtime(last_message_path)
+            effective_path = last_message_path
+            source_label = "[last_message]"
+        elif exec_events_path and os.path.exists(exec_events_path):
+            effective_timestamp = os.path.getmtime(exec_events_path)
+            effective_path = exec_events_path
+            source_label = "[exec]"
+        elif log_path and os.path.exists(log_path):
+            effective_timestamp = os.path.getmtime(log_path)
+            effective_path = log_path
+            source_label = "[raw]"
+        elif log_path:
+            effective_path = log_path
     if effective_timestamp is not None:
         delta = int(now - effective_timestamp)
         minutes, seconds = divmod(max(delta, 0), 60)
@@ -564,6 +635,7 @@ EOF
 print_role_body() {
   local file=$1
   python3 - <<'PY' "$file"
+import json
 import sys
 from pathlib import Path
 
@@ -696,6 +768,7 @@ create_prompt_file() {
   local profile=${6:-}
   local role_prompt=${7:-}
   local parent_branch=${8:-}
+  local progress_path=${9:-"$sandbox/subagent.progress.md"}
   local role_text=""
   local role_config=""
   local profile_display="default (danger-full-access)"
@@ -756,7 +829,8 @@ PY
 1. Read AGENTS.md and .agents/prompts/agent_roles/continuous_improvement_auditor.md to confirm guardrails.
 2. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
 3. Gather evidence without modifying the workspace: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
-4. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
+4. Review the failures summary at docs/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
+5. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
 5. Stay read-only—do not run make bootstrap or alter files. Print the JSON report and exit.
 EOF
   elif [[ "$role_read_only" == "true" ]]; then
@@ -767,27 +841,34 @@ EOF
 4. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
 5. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
 EOF
-  else
-    read -r -d '' instructions <<EOF || true
-1. Read AGENTS.md and all referenced docs.
-2. Review the scope file, then run 'make bootstrap slug=${slug}' to create the
-   feature branch.
-3. Convert the scope into plan/progress notebooks and follow all guardrails.
-4. Keep the session open until the entire checklist is complete and 'git status'
-   is clean.
-5. Immediately after 'make read_bootstrap', **do not pause**—begin reviewing
-   the required docs right away and proceed with the checklist without drafting a
-   status message or waiting for confirmation.
-6. Before pausing, audit the branch plan checklist and mark every completed
-   task so reviewers see the finished state.
-7. Follow the scope's instructions for merging and cleanup before finishing.
-8. Leave a detailed summary in the progress notebook before exiting.
-9. You already have approval to run commands. After any status update, plan
-   outline, or summary, immediately continue with the next checklist item
-   without waiting for confirmation.
-10. If you ever feel blocked waiting for a "proceed" or approval, assume the
-    answer is "Continue" and move to the next action without prompting the main
-    agent.
+	  else
+	    read -r -d '' instructions <<EOF || true
+	1. Read AGENTS.md and all referenced docs.
+	2. Review the scope file, then run 'make bootstrap slug=${slug}' to create the
+	   feature branch.
+	3. Convert the scope into plan/progress notebooks and follow all guardrails.
+	4. Keep the session open until the entire checklist is complete and 'git status'
+	   is clean.
+	5. Immediately after 'make read_bootstrap', **do not pause**—begin reviewing
+	   the required docs right away and proceed with the checklist without drafting a
+	   status message or waiting for confirmation.
+	6. Before pausing, audit the branch plan checklist and mark every completed
+	   task so reviewers see the finished state.
+	7. Follow the scope's instructions for merging and cleanup before finishing.
+	8. Leave a detailed summary in the progress notebook before exiting.
+	9. Maintain a lightweight checkpoint log at '${progress_path}' (also available as
+	   \$SUBAGENT_PROGRESS_PATH). After each meaningful work unit, append 1–3 short
+	   bullets: what you did, why, and what's next. Keep it brief, human-readable,
+	   and free of secrets. This file is used for mid-flight monitoring.
+	
+		   Example (recommended):
+			     printf -- "- %s\n" "$(date -u +%H:%MZ) <what> — <why> — <next>" >> "\$SUBAGENT_PROGRESS_PATH"
+			10. You already have approval to run commands. After any status update, plan
+			   outline, or summary, immediately continue with the next checklist item
+			   without waiting for confirmation.
+	11. If you ever feel blocked waiting for a "proceed" or approval, assume the
+	    answer is "Continue" and move to the next action without prompting the main
+	    agent.
 ---
 
 Keep working even after 'make read_bootstrap', 'make bootstrap', and the initial
@@ -831,12 +912,13 @@ EOF
     overrides_section+=$'\n'
   fi
 
-  cat <<EOF >"$dest"
-You are operating inside sandbox: $sandbox
-Scope file: $scope
-Sandbox type: $type
-Codex profile: $profile_display
-$overrides_section
+	  cat <<EOF >"$dest"
+	You are operating inside sandbox: $sandbox
+	Scope file: $scope
+	Sandbox type: $type
+	Codex profile: $profile_display
+	Checkpoint log: $progress_path
+	$overrides_section
 
 $instructions
 EOF
@@ -1009,7 +1091,7 @@ USAGE
     normalized_role="${role_prompt}.md"
   fi
 
-  local timestamp entry_id sandbox scope_path prompt_path log_path
+	  local timestamp entry_id sandbox scope_path prompt_path log_path progress_path
   local current_branch current_commit
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   current_commit=$(git rev-parse HEAD)
@@ -1018,6 +1100,7 @@ USAGE
 
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
     ensure_clean_worktree
+    ensure_audit_ready_for_review "$current_branch"
     ensure_senior_review_needed "$current_branch" "$current_commit"
   fi
 
@@ -1070,8 +1153,8 @@ USAGE
     restore_env_cmds+=("$_cmd")
   done
 
-  scope_path="$sandbox/SUBAGENT_SCOPE.md"
-  create_scope_file "$scope_path" "$scope_override"
+	  scope_path="$sandbox/SUBAGENT_SCOPE.md"
+	  create_scope_file "$scope_path" "$scope_override"
   python3 - <<'PY' "$scope_path" "$parent_branch"
 import sys
 from pathlib import Path
@@ -1080,17 +1163,30 @@ path = Path(sys.argv[1])
 parent_branch = sys.argv[2]
 marker_branch = parent_branch.replace('/', '-')
 marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
+failures_path = f"docs/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
+marker_full = Path(marker_path)
+if marker_full.exists():
+    try:
+        data = json.loads(marker_full.read_text(encoding="utf-8"))
+        ts = data.get("timestamp")
+        if ts:
+            failures_path = f"docs/self-improvement/failures/{marker_branch}--{ts}.json"
+    except Exception:
+        pass
 
 text = path.read_text(encoding="utf-8")
-if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text:
+if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text or "{{FAILURES_PATH}}" in text:
     text = text.replace("{{PARENT_BRANCH}}", parent_branch)
     text = text.replace("{{MARKER_PATH}}", marker_path)
+    text = text.replace("{{FAILURES_PATH}}", failures_path)
     path.write_text(text, encoding="utf-8")
 PY
-  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch"
-  log_path="$sandbox/subagent.log"
-  : >"$log_path"
+	  progress_path="$sandbox/subagent.progress.md"
+	  : >"$progress_path"
+	  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
+	  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch" "$progress_path"
+	  log_path="$sandbox/subagent.log"
+	  : >"$log_path"
 
   if [[ -z "$codex_profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     codex_profile="$SUBAGENT_CODEX_PROFILE"
@@ -1189,12 +1285,27 @@ PY
     ) || return 1
   fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
 import json
 import sys
-import shlex
 
-entry_id, type_, slug, path, scope, prompt, log_path, launcher, timestamp, profile, role_prompt, deliverables_json, source_commit = sys.argv[1:14]
+(
+    entry_id,
+    type_,
+    slug,
+    path,
+    scope,
+    prompt,
+    log_path,
+    progress_path,
+    launcher,
+    timestamp,
+    profile,
+    role_prompt,
+    deliverables_json,
+    source_commit,
+) = sys.argv[1:15]
+
 payload = {
     "id": entry_id,
     "type": type_,
@@ -1203,6 +1314,7 @@ payload = {
     "scope_path": scope,
     "prompt_path": prompt,
     "log_path": log_path,
+    "progress_path": progress_path,
     "launcher": launcher,
     "status": "running",
     "launched_at": timestamp,
@@ -1603,6 +1715,15 @@ PY
           "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
         fi
       fi
+    else
+      # Fallback: if registry metadata is missing, kill any tmux pane whose title
+      # matches the entry id.
+      while IFS='|' read -r pane_id pane_title; do
+        [[ -z "$pane_id" || -z "$pane_title" ]] && continue
+        if [[ "$pane_title" == "$entry_id" ]]; then
+          "$TMUX_BIN" kill-pane -t "$pane_id" >/dev/null 2>&1 || true
+        fi
+      done < <("$TMUX_BIN" list-panes -a -F '#{pane_id}|#{pane_title}' 2>/dev/null || true)
     fi
   fi
   echo "Cleaned $entry_id ($type)"

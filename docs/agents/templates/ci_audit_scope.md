@@ -3,10 +3,12 @@
 ## Context
 - Parent branch: {{PARENT_BRANCH}}
 - Latest marker: {{MARKER_PATH}}
-- Goal: Produce a JSON retrospective report for the most recent turn before `make turn_end`.
+- Failures summary: {{FAILURES_PATH}}
+- Goal: Produce a JSON retrospective report for the most recent marker before merge.
 
 ## Objectives
 - [ ] Analyse guardrail compliance, git status/diffs, and plan/progress updates since the marker timestamp.
+- [ ] Review `docs/self-improvement/failures/<branch>--<marker>.json` for failed tool calls and extract preventive guidance.
 - [ ] Document any issues with clear evidence, remediation, and prevention notes.
 - [ ] Surface follow-up actions the main agent must carry into the branch plan.
 

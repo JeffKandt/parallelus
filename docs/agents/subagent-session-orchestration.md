@@ -35,12 +35,16 @@ report progress or decisions back in plain language.
 > the YAML front matter at the top of
 > `.agents/prompts/agent_roles/senior_architect.md`) before launch. The subagent operates
 > read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
+>
+> The launcher now enforces that the Continuous Improvement audit (including the
+> failures summary) has been completed before the senior review is launched.
 
-> **Retrospective audits:** Before each `make turn_end`, launch the Continuous
-> Improvement Auditor prompt (`.agents/prompts/agent_roles/continuous_improvement_auditor.md`). The auditor
+> **Retrospective audits:** Before the senior architect review, run `make collect_failures`, then launch the
+> Continuous Improvement Auditor prompt (`.agents/prompts/agent_roles/continuous_improvement_auditor.md`). The auditor
 > works read-only, analyses evidence starting from the marker recorded in
-> `docs/self-improvement/markers/<branch>.json`, and returns a JSON report to be
-> saved under
+> `docs/self-improvement/markers/<branch>.json` (and the failures summary in
+> `docs/self-improvement/failures/<branch>--<marker>.json` when present), and
+> returns a JSON report to be saved under
 > `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
 
 ## 1. Overview
@@ -200,6 +204,7 @@ make monitor_subagents
 
 Every sandbox now emits transcripts for monitoring:
 
+- `subagent.progress.md` – checkpoint log (short “what/why/next” notes appended during execution for mid-flight monitoring).
 - `subagent.last_message.txt` – preferred snapshot when present (clean last agent response; written for exec-mode subagents).
 - `subagent.exec_events.jsonl` – structured `codex exec --json` event stream (exec-mode subagents).
 - `subagent.session.jsonl` – structured Codex events when using the interactive TUI logging (legacy / fallback).
@@ -207,7 +212,7 @@ Every sandbox now emits transcripts for monitoring:
 
 When inspecting activity, default to the cleanest snapshot available. The helper
 `.agents/bin/subagent_tail.sh --id <registry-id>` prefers `subagent.last_message.txt`,
-then `subagent.exec_events.jsonl`, then `subagent.session.jsonl`, and finally
+then `subagent.progress.md`, then `subagent.exec_events.jsonl`, then `subagent.session.jsonl`, and finally
 falls back to `subagent.log`. If you decide a
 nudge is necessary, use `.agents/bin/subagent_send_keys.sh --id <registry-id> --text "Proceed"`
 so prompt clearing and the bracketed-paste sequence stay consistent. The monitor
@@ -280,7 +285,7 @@ When `status` marks a subagent ready (or the user reports "done"), verify and
 record the outcome.
 
 - **Throwaway verification**
-  1. `make read_bootstrap`
+  1. `eval "$(make start_session)"`
   2. Confirm plan/progress notebooks indicate completion.
   3. Inspect `sessions/<id>/summary.md` & `meta.json`.
   4. Ensure recorded deliverables were harvested and landed in the main repo.
@@ -288,7 +293,7 @@ record the outcome.
   6. Log results in the main branch progress doc.
 
 - **Worktree verification**
-  1. `make read_bootstrap`
+  1. `eval "$(make start_session)"`
   2. Confirm plan/progress notebooks are complete and the subagent left a
      detailed summary for review.
   3. Run lint/tests as required.
@@ -302,7 +307,7 @@ record the outcome.
 
 Follow this worktree verification checklist before accepting or merging subagent output:
 
-- [ ] Run `make read_bootstrap` inside the worktree to confirm branch context, notebooks, and orphaned artifacts.
+- [ ] Run `eval "$(make start_session)"` inside the worktree to confirm branch context, notebooks, and orphaned artifacts.
 - [ ] Re-read the scope (if still present) and compare it against `docs/plans/<branch>.md` plus `docs/progress/<branch>.md`; flag outstanding tasks or questions.
 - [ ] Inspect the diff with `git status --short --branch` and `git diff`; ensure only expected files changed and review each hunk for correctness.
 - [ ] Execute the documented lint/tests (`make ci`, `make lint`, `make test`, or commands called out in the progress log) and capture the results in your notes.
@@ -330,7 +335,7 @@ replacement.
 
 ## 5. Subagent Responsibilities
 
-- Run the standard continuity checks (`make read_bootstrap`, scope review)
+- Run the standard continuity checks (`eval "$(make start_session)"`, scope review)
   before editing.
 - Read the untracked scope file, create the feature branch via `make bootstrap`
   with the assigned slug, and convert the scope into official plan/progress
@@ -430,7 +435,7 @@ If a subagent session closes early:
 
 ### C. Verification & Merge
 
-1. `make read_bootstrap`
+1. `eval "$(make start_session)"`
 2. Review notebooks and progress summary
 3. Run tests/lint
 4. Decide: request changes, merge, or abandon

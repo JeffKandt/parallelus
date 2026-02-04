@@ -8,17 +8,17 @@ progress log when you consult it for open questions or training.
 ## 1. Phases & Mandatory Checks
 
 ### Recon & Planning (read-only)
-- Run `make read_bootstrap` immediately to detect repo mode, current branch, and outstanding notebooks; relay the branch/phase status to the maintainer before proceeding.
+- Start every session with `eval "$(make start_session)"`, which enables logging and runs `make read_bootstrap`. Relay the branch/phase status to the maintainer before proceeding.
 - Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
-- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
+- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." eval "$(make start_session)"` before leaving Recon & Planning.
 - Inspect repo state, answer questions, plan next moves.
 - Do **not** modify code, docs, or plans, and skip bootstrap helpers.
 
 ### Transition Checklist (from recon to editing)
 Trigger as soon as you intend to change any tracked file.
-1. Run repository detection: `eval "$(.agents/bin/agents-detect)"` or the equivalent `make read_bootstrap` target.
+1. Run repository detection via `eval "$(make start_session)"`. Direct `make read_bootstrap` now requires active session logging.
 2. Create/switch to a feature branch via `make bootstrap slug=<slug>`.
-3. Export `SESSION_PROMPT` (optional) and run `make start_session` to capture the turn context.
+3. Export `SESSION_PROMPT` (optional) and run `eval "$(make start_session)"` to capture the turn context.
 4. Update branch plan/progress notebooks with objectives before editing files.
 5. Run environment diagnostics (see §3) and confirm readiness.
 6. Commit the initialized plan/progress notebooks (and session metadata) so future contributors inherit scope, diagnostics, and starting context.
@@ -103,9 +103,9 @@ Ensure `.venv` exists, dependencies align, SSH heartbeat succeeds, and ffmpeg is
 available. Log results in the branch progress notebook.
 
 ## 4. Session Bootstrap Checklist
-1. `make read_bootstrap`
+1. `eval "$(make start_session)"`
 2. `make bootstrap slug=<slug>` (refuses if worktree dirty)
-3. `SESSION_PROMPT="..." make start_session`
+3. `SESSION_PROMPT="..." eval "$(make start_session)"`
 4. Update plan/progress docs with objectives and links to `sessions/<ID>/`
 5. Record environment diagnostics (above)
 6. Commit the plan/progress bootstrap to freeze the starting state
@@ -126,18 +126,19 @@ That closes the prior turn so artifacts stay sequenced.
 - Working tree either clean or containing only intentional changes noted in the
   progress log.
 - Fire “ready” audible alert if work block >5s.
-- Run the Continuous Improvement Auditor (see
-  `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) **before** calling
-  `make turn_end`. It reads the existing marker and returns a JSON report that
-  you must save under `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
-  Only after the report is saved should you run `make turn_end`; the helper then
-  records the next marker via `.agents/bin/retro-marker`.
+- Session console logging must be enabled (`sessions/<ID>/console.log` is non-empty).
+- `make start_session` must have been run for the current branch (enforced by a session marker).
 
 Run `make turn_end m="summary"` (wraps `.agents/bin/agents-turn-end`) to perform
 these updates in one step. The helper appends to the branch progress log and
 plan notebooks (when present), updates the session summary, touches `meta.json`,
 and records the retro marker; supply a descriptive message so reviewers
 understand the outcome.
+
+### Merge-Time Retrospective Audit
+- Before merging, run `make collect_failures`, then launch the Continuous
+  Improvement Auditor (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`)
+  and save its JSON report under `docs/self-improvement/reports/<branch>--<marker>.json`.
 
 ### Session Wrap (feature complete)
 - Add end timestamp & duration to `meta.json`.

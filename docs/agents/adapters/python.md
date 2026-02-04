@@ -4,9 +4,9 @@ The Python adapter ensures every workflow runs inside the pinned virtualenv and
 wraps lint/test/format tasks with consistent commands.
 
 ## Bootstrap Steps
-1. `make read_bootstrap` – confirms repo mode and warns about orphaned docs.
+1. `eval "$(make start_session)"` – enables logging and confirms repo mode.
 2. `make bootstrap slug=<slug>` – creates/switches the feature branch.
-3. `make start_session` – records the prompt and session metadata.
+3. `eval "$(make start_session)"` – records the prompt, session metadata, and logging.
 4. `.agents/adapters/python/env.sh` – creates `.venv` (if missing) and installs
    `requirements.txt`.
 5. Activate on demand: `source .venv/bin/activate` or rely on adapter scripts

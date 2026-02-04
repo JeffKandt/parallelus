@@ -16,5 +16,5 @@ and CI. Degraded paths fall back to log-only behaviour instead of failing.
 **Notes**
 - When `CI=true` or no TTY is detected, audible alerts degrade to BEL/log.
 - The Python adapter auto-creates `.venv`; ensure system Python is available.
-- For Codex Cloud sandboxes, use `make read_bootstrap` first to confirm repo
+- For Codex Cloud sandboxes, use `eval "$(make start_session)"` first to confirm repo
   mode before editing snapshots.

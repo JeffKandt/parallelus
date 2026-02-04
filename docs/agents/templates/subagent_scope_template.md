@@ -20,6 +20,8 @@
 - Spell out whether the subagent should merge via `make merge slug=…` or leave
   that step for the main agent. The throwaway smoke harness is the only flow
   that typically merges inside the sandbox.
+- The subagent should append brief “what/why/next” checkpoints to `subagent.progress.md`
+  during execution so the main agent can monitor progress without relying on tmux scrollback.
 - Mention explicitly that the subagent should keep working without waiting for
   additional approval once the checklist is defined. If it feels blocked,
   assume the answer is “Continue.” Skip standalone status updates after

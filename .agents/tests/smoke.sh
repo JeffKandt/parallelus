@@ -18,6 +18,9 @@ mkdir -p "$TMP_REPO/docs" "$TMP_REPO/sessions"
   git config user.name "Agents Smoke"
   git config user.email "smoke@example.com"
   echo "smoke" > README.md
+  cat > Makefile <<'MAKE'
+include .agents/make/agents.mk
+MAKE
   git add README.md
   git commit -q -m "init"
 

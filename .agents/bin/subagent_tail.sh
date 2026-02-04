@@ -66,15 +66,18 @@ RAW_LOG=$(printf '%s\n' "$info" | sed -n '2p')
 SESSION_LOG="$SANDBOX_PATH/subagent.session.jsonl"
 LAST_MESSAGE="$SANDBOX_PATH/subagent.last_message.txt"
 EXEC_EVENTS="$SANDBOX_PATH/subagent.exec_events.jsonl"
+CHECKPOINTS="$SANDBOX_PATH/subagent.progress.md"
 
 target=""
 if [[ "$RAW" -eq 0 ]]; then
   if [[ -s "$LAST_MESSAGE" ]]; then
     target="$LAST_MESSAGE"
-  elif [[ -f "$SESSION_LOG" ]]; then
-    target="$SESSION_LOG"
+  elif [[ -s "$CHECKPOINTS" ]]; then
+    target="$CHECKPOINTS"
   elif [[ -f "$EXEC_EVENTS" ]]; then
     target="$EXEC_EVENTS"
+  elif [[ -f "$SESSION_LOG" ]]; then
+    target="$SESSION_LOG"
   else
     target="$RAW_LOG"
   fi

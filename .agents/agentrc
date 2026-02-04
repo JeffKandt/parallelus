@@ -14,7 +14,11 @@ ALERT_DEFAULT_MESSAGE="Codex is waiting for your input"
 AUDIBLE_ALERT_REQUIRE_TTY=0
 AUDIBLE_ALERT_VOICE="Alex"
 AGENTS_REQUIRE_RETRO=1
+AGENTS_REQUIRE_RETRO_ON_TURN_END=0
 AGENTS_REQUIRE_SENIOR_REVIEW=1
+AGENTS_SESSION_LOG_REQUIRED=1
+AGENTS_SESSION_LOG_AUTO=1
+AGENTS_SESSION_RUN_BOOTSTRAP=1
 # Use the guardrailed rebase helper; aliases keep rebases non-interactive.
 alias git-rebase-continue=".agents/bin/agents-rebase-continue"
 alias grc=".agents/bin/agents-rebase-continue"

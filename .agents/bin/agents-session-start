@@ -31,6 +31,7 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$ROOT"
+current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 
 next_id_from_progress() {
   local last last_dir max_id
@@ -84,6 +85,7 @@ fi
 
 SDIR="$ROOT/${SESSION_DIR%/}/$SID"
 mkdir -p "$SDIR" "$SDIR/artifacts"
+touch "$SDIR/console.log"
 
 PYVER="$($PYTHON_BIN -V 2>&1 || true)"
 TORCH_VER="$(${PYTHON_BIN} - <<'PY' 2>/dev/null || true
@@ -153,6 +155,22 @@ fi
 
 printf "export SESSION_ID='%s'\n" "$SID"
 printf "export SESSION_DIR='%s'\n" "$SDIR"
+printf "export SESSION_LOG_PATH='%s'\n" "$SDIR/console.log"
+
+if [[ -n "$current_branch" && "$current_branch" != "HEAD" ]]; then
+  session_marker="$ROOT/.agents/session-required.${current_branch//\//-}"
+  if [[ -f "$session_marker" ]]; then
+    rm -f "$session_marker"
+  fi
+fi
+
+if [[ "${AGENTS_SESSION_LOG_AUTO:-1}" != "0" ]]; then
+  printf 'if [ -z "${AGENTS_SESSION_LOGGING:-}" ]; then export AGENTS_SESSION_LOGGING=1; exec > >(tee -a "%s") 2>&1; fi\n' "$SDIR/console.log"
+fi
+
+if [[ "${AGENTS_SESSION_RUN_BOOTSTRAP:-1}" != "0" ]]; then
+  printf 'make read_bootstrap\n'
+fi
 
 tmux_args=()
 if [[ -n "${PARALLELUS_TMUX_SOCKET:-}" && -S "${PARALLELUS_TMUX_SOCKET}" ]]; then

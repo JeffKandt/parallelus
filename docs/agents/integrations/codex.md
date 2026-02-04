@@ -9,9 +9,12 @@ Codex environments follow the same guardrails as local shells with a few extras.
   request so the maintainer hears the pending action.
 
 ## Session Management
-- `make start_session` writes artifacts under `sessions/<ID>/`. Use
-  `some_command 2>&1 | tee -a "$SESSION_DIR/console.log"` to capture output for
-  reviewers.
+- Start sessions with `eval "$(make start_session)"` so the exports and logging
+  redirect apply to the current shell. This writes artifacts under `sessions/<ID>/`
+  and enables console logging by default (it wires `console.log` via `tee` for the current shell).
+  If you need to disable auto-logging for a constrained environment, set
+  `AGENTS_SESSION_LOG_AUTO=0` before `make start_session` and ensure logging is
+  captured by other means.
 - Update the session summary (`sessions/<ID>/summary.md`) every turn and keep
   `meta.json` in sync with timestamps.
 
@@ -34,7 +37,7 @@ Codex environments follow the same guardrails as local shells with a few extras.
 ```bash
 make read_bootstrap             # safe detection
 make bootstrap slug=my-feature  # create/switch branch
-SESSION_PROMPT="$PROMPT" make start_session
+SESSION_PROMPT="$PROMPT" eval "$(make start_session)"
 make turn_end m="Updated lint + docs"
 make archive b=feature/old-work
 ```

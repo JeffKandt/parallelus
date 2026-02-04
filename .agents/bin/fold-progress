@@ -34,7 +34,7 @@ PROJECT_PROGRESS_HEADER = "# Project Progress"
 DATE_HEADER_RE = re.compile(r"^## (\d{4}-\d{2}-\d{2})$")
 ENTRY_HEADER_RE = re.compile(r"^### (\d{2}:\d{2}:\d{2}) UTC — (.+)$")
 BRANCH_HEADER_RE = re.compile(r"^# Branch Progress — (.+)$")
-TIMESTAMP_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$")
+TIMESTAMP_RE = re.compile(r"^(?:##\s+)?(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$")
 
 
 @dataclass(frozen=True)

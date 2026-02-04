@@ -117,15 +117,16 @@ def main() -> None:
     role_prompt = agentrc.get(ROLE_VAR, DEFAULT_ROLE)
 
     report_path = None
+    require_on_turn_end = agentrc.get("AGENTS_REQUIRE_RETRO_ON_TURN_END", "0")
     if marker_path.exists() and not os.environ.get("AGENTS_RETRO_SKIP_VALIDATE"):
-        if require_retro.lower() not in {"0", "false", "no"}:
+        if require_on_turn_end.lower() in {"1", "true", "yes"} and require_retro.lower() not in {"0", "false", "no"}:
             report_path = find_report_for_marker(repo, branch, marker_path, role_prompt)
-        if report_path is not None:
-            rel_report = report_path.relative_to(repo)
-            print(
-                f"retro-marker: verified retrospective report {rel_report} for previous turn",
-                flush=True,
-            )
+            if report_path is not None:
+                rel_report = report_path.relative_to(repo)
+                print(
+                    f"retro-marker: verified retrospective report {rel_report} for previous turn",
+                    flush=True,
+                )
 
     marker = {
         "timestamp": timestamp,
