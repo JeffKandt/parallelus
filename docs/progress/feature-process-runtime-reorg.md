@@ -83,3 +83,14 @@
 
 **Next Actions**
 - review and iterate on the `docs/parallelus/` subfolder structure and any additional `docs/` exceptions we want to allow
+
+## 2026-02-04 20:31:20 UTC
+**Objectives**
+- update the plan to relocate the `.agents/` engine under `parallelus/engine/` to avoid collisions in consuming projects
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-PLAN.md` to introduce `parallelus/engine/` as the future home for the current `.agents/` tree
+- added a migration mapping section for `.agents/**` → `parallelus/engine/**` plus new open questions about naming and bundle placement
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`

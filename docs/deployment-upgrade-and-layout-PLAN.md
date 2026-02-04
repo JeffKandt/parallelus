@@ -60,6 +60,20 @@ Proposed structure:
 ```
 parallelus/
   README.md
+  engine/
+    README.md
+    bin/
+      ...
+    hooks/
+      ...
+    make/
+      ...
+    prompts/
+      ...
+    tests/
+      ...
+    tmux/
+      ... (optional; may be omitted when unused)
   manuals/
     core.md
     git-workflow.md
@@ -84,6 +98,7 @@ parallelus/
 ```
 
 Notes:
+- `parallelus/engine/` replaces today’s top-level `.agents/` directory.
 - `parallelus/manuals/` consolidates what is currently under `docs/agents/…`.
 - Any “instance history” artifacts belong under `docs/parallelus/…` so they
   survive bundle replacement.
@@ -174,6 +189,16 @@ planned and reviewed. It does not imply the files have already moved.
 - `docs/agents/templates/*.md` → `parallelus/templates/*.md`
 - `docs/agents/scopes/*` → `parallelus/scopes/*` (if we still want tracked scopes)
 
+### Engine (`.agents/`) relocation
+
+- `.agents/**` → `parallelus/engine/**`
+
+Follow-up (implementation-time): update any hard-coded `.agents/...` path usage
+to reference `parallelus/engine/...`, including:
+- Makefile include(s)
+- hook install paths
+- any docs that reference `.agents/`
+
 ### Reviews and retrospective artifacts
 
 - `docs/reviews/*` → `docs/parallelus/reviews/*`
@@ -204,9 +229,11 @@ planned and reviewed. It does not imply the files have already moved.
 2. Add `parallelus/` tracked structure and update docs references.
 3. Add `docs/parallelus/` tracked structure for instance artifacts and update
    merge gates/scripts to write evidence there.
-4. Migrate `docs/agents/*` into `parallelus/…` and update scripts/docs
+4. Migrate `.agents/**` into `parallelus/engine/**` and update scripts/docs
+   accordingly (no compatibility shims planned).
+5. Migrate `docs/agents/*` into `parallelus/manuals/**` and update scripts/docs
    accordingly.
-5. Migrate `docs/reviews/*` and `docs/self-improvement/*` into
+6. Migrate `docs/reviews/*` and `docs/self-improvement/*` into
    `docs/parallelus/…` and update scripts/hooks accordingly.
 4. Migrate branch notebooks to `docs/branches/<slug>/…` and update fold tooling.
 5. Establish guardrail run output as runtime (`./.parallelus/guardrails/runs/`)
@@ -217,12 +244,13 @@ planned and reviewed. It does not imply the files have already moved.
 
 ## Open Questions
 
-1. Should the tracked bundle namespace be `parallelus/` or `parallelus/process/`?
+1. Should the tracked bundle namespace be `parallelus/` or `vendor/parallelus/`?
 2. Do we want `parallelus/manuals/` vs `parallelus/docs/` naming?
-3. Should `parallelus/scopes/` remain tracked, or should scopes be generated
+3. Do we want `parallelus/engine/` vs `parallelus/tooling/` naming?
+4. Should `parallelus/scopes/` remain tracked, or should scopes be generated
    dynamically and treated as runtime?
-4. Do we want to keep `sessions/` as-is (gitignored) or move session artifacts
+5. Do we want to keep `sessions/` as-is (gitignored) or move session artifacts
    under `./.parallelus/sessions/` for tighter process ownership?
-5. How should branch slugs map when the git branch is `feature/foo-bar`:
+6. How should branch slugs map when the git branch is `feature/foo-bar`:
    - directory `docs/branches/foo-bar/…` (drop prefix), or
    - directory `docs/branches/feature-foo-bar/…` (keep full slugged branch name)?
