@@ -67,3 +67,19 @@
 **Next Actions**
 - review and refine the `parallelus/` and `./.parallelus/` subfolder structure until the plan is final
 - confirm the migration mapping (what moves, what remains as explicit `docs/` exceptions)
+
+## 2026-02-04 20:24:40 UTC
+**Objectives**
+- update the layout plan so `parallelus/` is replaceable on upgrade and project-specific evidence lives under `docs/parallelus/`
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-PLAN.md` to split:
+  - `parallelus/…` as an upstream-owned, replaceable bundle (manuals/templates/etc.)
+  - `docs/parallelus/…` as project-owned instance artifacts (reviews, retrospectives, curated run archives)
+- updated the migration mapping accordingly (reviews + self-improvement move under `docs/parallelus/…`)
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+
+**Next Actions**
+- review and iterate on the `docs/parallelus/` subfolder structure and any additional `docs/` exceptions we want to allow

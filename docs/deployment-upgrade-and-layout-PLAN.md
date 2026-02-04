@@ -14,8 +14,12 @@ until this plan is complete and executed.
    - `docs/PLAN.md`
    - `docs/PROGRESS.md`
    - per-branch notebooks (new location: `docs/branches/<slug>/…`)
-3. Move all other Parallelus-owned tracked process artifacts into a dedicated
-   tracked namespace: `parallelus/`.
+3. Add a project-owned home for Parallelus-related **instance artifacts**
+   (reviews/audits/history) that must survive upgrades:
+   - `docs/parallelus/…`
+4. Move all other Parallelus-owned tracked process artifacts into a dedicated
+   tracked namespace intended to be **replaceable on upgrade**:
+   - `parallelus/…`
 4. Keep high-churn / machine-local runtime artifacts in `./.parallelus/`
    (gitignored).
 5. Reduce PR noise and collisions when deploying Parallelus into host repos.
@@ -36,14 +40,20 @@ Keep only:
 - `docs/PROGRESS.md` — consolidated work log (folded from branch notebooks).
 - `docs/branches/<slug>/PLAN.md` — branch plan notebook.
 - `docs/branches/<slug>/PROGRESS.md` — branch progress notebook.
+- `docs/parallelus/…` — project-owned Parallelus instance artifacts (see below).
 
 Everything else that is Parallelus-owned moves out of `docs/` and into
 `parallelus/` (tracked) or `./.parallelus/` (runtime).
 
-### `parallelus/` (tracked, process-owned)
+### `parallelus/` (tracked, process-owned, **replaceable**)
 
-This folder is versioned and PR-reviewed. It contains the process manuals,
-templates, evidence, and other artifacts the workflow owns.
+This folder is versioned and PR-reviewed, but intended to be treated as an
+upstream-owned bundle: a consuming project should be able to replace the entire
+folder when upgrading Parallelus.
+
+As a result, **do not** store project-specific, accumulating history here
+(reviews, retrospective reports, markers, etc.). Those live under
+`docs/parallelus/`.
 
 Proposed structure:
 
@@ -69,8 +79,27 @@ parallelus/
     subagent_scope_template.md
   scopes/
     ... (any reusable scope stubs)
+  schema/
+    ... (optional future use: machine-readable constraints / file manifests)
+```
+
+Notes:
+- `parallelus/manuals/` consolidates what is currently under `docs/agents/…`.
+- Any “instance history” artifacts belong under `docs/parallelus/…` so they
+  survive bundle replacement.
+
+### `docs/parallelus/` (tracked, project-owned **instance artifacts**)
+
+This folder is tracked and PR-reviewed. It is project-owned (not replaceable)
+and stores artifacts *produced by running Parallelus in this repository*.
+
+Proposed structure:
+
+```
+docs/parallelus/
+  README.md
   reviews/
-    ... (senior architect review artifacts)
+    feature-<slug>-<date>.md
   self-improvement/
     README.md
     markers/
@@ -81,17 +110,16 @@ parallelus/
       *.json
   guardrails/
     runs-archive/
-      ... (legacy tracked run captures that were previously committed)
+      <run-id>/
+        session.jsonl
+        subagent.exec_events.jsonl
 ```
 
 Notes:
-- `parallelus/manuals/` consolidates what is currently under `docs/agents/…`.
-- `parallelus/reviews/` replaces `docs/reviews/…` for review artifacts.
-- `parallelus/self-improvement/` replaces `docs/self-improvement/…` for markers,
-  reports, and failures summaries.
-- `parallelus/guardrails/runs-archive/` is a *tracked* home for any historically
-  committed run captures that we keep for provenance, while new run captures are
-  treated as runtime under `./.parallelus/…`.
+- This is where you put anything you *never* want to lose during an upgrade:
+  senior review artifacts, retrospective evidence, and any curated run captures.
+- New run captures remain runtime-only under `./.parallelus/…` unless explicitly
+  promoted into `docs/parallelus/guardrails/runs-archive/` for provenance.
 
 ### `./.parallelus/` (runtime, process-owned)
 
@@ -148,8 +176,8 @@ planned and reviewed. It does not imply the files have already moved.
 
 ### Reviews and retrospective artifacts
 
-- `docs/reviews/*` → `parallelus/reviews/*`
-- `docs/self-improvement/*` → `parallelus/self-improvement/*`
+- `docs/reviews/*` → `docs/parallelus/reviews/*`
+- `docs/self-improvement/*` → `docs/parallelus/self-improvement/*`
 
 ### Branch notebooks and folding
 
@@ -161,7 +189,7 @@ planned and reviewed. It does not imply the files have already moved.
 ### Guardrail run captures
 
 - Existing tracked run captures:
-  - `docs/guardrails/runs/**` → `parallelus/guardrails/runs-archive/**`
+  - `docs/guardrails/runs/**` → `docs/parallelus/guardrails/runs-archive/**`
 - New run captures (runtime-only):
   - emit to `./.parallelus/guardrails/runs/**` (or `sessions/<id>/artifacts/`)
 
@@ -174,8 +202,12 @@ planned and reviewed. It does not imply the files have already moved.
 
 1. Land this plan + open questions resolved.
 2. Add `parallelus/` tracked structure and update docs references.
-3. Migrate `docs/agents/*`, `docs/reviews/*`, `docs/self-improvement/*` into
-   `parallelus/…` and update scripts/hooks accordingly.
+3. Add `docs/parallelus/` tracked structure for instance artifacts and update
+   merge gates/scripts to write evidence there.
+4. Migrate `docs/agents/*` into `parallelus/…` and update scripts/docs
+   accordingly.
+5. Migrate `docs/reviews/*` and `docs/self-improvement/*` into
+   `docs/parallelus/…` and update scripts/hooks accordingly.
 4. Migrate branch notebooks to `docs/branches/<slug>/…` and update fold tooling.
 5. Establish guardrail run output as runtime (`./.parallelus/guardrails/runs/`)
    and archive any legacy tracked runs.
@@ -185,15 +217,12 @@ planned and reviewed. It does not imply the files have already moved.
 
 ## Open Questions
 
-1. Should the tracked namespace be `parallelus/` or `parallelus/process/`?
+1. Should the tracked bundle namespace be `parallelus/` or `parallelus/process/`?
 2. Do we want `parallelus/manuals/` vs `parallelus/docs/` naming?
 3. Should `parallelus/scopes/` remain tracked, or should scopes be generated
    dynamically and treated as runtime?
-4. Should any subset of review artifacts remain in `docs/` for discoverability,
-   or is `parallelus/reviews/` sufficient?
-5. Do we want to keep `sessions/` as-is (gitignored) or move session artifacts
+4. Do we want to keep `sessions/` as-is (gitignored) or move session artifacts
    under `./.parallelus/sessions/` for tighter process ownership?
-6. How should branch slugs map when the git branch is `feature/foo-bar`:
+5. How should branch slugs map when the git branch is `feature/foo-bar`:
    - directory `docs/branches/foo-bar/…` (drop prefix), or
    - directory `docs/branches/feature-foo-bar/…` (keep full slugged branch name)?
-
