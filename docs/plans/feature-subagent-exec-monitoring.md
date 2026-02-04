@@ -12,7 +12,7 @@
 - [x] add mid-flight checkpoint log (`subagent.progress.md`) and prefer it in status/tailing
 - [x] update notebooks and validate changes
 - [x] write Beads integration recommendation under `docs/`
-- [ ] run merge gates (retrospective report, senior architect review)
+- [x] run merge gates (retrospective report, senior architect review)
 - [ ] fold branch notebooks + merge to `main`
 
 ## Next Actions
@@ -20,4 +20,4 @@
 - validate merge-time audit workflow:
   - run `make turn_end`, `make collect_failures`, and a CI auditor subagent on a throwaway branch
   - confirm `make merge` blocks when failures summary or audit report is missing
-- land this branch: retrospective report + senior review + fold notebooks + merge
+- land this branch: fold notebooks + merge

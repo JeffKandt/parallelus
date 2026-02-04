@@ -1,62 +1,5 @@
 # Project Progress
 
-## 2026-01-23
-
-### 04:54:04 UTC — feature/subagent-exec-default
-
-**Summary**
-- Defaulted subagent launches to `codex exec` for cleaner tmux capture/tailing, while preserving an opt-in interactive TUI (`PARALLELUS_CODEX_USE_TUI=1`).
-- Added exec-mode monitoring artifacts (`subagent.exec_events.jsonl`, `subagent.exec_session_id`, `subagent.last_message.txt`) plus an exec resume helper for follow-up prompts.
-- Hardened merge/test ergonomics (pytest discovery excludes `out/`, smoke test uses `SUBAGENT_REGISTRY_FILE` so it doesn’t mutate the tracked registry).
-
-**Artifacts**
-- `.agents/bin/launch_subagent.sh`, `.agents/bin/subagent_manager.sh`, `.agents/bin/subagent_tail.sh`, `.agents/bin/subagent_exec_resume.sh`, `.agents/bin/codex_exec_stream_filter.py`
-- `AGENTS.md`, `docs/agents/subagent-session-orchestration.md`, `docs/reviews/feature-subagent-exec-default-2026-01-23.md`, `pytest.ini`, `tests/test_basic.py`
-
-**Next Actions**
-- None (merge branch; fold notebooks + merge to `main`).
-
-## 2025-11-03
-
-### 23:26:54 UTC — feature/branch-audit-report
-
-**Summary**
-- Tightened the branch audit helper to list only branches with unmerged commits and show guidance only when actions are required.
-- Enforced turn-end markers before folding progress notebooks via `.agents/bin/fold-progress` and refreshed operator documentation (`AGENTS.md`, `docs/agents/git-workflow.md`, `docs/PLAN.md`).
-- Removed duplicate `local` exports in the subagent launcher and added a reusable senior architect scope for this branch.
-
-**Artifacts**
-- `.agents/bin/report_branches.py`, `.agents/bin/fold-progress`, `.agents/bin/launch_subagent.sh`
-- `AGENTS.md`, `docs/PLAN.md`, `docs/PROGRESS.md`, `docs/agents/git-workflow.md`
-- `docs/agents/scopes/feature-branch-audit-report-senior.md`
-
-**Next Actions**
-- Launch the senior architect review and merge the branch back to `main`.
-
-### 23:58:42 UTC — feature/branch-audit-report
-
-**Summary**
-- Added a launcher guard that blocks redundant senior architect reviews when the latest review already covers `HEAD` or only doc-only paths changed.
-- Updated `.agents/bin/fold-progress` to validate turn-end markers by commit and timestamp so folding only proceeds after a fresh checkpoint.
-
-**Artifacts**
-- `.agents/bin/subagent_manager.sh`, `.agents/bin/fold-progress`
-- `AGENTS.md`, `docs/agents/git-workflow.md`
-
-**Next Actions**
-- Rerun the senior architect review once (the guard now enforces the reuse policy), then proceed to merge.
-
-### 2025-11-04 03:55:44 UTC — feature/branch-audit-report
-
-**Summary**
-- Harvested senior architect approval (`docs/reviews/feature-branch-audit-report-2025-11-03.md`) against commit `a875c786c89fca11fb070ae7cf6c091dd41856e3` confirming the guardrail updates.
-
-**Artifacts**
-- `docs/reviews/feature-branch-audit-report-2025-11-03.md`
-
-**Next Actions**
-- Merge `feature/branch-audit-report` into `main`.
-
 ## 2025-10-12
 
 ### 10:27:29 UTC — feature-process-review-gate
@@ -614,3 +557,59 @@
 
 **Next Actions**
 - Remove branch-specific plan/progress notebooks after merge (completed).
+
+### 23:26:54 UTC — feature/branch-audit-report
+
+**Summary**
+- Tightened the branch audit helper to list only branches with unmerged commits and show guidance only when actions are required.
+- Enforced turn-end markers before folding progress notebooks via `.agents/bin/fold-progress` and refreshed operator documentation (`AGENTS.md`, `docs/agents/git-workflow.md`, `docs/PLAN.md`).
+- Removed duplicate `local` exports in the subagent launcher and added a reusable senior architect scope for this branch.
+
+**Artifacts**
+- `.agents/bin/report_branches.py`, `.agents/bin/fold-progress`, `.agents/bin/launch_subagent.sh`
+- `AGENTS.md`, `docs/PLAN.md`, `docs/PROGRESS.md`, `docs/agents/git-workflow.md`
+- `docs/agents/scopes/feature-branch-audit-report-senior.md`
+
+**Next Actions**
+- Launch the senior architect review and merge the branch back to `main`.
+
+### 23:58:42 UTC — feature/branch-audit-report
+
+**Summary**
+- Added a launcher guard that blocks redundant senior architect reviews when the latest review already covers `HEAD` or only doc-only paths changed.
+- Updated `.agents/bin/fold-progress` to validate turn-end markers by commit and timestamp so folding only proceeds after a fresh checkpoint.
+
+**Artifacts**
+- `.agents/bin/subagent_manager.sh`, `.agents/bin/fold-progress`
+- `AGENTS.md`, `docs/agents/git-workflow.md`
+
+**Next Actions**
+- Rerun the senior architect review once (the guard now enforces the reuse policy), then proceed to merge.
+
+### 2025-11-04 03:55:44 UTC — feature/branch-audit-report
+
+**Summary**
+- Harvested senior architect approval (`docs/reviews/feature-branch-audit-report-2025-11-03.md`) against commit `a875c786c89fca11fb070ae7cf6c091dd41856e3` confirming the guardrail updates.
+
+**Artifacts**
+- `docs/reviews/feature-branch-audit-report-2025-11-03.md`
+
+**Next Actions**
+- Merge `feature/branch-audit-report` into `main`.
+
+
+## 2026-01-23
+
+### 04:54:04 UTC — feature/subagent-exec-default
+
+**Summary**
+- Defaulted subagent launches to `codex exec` for cleaner tmux capture/tailing, while preserving an opt-in interactive TUI (`PARALLELUS_CODEX_USE_TUI=1`).
+- Added exec-mode monitoring artifacts (`subagent.exec_events.jsonl`, `subagent.exec_session_id`, `subagent.last_message.txt`) plus an exec resume helper for follow-up prompts.
+- Hardened merge/test ergonomics (pytest discovery excludes `out/`, smoke test uses `SUBAGENT_REGISTRY_FILE` so it doesn’t mutate the tracked registry).
+
+**Artifacts**
+- `.agents/bin/launch_subagent.sh`, `.agents/bin/subagent_manager.sh`, `.agents/bin/subagent_tail.sh`, `.agents/bin/subagent_exec_resume.sh`, `.agents/bin/codex_exec_stream_filter.py`
+- `AGENTS.md`, `docs/agents/subagent-session-orchestration.md`, `docs/reviews/feature-subagent-exec-default-2026-01-23.md`, `pytest.ini`, `tests/test_basic.py`
+
+**Next Actions**
+- None (merge branch; fold notebooks + merge to `main`).

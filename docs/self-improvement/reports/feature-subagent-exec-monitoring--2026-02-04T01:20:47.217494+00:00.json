@@ -1,0 +1,11 @@
+{
+  "branch": "feature/subagent-exec-monitoring",
+  "marker_timestamp": "2026-02-04T01:20:47.217494+00:00",
+  "summary": "No issues detected. This marker captures final merge-prep bookkeeping: a fresh checkpoint marker, updated failure summary, and review-metadata alignment needed for merge guardrails.",
+  "issues": [],
+  "follow_ups": [
+    "Proceed with folding branch notebooks into `docs/PROGRESS.md`, remove the per-branch notebooks, and merge the branch to `main`.",
+    "If Beads is adopted, update branch discovery to ignore the Beads sync branch to avoid perpetual “unmerged branch” noise."
+  ]
+}
+

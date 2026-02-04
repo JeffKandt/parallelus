@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-02-04T01:15:57.476137+00:00",
+  "timestamp": "2026-02-04T01:20:47.217494+00:00",
   "branch": "feature/subagent-exec-monitoring",
-  "head": "5036853462014ab9565a3f28174641b07bd588ab",
+  "head": "59df8c5c2c2ff670d4c8bb40f1f2a927ae34a731",
   "plan_path": "docs/plans/feature-subagent-exec-monitoring.md",
-  "plan_lines": 26,
+  "plan_lines": 25,
   "progress_path": "docs/progress/feature-subagent-exec-monitoring.md",
-  "progress_lines": 471,
+  "progress_lines": 489,
   "session_id": "20251048-20260204011029-498dee",
   "session_console": "sessions/20251048-20260204011029-498dee/console.log",
   "session_console_size": 1376
