@@ -2,6 +2,9 @@
 
 This note records a high-level comparison between Parallelus, Beads, and Superpowers, and captures possible future integration ideas. It is informational only; no integration is planned yet.
 
+For a concrete Beads recommendation (augmenting notebooks, preferred operating
+mode, and adoption plan), see `docs/agents/integrations/beads.md`.
+
 ## Beads (Task Graph / Issue Ledger)
 
 Beads stores a structured task ledger in a dedicated namespace (e.g., `.beads/`) and supports dependency graphs, status tracking, and multiple operating modes.
