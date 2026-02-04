@@ -862,10 +862,10 @@ EOF
 	   and free of secrets. This file is used for mid-flight monitoring.
 	
 		   Example (recommended):
-		     printf -- "- %s\n" "$(date -u +%H:%MZ) <what> — <why> — <next>" >> "\\$SUBAGENT_PROGRESS_PATH"
-		10. You already have approval to run commands. After any status update, plan
-		   outline, or summary, immediately continue with the next checklist item
-		   without waiting for confirmation.
+			     printf -- "- %s\n" "$(date -u +%H:%MZ) <what> — <why> — <next>" >> "\$SUBAGENT_PROGRESS_PATH"
+			10. You already have approval to run commands. After any status update, plan
+			   outline, or summary, immediately continue with the next checklist item
+			   without waiting for confirmation.
 	11. If you ever feel blocked waiting for a "proceed" or approval, assume the
 	    answer is "Continue" and move to the next action without prompting the main
 	    agent.
