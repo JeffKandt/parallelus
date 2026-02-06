@@ -94,3 +94,61 @@
 
 **Artifacts**
 - `docs/deployment-upgrade-and-layout-PLAN.md`
+
+## 2026-02-05 16:59:21 UTC
+**Objectives**
+- enable Codex SQLite state-db capture and document access patterns
+
+**Work Performed**
+- reviewed `AGENTS.md` and `PROJECT_AGENTS.md` guardrails
+- started session `20251050-20260205165903-b2ab22` via `make start_session`
+
+## 2026-02-06 15:31:10 UTC
+**Objectives**
+- update Codex SQLite state DB doc with TUI log capture + notify hook notes
+
+**Work Performed**
+- reviewed `AGENTS.md`, `PROJECT_AGENTS.md`, and `.agents/custom/README.md` guardrails
+- started session `20251051-20260206153110-8584b3` via `make start_session`
+
+**Work Performed**
+- updated `docs/codex-sqlite-state-db.md` with the sqlite unstable-feature warning text and the notify hook payload shape/example
+
+**Artifacts**
+- `docs/codex-sqlite-state-db.md`
+
+## 2026-02-06 15:34:12 UTC
+**Objectives**
+- document Codex SQLite state DB behavior and how it relates to session metadata/log capture
+
+**Work Performed**
+- created `docs/codex-sqlite-state-db.md` describing the local Codex sqlite state DB, log-capture expectations, and the end-of-turn `notify` hook payload shape
+- captured the branch marker file `docs/self-improvement/markers/feature-process-runtime-reorg.json` (new)
+
+**Artifacts**
+- `docs/codex-sqlite-state-db.md` (new; currently unstaged)
+- `docs/self-improvement/markers/feature-process-runtime-reorg.json` (new; currently unstaged)
+
+**Next Actions**
+- decide whether `docs/codex-sqlite-state-db.md` should be tracked as a project doc (recommended) or relocated under a Parallelus-owned namespace during the reorg
+- stage or discard the new marker file intentionally (avoid leaving it accidentally untracked)
+
+## 2026-02-06 17:50:36 UTC
+**Objectives**
+- expand the layout reorg plan with concrete open questions + implementation work items
+- research whether `parallelus/` is likely to collide in host repos (naming/namespace)
+
+**Work Performed**
+- reviewed `AGENTS.md`, `PROJECT_AGENTS.md`, and `.agents/custom/README.md` guardrails
+- started session `20251053-20260206175036-e4e384` via `make start_session`
+- updated `docs/deployment-upgrade-and-layout-PLAN.md`:
+  - added a terminology section to distinguish source repo vs bundle vs host repo vs instance artifacts
+  - converted the “Open Questions” list into structured items with pros/cons/recommendations
+  - added an “Implementation Work Items” section to capture resulting tasks implied by the decided layout
+  - removed “tmux optional” language (tmux is not a reorg decision)
+  - added naming-collision notes for the `parallelus/` folder (web + GitHub sampling)
+- updated branch plan notebook to remove placeholder “summary” checklist items and align next steps
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+- `docs/plans/feature-process-runtime-reorg.md`

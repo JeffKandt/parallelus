@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-02-06T15:38:52.371063+00:00",
+  "branch": "feature/process-runtime-reorg",
+  "head": "83d814318579cd217e23bd9c3e97a4feea212f61",
+  "plan_path": "docs/plans/feature-process-runtime-reorg.md",
+  "plan_lines": 22,
+  "progress_path": "docs/progress/feature-process-runtime-reorg.md",
+  "progress_lines": 138,
+  "session_id": "20251052-20260206153352-1ea6a4",
+  "session_console": "sessions/20251052-20260206153352-1ea6a4/console.log",
+  "session_console_size": 1331
+}

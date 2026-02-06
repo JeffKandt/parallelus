@@ -9,10 +9,11 @@
 - [x] read `docs/deployment-upgrade-and-layout-notes.md` and enumerate concrete changes to land
 - [x] implement the agreed “process vs runtime” reorg (docs + scripts) and keep compatibility where possible
 - [x] update Beads docs (`docs/agents/integrations/beads.md`) based on current discussion (branch/worktree semantics, optional usage strategy, pilot flow)
-- [ ] update branch plan/progress notebooks with outcomes + follow-ups
-- [ ] run `make ci` and record results in the progress log
+- [x] run `make ci` and record results in the progress log
 - [ ] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
+- [ ] expand open questions in the layout plan (pros/cons/recommendations; terminology; naming collision notes)
+- [ ] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
-- review `docs/deployment-upgrade-and-layout-notes.md` and decide which reorg items are in-scope for this branch
 - iterate on `docs/deployment-upgrade-and-layout-PLAN.md` (structure + mapping + open questions)
+- confirm which remaining items are plan-only vs in-scope implementation work for this branch
