@@ -152,3 +152,19 @@
 **Artifacts**
 - `docs/deployment-upgrade-and-layout-PLAN.md`
 - `docs/plans/feature-process-runtime-reorg.md`
+
+## 2026-02-06 18:07:30 UTC
+**Objectives**
+- incorporate maintainer decisions on namespace collisions, sessions placement, folding policy, and entrypoint strategy
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-PLAN.md` per maintainer decisions:
+  - added `./.parallelus/sessions/` as the new sessions home and documented migration mitigations (dual-read/single-write, config, migration helper)
+  - clarified that branch notebook folding/cleanup follows the current documented process (this reorg is path-only, not a policy change)
+  - switched the plan’s entrypoint stance to “direct script entrypoints first” (Makefile, if kept, becomes a compatibility shim)
+  - pruned the “Open Questions” section down to only remaining decisions (bundle ownership detection sentinel + customization lookup contract)
+- updated the branch plan notebook next actions to match the remaining open items
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+- `docs/plans/feature-process-runtime-reorg.md`

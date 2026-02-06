@@ -11,9 +11,11 @@
 - [x] update Beads docs (`docs/agents/integrations/beads.md`) based on current discussion (branch/worktree semantics, optional usage strategy, pilot flow)
 - [x] run `make ci` and record results in the progress log
 - [ ] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
-- [ ] expand open questions in the layout plan (pros/cons/recommendations; terminology; naming collision notes)
+- [x] expand open questions in the layout plan (pros/cons/recommendations; terminology; naming collision notes)
 - [ ] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
 - iterate on `docs/deployment-upgrade-and-layout-PLAN.md` (structure + mapping + open questions)
 - confirm which remaining items are plan-only vs in-scope implementation work for this branch
+- decide the sentinel manifest format + deployment detection behavior for `parallelus/` vs `vendor/parallelus/`
+- define the customization lookup contract (`docs/parallelus/custom/…`)

@@ -90,7 +90,7 @@ parallelus/
     hooks/
       ...
     make/
-      ...
+      ... (optional compatibility shim; primary interface is `engine/bin/*`)
     prompts/
       ...
     tests/
@@ -169,6 +169,12 @@ Proposed structure:
 ```
 .parallelus/
   README.md (optional; explains runtime-only intent)
+  sessions/
+    <id>/
+      console.log
+      summary.md
+      meta.json
+      artifacts/
   subagents/
     sandboxes/
       <slug>-<random>/
@@ -188,10 +194,11 @@ Proposed structure:
 ```
 
 Notes:
-- Keep `sessions/` separate (it is already gitignored) and do not relocate it as
-  part of this plan unless required later.
+- This plan moves repo-level `sessions/` into `./.parallelus/sessions/` to avoid
+  root-level name conflicts in host repos.
 - Tools that currently emit to `docs/guardrails/runs/` should be updated to emit
-  to `./.parallelus/guardrails/runs/` (or to the active `sessions/<id>/artifacts/`
+  to `./.parallelus/guardrails/runs/` (or to the active
+  `./.parallelus/sessions/<id>/artifacts/`
   when session logging is enabled).
 
 ## Background: Name / Namespace Collision Notes (Parallelus)
@@ -260,7 +267,7 @@ to reference `parallelus/engine/...`, including:
 - Existing tracked run captures:
   - `docs/guardrails/runs/**` → `docs/parallelus/guardrails/runs-archive/**`
 - New run captures (runtime-only):
-  - emit to `./.parallelus/guardrails/runs/**` (or `sessions/<id>/artifacts/`)
+  - emit to `./.parallelus/guardrails/runs/**` (or `./.parallelus/sessions/<id>/artifacts/`)
 
 ### Deployment upgrade note
 
@@ -276,11 +283,14 @@ layout.
   and `docs/agents/…` → `parallelus/manuals/…` once the moves happen.
 - **Entry points:** define and document stable script entrypoints under
   `parallelus/engine/bin/…` that do not depend on Make.
-- **Make adapter (if kept):** implement `parallelus/engine/make/parallelus.mk`
-  with namespaced targets to avoid collisions in host repos.
+- **Make adapter (optional):** if we keep a Makefile surface for convenience,
+  implement it as a thin shim that delegates to `parallelus/engine/bin/…` rather
+  than being the primary contract.
 - **Session/runtime outputs:** ensure new guardrail run captures and extracted
   artifacts default to `./.parallelus/guardrails/runs/…` (or to active session
   artifacts when session logging is enabled).
+- **Session directory migration:** relocate `sessions/` → `./.parallelus/sessions/`
+  and update all helpers/docs accordingly, with a compatibility plan (see below).
 - **Promotion workflow:** define how/when runtime artifacts become tracked
   `docs/parallelus/…` archives (manual promotion step, or an explicit helper).
 - **Branch notebooks:** implement the new directory layout
@@ -298,6 +308,30 @@ layout.
 - **Validation checklist:** add a “clean-room” validation procedure (fresh clone
   or clean worktree) that verifies bootstrap, CI, subagents, folding, and merge
   gates against the new layout.
+
+### Session migration mitigations (`sessions/` → `./.parallelus/sessions/`)
+
+This migration touches core workflow helpers (`make start_session`, `make turn_end`,
+folding checks, failure collection) and is therefore a higher-risk part of the
+reorg. Mitigations to reduce breakage:
+
+1. **Dual-read, single-write (transition window):**
+   - Writers create new sessions under `./.parallelus/sessions/<id>/…`.
+   - Readers (folding, failure collection, tooling) search both:
+     `./.parallelus/sessions/…` then legacy `sessions/…`.
+2. **Explicit config + auto-detection:**
+   - Introduce a single “sessions root” setting (env var or config file) that
+     defaults to `./.parallelus/sessions/` when present, else falls back to
+     `sessions/`.
+3. **One-time migration helper:**
+   - Provide a script that moves existing `sessions/<id>/…` directories into
+     `./.parallelus/sessions/<id>/…` and validates that log references remain
+     resolvable.
+4. **No symlinks required (but allowed as an emergency shim):**
+   - Avoid relying on `sessions -> .parallelus/sessions` symlinks because some
+     environments dislike symlinks and they still occupy a root-level name.
+   - If a host repo needs short-term compatibility, a symlink can be created,
+     but it should not be the steady-state requirement.
 
 ## Implementation Sequence (High Level)
 
@@ -318,242 +352,63 @@ layout.
 10. Delete `docs/deployment-upgrade-and-layout-notes.md` after confirming it no
    longer contains unique value.
 
-## Open Questions
+## Decisions (Resolved)
 
-This section intentionally mixes **true decisions** (naming/placement choices)
-with **design questions** that affect how we deploy into host repos. Each item
-includes pros/cons and a recommendation so we can converge quickly.
+The recommendations below are accepted (as of this plan revision), and are no
+longer treated as open questions:
 
-### 1) Bundle namespace: `parallelus/` vs `vendor/parallelus/`
+- Bundle namespace default: `parallelus/` (escape hatch: `vendor/parallelus/`).
+- Manuals namespace: `parallelus/manuals/`.
+- Engine namespace: `parallelus/engine/`.
+- Scopes: keep core scopes tracked under `parallelus/scopes/`, allow project
+  overrides under `docs/parallelus/scopes/`, and treat generated scopes as
+  runtime-only if introduced later.
+- Branch slug → directory mapping: full branch name with `/` replaced by `-`.
+- Branch notebook policy: follow the current process (fold into canonical docs
+  before merge; remove branch notebooks after folding) — this reorg is only
+  changing paths, not governance.
+- Entrypoints: switch to **direct script entrypoints** as the primary interface
+  (including in this repo), and treat Makefile integration as an optional shim
+  rather than the core contract.
 
-Pros (`parallelus/`):
-- Short, readable, memorable.
-- Matches the “replaceable bundle” mental model.
+## Open Questions (Remaining)
 
-Cons (`parallelus/`):
-- Potential (but likely low) collision with a host repo’s existing top-level
-  folder naming conventions.
+Only the items below still require a decision.
 
-Pros (`vendor/parallelus/`):
-- Clear “third-party bundle” signal.
-- Reduces perceived ownership ambiguity in host repos.
+### 1) Detecting “our” `parallelus/` vs a host repo’s unrelated `parallelus/`
 
-Cons (`vendor/parallelus/`):
-- More nesting; more path churn in scripts/docs.
-- Some repos already reserve `vendor/` for language deps (Go/PHP).
-
-Recommendation:
-- Default to `parallelus/` in this plan.
-- If a host repo already has a conflicting `parallelus/`, prefer
-  `vendor/parallelus/` as an escape hatch (deployment-time choice).
-
-### 2) Manuals namespace: `parallelus/manuals/` vs `parallelus/docs/`
-
-Pros (`manuals/`):
-- Clarifies intent: these are process manuals, not project docs.
-- Keeps host repo `docs/` clean.
-
-Cons (`manuals/`):
-- Slightly unusual; some teams expect everything “doc-like” under `docs/`.
-
-Pros (`docs/` under `parallelus/`):
-- Familiar; fewer naming surprises.
-
-Cons (`docs/` under `parallelus/`):
-- Confusing alongside the host repo’s `docs/`.
+Requirement:
+- If `parallelus/` already exists in a host repo, deployment/upgrade must decide
+  whether it is an existing Parallelus bundle that should be upgraded *in place*
+  or an unrelated folder that should be left untouched (triggering
+  `vendor/parallelus/` deployment instead).
 
 Recommendation:
-- Keep `parallelus/manuals/` as the bundle home for process documentation.
+- Make the bundle self-identifying via a **sentinel manifest** that is extremely
+  unlikely to exist accidentally:
+  - `parallelus/.parallelus-bundle.json` (or `.toml`) containing:
+    - `bundle_id` (fixed string, e.g. `"parallelus.bundle.v1"`)
+    - `layout_version` (monotonic int)
+    - `upstream_repo` (URL)
+    - `bundle_version` (git sha or semver)
+    - `installed_on` (timestamp, optional)
+- Deployment logic:
+  - If `parallelus/` exists **and** sentinel manifest is present + valid:
+    upgrade in place.
+  - If `parallelus/` exists **without** a valid sentinel: do not touch it;
+    deploy to `vendor/parallelus/`.
+  - Provide an explicit override flag for rare edge cases.
 
-### 3) Engine namespace: `parallelus/engine/` vs `parallelus/tooling/`
+### 2) Customizations lookup contract (project-owned hooks/config)
 
-Pros (`engine/`):
-- Conveys “core system that runs the process”.
-- Leaves room for `parallelus/integrations/` or `parallelus/adapters/` later.
+We are moving `.agents/**` into the replaceable bundle (`parallelus/engine/**`),
+so project-specific customizations cannot live under the bundle long-term.
 
-Cons (`engine/`):
-- A bit metaphorical; some contributors may interpret “engine” as runtime-only.
+Open design question:
+- What is the minimal, stable “customization interface” the engine should
+  support (config file path, hook scripts, optional manuals), and how should it
+  be discovered?
 
-Pros (`tooling/`):
-- More literal: scripts, hooks, helpers.
-
-Cons (`tooling/`):
-- Can be misread as “optional utilities” rather than required core.
-
-Recommendation:
-- Use `parallelus/engine/` (as already reflected in this plan).
-
-### 4) Scopes: keep tracked (`parallelus/scopes/`) or make runtime-generated?
-
-Reminder: **Scopes** are reusable, versioned context stubs used to scope
-subagents/reviews/audits (e.g., “review these directories with these
-constraints”). They act as “prompt fragments” / “work order templates”.
-
-Pros (tracked scopes):
-- Reviewable, consistent, and can evolve with the process bundle.
-- Reusable across host repos (a key “bundle” advantage).
-
-Cons (tracked scopes):
-- Adds another “content” surface area in the bundle to maintain.
-- Host repos may want custom scopes that should not be overwritten on upgrade.
-
-Pros (runtime-generated scopes):
-- Can be generated from live repo state (e.g., changed files).
-- Reduces tracked content surface area.
-
-Cons (runtime-generated scopes):
-- Less reviewable/auditable; drift risk.
-- Harder to share “canonical” scopes across hosts.
-
-Recommendation:
-- Keep **core** scopes tracked as part of the replaceable bundle:
-  `parallelus/scopes/`.
-- Add a project-owned override location for custom scopes:
-  `docs/parallelus/scopes/` (load-order: project scopes first, then bundle).
-- If we later add generated scopes, generate them into
-  `./.parallelus/scopes/` (runtime-only).
-
-### 5) `sessions/` placement: keep root `sessions/` or move into `./.parallelus/`?
-
-Pros (keep root `sessions/`):
-- Minimal churn: existing tooling already expects it.
-- Visible and easy to inspect during debugging.
-- Avoids conflating “session logs” with other `.parallelus` runtime artifacts
-  until we’re sure the new layout is stable.
-
-Cons (keep root `sessions/`):
-- Less consistent: `.parallelus/` is otherwise the runtime namespace.
-- Leaves a generic folder name in the repo root (even if gitignored).
-
-Pros (move under `./.parallelus/sessions/`):
-- Consistent: *all* runtime artifacts live under one namespace.
-- Better “process-owned” encapsulation.
-
-Cons (move under `./.parallelus/sessions/`):
-- Requires careful updates to logging helpers and any consumer scripts.
-- Risk of breaking session capture expectations during the reorg.
-
-Recommendation:
-- Keep root `sessions/` for this reorg (explicitly out-of-scope to move).
-- Revisit after the rest of the reorg lands and we can do a focused migration.
-
-### 6) Branch slug → directory naming (Decided)
-
-Decision:
-- `docs/branches/<slug>/…` uses the **full branch name** with `/` replaced by
-  `-`.
-- Examples:
-  - git branch `feature/foo` → `docs/branches/feature-foo/PLAN.md`
-  - git branch `feature/foo-bar` → `docs/branches/feature-foo-bar/PROGRESS.md`
-
-Pros:
-- 1:1 mapping with `git branch --show-current`; easy to find.
-- Avoids collisions between branches that only differ by prefix.
-
-Cons:
-- Slightly longer path names.
-
-Recommendation:
-- Keep as decided above.
-
-### 7) Folding + archiving branch notebooks (policy + mechanics)
-
-Pros (always fold branch progress into `docs/PROGRESS.md`):
-- A single high-signal canonical log.
-- Branch notebooks can stay focused on WIP.
-
-Cons:
-- Folding can be opinionated (ordering, dedupe, “what counts”).
-
-Pros (archive branch notebooks as an audit trail):
-- Keeps provenance for review/audit context.
-
-Cons:
-- Can accumulate noise if not curated.
-
-Recommendation:
-- Keep `docs/PROGRESS.md` as the canonical folded log.
-- Add an explicit “archive” workflow:
-  - `docs/parallelus/branches-archive/<slug>/…` for closed branches, or
-  - keep notebooks in-place and mark them closed with a final marker.
-  (Decision pending; implement after we pick one.)
-
-### 8) Bundle entrypoints vs host integration (Makefile vs direct scripts)
-
-Question:
-- In host repos, should Parallelus functionality be consumed primarily via
-  `make …` targets, or by calling scripts directly?
-
-Pros (Makefile-based entrypoints):
-- Friendly “task discovery” via `make help`.
-- Supports dependency ordering and standard target naming (`ci`, `bootstrap`).
-- Keeps commands short and consistent across hosts.
-
-Cons (Makefile-based entrypoints):
-- Host repos may already have a Makefile with conflicting target names.
-- Requires contributors to use/understand Make, which some teams avoid.
-
-Pros (direct script entrypoints):
-- Easier to integrate into repos that already have their own build system.
-- Scripts can be invoked from any task runner (just, npm, bazel, CI).
-
-Cons (direct script entrypoints):
-- Harder to keep a stable UX without a “command surface” contract.
-- Harder to provide a single discoverable task index.
-
-Recommendation:
-- Keep Makefile entrypoints for the **source repo** (developer ergonomics).
-- For host repos, make **direct script entrypoints** the “lowest common
-  denominator” contract (e.g. `parallelus/engine/bin/…`), and treat Makefile
-  integration as an optional adapter (namespaced include like
-  `parallelus/engine/make/parallelus.mk` rather than requiring target repos to
-  merge Makefiles).
-
-### 9) Project-owned customizations currently under `.agents/custom/`
-
-Problem:
-- `.agents/custom/README.md` describes host-project customizations, but
-  `.agents/**` is moving into the **replaceable** `parallelus/engine/**`.
-
-Pros (keep customizations inside the bundle):
-- Simple to locate.
-
-Cons:
-- Bundle upgrades would overwrite host-specific customizations.
-
-Recommendation:
-- Move “customizations” to a project-owned namespace:
-  - `docs/parallelus/custom/…` (tracked, preserved), and
-  - define a stable lookup path for the engine to source/execute optional
-    custom hooks from there.
-  (Implementation detail to be designed; decision needed before moves.)
-
-### 10) Root-level integration surface (AGENTS/Makefile/.gitignore)
-
-Problem:
-- The bundle is intended to be replaceable (`parallelus/…`), but some important
-  integration points are (today) root-level: `AGENTS.md`, `PROJECT_AGENTS.md`,
-  `Makefile`, `.gitignore`, and potentially CI configs.
-
-Pros (keep root-level integration files as “deployed shims”):
-- Clear for contributors: guardrails + entrypoints are at repo root.
-- Matches current Parallelus expectations (and human habits).
-
-Cons:
-- Harder to upgrade cleanly if the host repo already has its own Makefile or
-  root conventions.
-- Increases the “blast radius” of deployment beyond a single replaceable folder.
-
-Pros (move more entrypoints under the bundle and minimize root shims):
-- Lower collision risk in host repos.
-- Keeps the “replaceable bundle” promise stronger.
-
-Cons:
-- Requires training contributors to look under `parallelus/…` for core tasks.
-- Some tools/people expect `AGENTS.md` at repo root.
-
-Recommendation:
-- Treat **root-level** `AGENTS.md` / `PROJECT_AGENTS.md` as non-negotiable
-  guardrail surfaces for now.
-- Reduce root-level collision risk by keeping Makefile integration optional and
-  namespaced (see Open Question 8).
+Current recommendation (accepted direction, but contract details TBD):
+- Keep project-owned customizations under `docs/parallelus/custom/…` and define a
+  stable lookup mechanism for the engine to load them when present.
