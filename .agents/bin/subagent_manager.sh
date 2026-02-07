@@ -40,6 +40,7 @@ Commands:
   status   List registry entries (optionally filter by --id)
   resume   Resume an exec-mode subagent session (follow-up prompt)
   verify   Validate a completed subagent sandbox/worktree
+  abort    Abort a running subagent without deleting its sandbox/worktree
   harvest  Copy recorded deliverables from a sandbox/worktree into the repo
   cleanup  Remove sandbox/worktree and update registry status
 USAGE
@@ -240,6 +241,7 @@ ensure_no_tmux_pane_for_slug() {
 
 ensure_audit_ready_for_review() {
   local branch="$1"
+  local head_commit="$2"
   local marker_path="$ROOT/docs/self-improvement/markers/${branch//\//-}.json"
   if [[ ! -f "$marker_path" ]]; then
     echo "subagent_manager: run make turn_end to record a marker before the senior review." >&2
@@ -247,12 +249,13 @@ ensure_audit_ready_for_review() {
   fi
   local audit_paths
   audit_paths=$(
-    python3 - "$marker_path" <<'PY'
+    python3 - "$marker_path" "$head_commit" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 marker_path = Path(sys.argv[1])
+head_commit = sys.argv[2]
 try:
     marker = json.loads(marker_path.read_text())
 except Exception as exc:
@@ -263,17 +266,31 @@ marker_ts = marker.get("timestamp")
 if not marker_ts:
     print(f"subagent_manager: marker {marker_path} missing timestamp", file=sys.stderr)
     sys.exit(3)
+marker_head = marker.get("head")
+if not marker_head:
+    print(f"subagent_manager: marker {marker_path} missing head", file=sys.stderr)
+    sys.exit(4)
+if marker_head != head_commit:
+    print(
+        "subagent_manager: marker head does not match current HEAD for senior review launch "
+        f"(marker: {marker_head}, current: {head_commit}). "
+        "Run make turn_end and rerun the CI auditor for the current commit before launching senior review.",
+        file=sys.stderr,
+    )
+    sys.exit(5)
 
 branch_slug = marker_path.stem
 report_path = f"docs/self-improvement/reports/{branch_slug}--{marker_ts}.json"
 failures_path = f"docs/self-improvement/failures/{branch_slug}--{marker_ts}.json"
 print(report_path)
 print(failures_path)
+print(marker_ts)
 PY
   ) || return 1
-  local report_path failures_path
+  local report_path failures_path marker_ts
   report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
   failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  marker_ts=$(printf '%s\n' "$audit_paths" | sed -n '3p')
   if [[ ! -f "$report_path" ]]; then
     echo "subagent_manager: missing audit report $report_path; run the CI auditor before the senior review." >&2
     return 1
@@ -282,6 +299,27 @@ PY
     echo "subagent_manager: missing failures summary $failures_path; run make collect_failures before the senior review." >&2
     return 1
   fi
+  python3 - "$report_path" "$branch" "$marker_ts" <<'PY'
+import json
+import sys
+
+report_path, expected_branch, marker_ts = sys.argv[1:4]
+try:
+    data = json.loads(open(report_path, "r", encoding="utf-8").read())
+except Exception as exc:
+    print(f"subagent_manager: unable to parse {report_path}: {exc}", file=sys.stderr)
+    sys.exit(6)
+branch = data.get("branch")
+report_ts = data.get("marker_timestamp")
+if branch != expected_branch or report_ts != marker_ts:
+    print(
+        "subagent_manager: audit report does not match current branch/marker "
+        f"(report branch={branch!r}, report marker={report_ts!r}, expected branch={expected_branch!r}, expected marker={marker_ts!r}). "
+        "Rerun the CI auditor for the latest marker before launching senior review.",
+        file=sys.stderr,
+    )
+    sys.exit(7)
+PY
 }
 
 append_registry() {
@@ -1139,8 +1177,8 @@ USAGE
   entry_id="${timestamp}-${slug}"
 
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
+    ensure_audit_ready_for_review "$current_branch" "$current_commit"
     ensure_clean_worktree
-    ensure_audit_ready_for_review "$current_branch"
     ensure_senior_review_needed "$current_branch" "$current_commit"
   fi
 
@@ -1381,7 +1419,7 @@ PY
     ) || return 1
   fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_branch" "$current_commit" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_branch" "$current_commit" "${SUBAGENT_CI_AUDIT_TIMEOUT_SECONDS:-600}" <<'PY'
 import json
 import sys
 
@@ -1401,7 +1439,8 @@ import sys
     deliverables_json,
     source_branch,
     source_commit,
-) = sys.argv[1:16]
+    ci_audit_timeout_raw,
+) = sys.argv[1:17]
 
 payload = {
     "id": entry_id,
@@ -1436,6 +1475,23 @@ if source_commit:
     payload["source_commit"] = source_commit
 if source_branch:
     payload["source_branch"] = source_branch
+
+is_ci_auditor = False
+role_name = (role_prompt or "").strip()
+if role_name:
+    normalized = role_name.lower()
+    if normalized in {"continuous_improvement_auditor", "continuous_improvement_auditor.md"}:
+        is_ci_auditor = True
+if slug in {"ci-audit", "continuous-improvement-auditor"}:
+    is_ci_auditor = True
+if is_ci_auditor:
+    try:
+        timeout_seconds = int(str(ci_audit_timeout_raw).strip() or "600")
+    except Exception:
+        timeout_seconds = 600
+    if timeout_seconds <= 0:
+        timeout_seconds = 600
+    payload["timeout_seconds"] = timeout_seconds
 
 print(json.dumps(payload))
 PY
@@ -1833,6 +1889,91 @@ PY
   fi
 }
 
+close_launcher_handle() {
+  local launcher_kind=$1
+  local launcher_window=$2
+  local launcher_pane=$3
+  local entry_id=$4
+  if [[ -z "$TMUX_BIN" ]]; then
+    return 0
+  fi
+  if [[ "$launcher_kind" == "tmux-window" && -n "$launcher_window" ]]; then
+    "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
+  elif [[ "$launcher_kind" == "tmux-pane" && -n "$launcher_pane" ]]; then
+    "$TMUX_BIN" kill-pane -t "$launcher_pane" >/dev/null 2>&1 || true
+    if [[ -n "$launcher_window" ]]; then
+      mapfile -t _remaining < <("$TMUX_BIN" list-panes -t "$launcher_window" -F '#{pane_id}' 2>/dev/null || true)
+      if (( ${#_remaining[@]} == 0 )); then
+        "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
+      fi
+    fi
+  else
+    # Fallback: if registry metadata is missing, kill any tmux pane whose title
+    # matches the entry id.
+    while IFS='|' read -r pane_id pane_title; do
+      [[ -z "$pane_id" || -z "$pane_title" ]] && continue
+      if [[ "$pane_title" == "$entry_id" ]]; then
+        "$TMUX_BIN" kill-pane -t "$pane_id" >/dev/null 2>&1 || true
+      fi
+    done < <("$TMUX_BIN" list-panes -a -F '#{pane_id}|#{pane_title}' 2>/dev/null || true)
+  fi
+}
+
+cmd_abort() {
+  local entry_id=""
+  local reason="manual"
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --id)
+        entry_id=$2; shift 2 ;;
+      --reason)
+        reason=$2; shift 2 ;;
+      --help)
+        echo "Usage: subagent_manager.sh abort --id ID [--reason REASON]"; return 0 ;;
+      *)
+        echo "Unknown option $1" >&2; return 1 ;;
+    esac
+  done
+  if [[ -z "$entry_id" ]]; then
+    echo "subagent_manager abort: --id required" >&2
+    return 1
+  fi
+  ensure_registry
+  local entry_json status launcher_kind launcher_window launcher_pane status_value
+  entry_json=$(get_registry_entry "$entry_id")
+  status=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('status',''))" "$entry_json")
+  launcher_kind=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('launcher_kind',''))" "$entry_json")
+  launcher_window=$(python3 -c "import json,sys; e=json.loads(sys.argv[1]); h=e.get('launcher_handle') or {}; print(h.get('window_id',''))" "$entry_json")
+  launcher_pane=$(python3 -c "import json,sys; e=json.loads(sys.argv[1]); h=e.get('launcher_handle') or {}; print(h.get('pane_id',''))" "$entry_json")
+  status_value=$(python3 -c "import re,sys; r=(sys.argv[1] or 'manual').strip().lower(); n=re.sub(r'[^a-z0-9]+','_',r).strip('_') or 'manual'; print(f'aborted_{n}')" "$reason")
+  if [[ "$status" == "cleaned" ]]; then
+    echo "subagent_manager abort: entry $entry_id already cleaned." >&2
+    return 1
+  fi
+
+  close_launcher_handle "$launcher_kind" "$launcher_window" "$launcher_pane" "$entry_id"
+  python3 - "$REGISTRY_FILE" "$entry_id" "$status_value" "$reason" <<'PY'
+import json
+import sys
+import time
+
+registry_path, entry_id, status_value, reason = sys.argv[1:5]
+with open(registry_path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+for row in data:
+    if row.get("id") == entry_id:
+        row["status"] = status_value
+        row["aborted_reason"] = reason
+        row["aborted_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        break
+else:
+    raise SystemExit(f"subagent_manager abort: unknown id {entry_id}")
+with open(registry_path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+PY
+  echo "Aborted $entry_id (reason=$reason)"
+}
+
 cmd_cleanup() {
   local entry_id=""
   local force=0
@@ -1859,15 +2000,9 @@ cmd_cleanup() {
   type=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['type'])" "$entry_json")
   slug=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['slug'])" "$entry_json")
   status=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('status',''))" "$entry_json")
-  IFS=$'\n' read -r launcher_kind launcher_window launcher_pane < <(python3 - "$entry_json" <<'PY'
-import json, sys
-entry = json.loads(sys.argv[1])
-handle = entry.get("launcher_handle") or {}
-print(entry.get("launcher_kind", ""))
-print(handle.get("window_id", ""))
-print(handle.get("pane_id", ""))
-PY
-)
+  launcher_kind=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('launcher_kind',''))" "$entry_json")
+  launcher_window=$(python3 -c "import json,sys; e=json.loads(sys.argv[1]); h=e.get('launcher_handle') or {}; print(h.get('window_id',''))" "$entry_json")
+  launcher_pane=$(python3 -c "import json,sys; e=json.loads(sys.argv[1]); h=e.get('launcher_handle') or {}; print(h.get('pane_id',''))" "$entry_json")
   local pending_deliverables
   pending_deliverables=$(python3 - "$entry_json" <<'PY'
 import json
@@ -1917,28 +2052,7 @@ PY
     fi
   fi
   update_registry "$entry_id" "row['status'] = 'cleaned'"
-  if [[ -n "$TMUX_BIN" ]]; then
-    if [[ "$launcher_kind" == "tmux-window" && -n "$launcher_window" ]]; then
-      "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
-    elif [[ "$launcher_kind" == "tmux-pane" && -n "$launcher_pane" ]]; then
-      "$TMUX_BIN" kill-pane -t "$launcher_pane" >/dev/null 2>&1 || true
-      if [[ -n "$launcher_window" ]]; then
-        mapfile -t _remaining < <("$TMUX_BIN" list-panes -t "$launcher_window" -F '#{pane_id}' 2>/dev/null || true)
-        if (( ${#_remaining[@]} == 0 )); then
-          "$TMUX_BIN" kill-window -t "$launcher_window" >/dev/null 2>&1 || true
-        fi
-      fi
-    else
-      # Fallback: if registry metadata is missing, kill any tmux pane whose title
-      # matches the entry id.
-      while IFS='|' read -r pane_id pane_title; do
-        [[ -z "$pane_id" || -z "$pane_title" ]] && continue
-        if [[ "$pane_title" == "$entry_id" ]]; then
-          "$TMUX_BIN" kill-pane -t "$pane_id" >/dev/null 2>&1 || true
-        fi
-      done < <("$TMUX_BIN" list-panes -a -F '#{pane_id}|#{pane_title}' 2>/dev/null || true)
-    fi
-  fi
+  close_launcher_handle "$launcher_kind" "$launcher_window" "$launcher_pane" "$entry_id"
   echo "Cleaned $entry_id ($type)"
 }
 
@@ -1955,6 +2069,7 @@ main() {
     status) cmd_status "$@" ;;
     resume) cmd_resume "$@" ;;
     verify) cmd_verify "$@" ;;
+    abort) cmd_abort "$@" ;;
     harvest) cmd_harvest "$@" ;;
     cleanup) cmd_cleanup "$@" ;;
     --help|-h) usage ;;

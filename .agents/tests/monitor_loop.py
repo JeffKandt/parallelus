@@ -92,6 +92,30 @@ EOF
 20251009-000040-monitor worktree   monitor-loop-review      running          pending      00:10     00:04     %3/@3          2025-10-09 19:20:00 [session]
 EOF
         """
+    elif scenario == "ci-timeout":
+        body = f"""
+            #!/usr/bin/env bash
+            set -euo pipefail
+            cmd="${{1:-}}"
+            case "$cmd" in
+              status)
+                cat <<'EOF'
+{HEADER}
+{SEPARATOR}
+20251009-000050-monitor throwaway  ci-audit                 running          pending      00:45     00:05     %4/@9          2025-10-09 19:25:00 [session]
+EOF
+                ;;
+              abort)
+                echo "$*" >> ".abort_calls.log"
+                exit 0
+                ;;
+              *)
+                cat <<'EOF'
+No matching subagents.
+EOF
+                ;;
+            esac
+        """
     elif scenario == "nudge-failure":
         body = f"""
             #!/usr/bin/env bash
@@ -202,6 +226,23 @@ def _setup_repo(scenario: str) -> Path:
                         "status": "ready",
                     }
                 ],
+            }
+        )
+    elif scenario == "ci-timeout":
+        sandbox = tmp_dir / ".parallelus" / "subagents" / "sandboxes" / "monitor-loop-ci-audit"
+        sandbox.mkdir(parents=True, exist_ok=True)
+        (sandbox / "subagent.session.jsonl").write_text("[]\n", encoding="utf-8")
+        registry_entries.append(
+            {
+                "id": "20251009-000050-monitor",
+                "type": "throwaway",
+                "slug": "ci-audit",
+                "status": "running",
+                "path": str(sandbox),
+                "role_prompt": "continuous_improvement_auditor.md",
+                "timeout_seconds": 30,
+                "launcher_kind": "tmux-pane",
+                "launcher_handle": {"pane_id": "%4", "window_id": "@9"},
             }
         )
     (registry_dir / "subagent-registry.json").write_text(json.dumps(registry_entries, indent=2) + "\n", encoding="utf-8")
@@ -350,6 +391,21 @@ def test_auto_exit_on_deliverable_ready() -> None:
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "Deliverables ready" in result.stdout, result.stdout
+
+
+def test_ci_auditor_timeout_triggers_abort() -> None:
+    repo = _setup_repo("ci-timeout")
+    try:
+        result = _run_monitor(repo, "--iterations", "2")
+        abort_log = Path(repo, ".abort_calls.log")
+        abort_calls = abort_log.read_text(encoding="utf-8") if abort_log.exists() else ""
+    finally:
+        shutil.rmtree(repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "exceeded timeout" in result.stdout, result.stdout
+    assert "Abort requested" in result.stdout, result.stdout
+    assert "--id 20251009-000050-monitor --reason timeout" in abort_calls
 
 
 if __name__ == "__main__":

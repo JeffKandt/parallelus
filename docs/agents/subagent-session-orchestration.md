@@ -157,10 +157,14 @@ All orchestration commands are exposed through `.agents/bin/subagent_manager.sh`
 - `verify --id <registry-id>`
   - Executes the appropriate verification checklist (throwaway vs worktree) and
     records the outcome.
+- `abort --id <registry-id> [--reason REASON]`
+  - Stops a running subagent session without deleting its sandbox/worktree.
+    Use this when a run must be terminated (for example, timeout handling) but
+    you still need to inspect logs/artifacts before cleanup.
 - `harvest --id <registry-id> [--dest DIR]`
   - Copies every pending deliverable from the sandbox/worktree into the main
-    repo (or the optional destination inside the repo). Run this before
-    cleanup so review reports, logs, and other artifacts are versioned.
+  repo (or the optional destination inside the repo). Run this before
+  cleanup so review reports, logs, and other artifacts are versioned.
 - `cleanup --id <registry-id>`
   - Removes the target repo/worktree and finalises the registry entry. The helper
     refuses to clean a sandbox whose status is still `running`; pass `--force`
@@ -240,6 +244,9 @@ The helper also tracks consecutive stale-heartbeat polls. If every running subag
 `MONITOR_AUTO_EXIT_STALE_POLLS` polls in a row (default: 3), the monitor exits immediately—even
 when `--iterations` is set—so the main agent can intervene. Set
 `MONITOR_AUTO_EXIT_STALE_POLLS=0` to suppress this guardrail during debugging sessions.
+CI auditor runs can carry a per-run timeout (`timeout_seconds`) in the registry.
+When exceeded, the monitor requests `subagent_manager.sh abort --reason timeout`
+and exits so the operator can inspect state before cleanup.
 When a subagent declares deliverables (for example, the senior architect review helper now
 auto-registers its markdown report), the loop will short-circuit even faster so you can harvest
 and clean up without babysitting an idle pane.

@@ -792,3 +792,40 @@
 
 **Next Actions**
 - commit and push template generalization
+
+## 2026-02-07 17:45:58 UTC
+**Objectives**
+- enforce review/auditor safety gates by default (without relying on phase prompt reminders)
+
+**Work Performed**
+- hardened senior-review launch preflight in `.agents/bin/subagent_manager.sh`:
+  - `ensure_audit_ready_for_review` now enforces `marker.head == current HEAD`
+  - preflight now also validates that marker-matched audit report content (`branch`, `marker_timestamp`) matches current launch context
+- added explicit manager abort flow:
+  - new command: `subagent_manager.sh abort --id <id> [--reason <reason>]`
+  - abort terminates launcher handle/session and marks registry status (`aborted_<reason>`) while preserving sandbox/worktree for inspection
+- added CI-auditor timeout handling across manager/monitor defaults:
+  - CI-auditor launches now record `timeout_seconds` in registry (default `600`, override via `SUBAGENT_CI_AUDIT_TIMEOUT_SECONDS`)
+  - `.agents/bin/agents-monitor-loop.sh` now detects timed-out CI auditor runs and issues automatic `subagent_manager abort --reason timeout`, then exits with alert
+- updated process docs:
+  - `docs/agents/subagent-session-orchestration.md` command list + monitor behavior now document `abort` and CI timeout auto-abort
+  - `docs/agents/manuals/senior-architect.md` now documents strict marker/report freshness enforcement before launch
+- expanded regression coverage:
+  - `.agents/tests/test_subagent_manager.py`
+    - `test_abort_marks_entry_and_preserves_sandbox`
+    - `test_senior_review_launch_fails_when_marker_head_mismatches`
+  - `.agents/tests/monitor_loop.py`
+    - `test_ci_auditor_timeout_triggers_abort`
+
+**Validation Evidence**
+- `bash -n .agents/bin/subagent_manager.sh .agents/bin/agents-monitor-loop.sh`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_subagent_manager.py .agents/tests/monitor_loop.py`
+  - outcome: pass (`14 passed in 8.72s`)
+
+**Residual Risks**
+- auto-abort currently targets CI-auditor runs identified via registry role/slug metadata; custom auditor role names should keep this metadata convention to inherit timeout behavior
+- timed-out runs are aborted and preserved for inspection, but final cleanup/harvest remains an explicit operator step by design
+
+**Next Actions**
+- commit and push guardrail hardening changes

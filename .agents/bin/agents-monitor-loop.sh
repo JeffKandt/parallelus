@@ -15,6 +15,10 @@ Options:
   --runtime-threshold SECONDS  Maximum runtime for a subagent before prompting review (default: 240)
   --iterations N             Stop after N polls (default: infinite)
   --id SUBAGENT_ID           Monitor only the specified subagent ID (default: all running)
+
+Notes:
+  CI auditor subagents can carry a per-run timeout (`timeout_seconds`) in the
+  registry. When exceeded, this monitor requests `subagent_manager abort`.
 EOF
 }
 
@@ -560,6 +564,9 @@ for row in rows:
 
     rows_payload.append({
         "id": ident,
+        "slug": entry.get("slug"),
+        "role_prompt": entry.get("role_prompt"),
+        "timeout_seconds": entry.get("timeout_seconds"),
         "status": status,
         "runtime_seconds": runtime_seconds,
         "log_seconds": log_seconds,
@@ -619,6 +626,7 @@ auto_exit_reason=""
 declare -a running_ids=()
 declare -a stale_meaningful_ids=()
 declare -a deliverable_ready_ids=()
+declare -a ci_timeout_pairs=()
 state_lines=$(ROWS_JSON="$rows_json" python3 - "$THRESHOLD" <<'PY'
 import json
 import os
@@ -629,6 +637,8 @@ rows = json.loads(os.environ.get("ROWS_JSON") or "[]")
 running = []
 stale_meaningful = []
 deliverable_ready = []
+ci_timeout = []
+ci_role_names = {"continuous_improvement_auditor", "continuous_improvement_auditor.md"}
 for row in rows:
     if (row.get("status") or "").lower() != "running":
         continue
@@ -642,10 +652,22 @@ for row in rows:
     deliverable_status = (row.get("deliverables_status") or "").strip().lower()
     if deliverable_status in {"ready", "harvested"}:
         deliverable_ready.append(ident)
+    runtime_seconds = row.get("runtime_seconds")
+    timeout_seconds = row.get("timeout_seconds")
+    role_prompt = (row.get("role_prompt") or "").strip().lower()
+    slug = (row.get("slug") or "").strip().lower()
+    if role_prompt in ci_role_names or slug in {"ci-audit", "continuous-improvement-auditor"}:
+        try:
+            timeout_int = int(timeout_seconds)
+        except Exception:
+            timeout_int = 0
+        if timeout_int > 0 and runtime_seconds is not None and int(runtime_seconds) >= timeout_int:
+            ci_timeout.append(f"{ident}:{timeout_int}")
 
 print("RUNNING " + " ".join(running))
 print("STALE_MEANINGFUL " + " ".join(stale_meaningful))
 print("DELIV_READY " + " ".join(deliverable_ready))
+print("CI_TIMEOUT " + " ".join(ci_timeout))
 PY
 ) || state_lines=""
 while IFS= read -r line; do
@@ -656,6 +678,7 @@ while IFS= read -r line; do
     RUNNING) if [[ -n "$rest" ]]; then read -r -a running_ids <<<"$rest"; else running_ids=(); fi ;;
     STALE_MEANINGFUL) if [[ -n "$rest" ]]; then read -r -a stale_meaningful_ids <<<"$rest"; else stale_meaningful_ids=(); fi ;;
     DELIV_READY) if [[ -n "$rest" ]]; then read -r -a deliverable_ready_ids <<<"$rest"; else deliverable_ready_ids=(); fi ;;
+    CI_TIMEOUT) if [[ -n "$rest" ]]; then read -r -a ci_timeout_pairs <<<"$rest"; else ci_timeout_pairs=(); fi ;;
   esac
 done <<<"$state_lines"
 
@@ -677,6 +700,24 @@ for id in "${running_ids[@]-}"; do
     set_stale_count "$id" 0
   fi
 done
+
+if (( ${#ci_timeout_pairs[@]-0} > 0 )); then
+  OVERALL_ALERT=1
+  for pair in "${ci_timeout_pairs[@]-}"; do
+    [[ -z "$pair" ]] && continue
+    id=${pair%%:*}
+    timeout_value=${pair#*:}
+    [[ -z "$id" ]] && continue
+    echo "[monitor] CI auditor $id exceeded timeout (${timeout_value}s); requesting abort."
+    if "$MANAGER_CMD" abort --id "$id" --reason timeout >/dev/null 2>&1; then
+      echo "[monitor] Abort requested for $id."
+    else
+      echo "[monitor] Failed to abort $id automatically; manual intervention required."
+    fi
+  done
+  echo "[monitor] Timed-out CI auditor run(s) aborted; exiting monitor loop."
+  break
+fi
 
 if (( ${#running_ids[@]-0} > 0 )); then
   deliverable_complete=1
