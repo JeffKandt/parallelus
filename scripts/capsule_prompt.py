@@ -13,9 +13,9 @@ from textwrap import dedent
 
 
 DEFAULT_TOKEN_BUDGET = 1200
-DEFAULT_REMINDER_PATH = Path("docs/agents/capsules/remember-later.md")
-TEMPLATE_PATH = Path("docs/agents/templates/context_capsule_prompt.md")
-DESIGN_DOC_PATH = Path("docs/agents/prototypes/context-capsule.md")
+DEFAULT_REMINDER_PATH = Path("parallelus/manuals/capsules/remember-later.md")
+TEMPLATE_PATH = Path("parallelus/manuals/templates/context_capsule_prompt.md")
+DESIGN_DOC_PATH = Path("parallelus/manuals/prototypes/context-capsule.md")
 
 
 def run_git_command(args: list[str]) -> str:
@@ -68,7 +68,7 @@ def read_optional_file(path: Path) -> str | None:
 def build_capsule_path(branch: str, override: str | None, timestamp: datetime) -> Path:
     if override:
         return Path(override)
-    capsule_root = Path("docs/agents/capsules") / sanitise_branch(branch)
+    capsule_root = Path("parallelus/manuals/capsules") / sanitise_branch(branch)
     filename = f"{timestamp.strftime('%Y%m%dT%H%M%SZ')}.md"
     return capsule_root / filename
 

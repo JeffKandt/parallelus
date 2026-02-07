@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""
+Utility for managing the Recon-mode branch queue.
+
+Commands:
+  branch-queue path       - print the scratch queue pathname
+  branch-queue init       - ensure the scratch queue file exists (for Recon notes)
+  branch-queue show       - display current queue contents
+  branch-queue pull       - append the queue to the active feature branch plan and clear it
+  branch-queue clear      - remove all items from the queue without copying
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import os
+import pathlib
+import sys
+from typing import Dict, List, Optional
+
+
+SECTION_NEXT = "## Next Feature"
+SECTION_BACKLOG = "## Project Backlog"
+TEMPLATE = """# Recon Queue (scratch)
+
+## Next Feature
+- 
+
+## Project Backlog
+- 
+"""
+
+
+def ensure_repo_root() -> None:
+    detected = os.popen("git rev-parse --show-toplevel 2>/dev/null").read().strip()
+    if not detected:
+        raise SystemExit("branch-queue: not inside a git repository.")
+    if pathlib.Path(detected) != REPO_ROOT:
+        raise SystemExit("branch-queue: run commands from the repository root.")
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
+QUEUE_FILE = REPO_ROOT / "parallelus/engine" / "queue" / "next-branch.md"
+
+
+def ensure_repo_root() -> None:
+    try:
+        subprocess_result = os.popen("git rev-parse --show-toplevel 2>/dev/null").read().strip()
+    except Exception as exc:  # pragma: no cover
+        raise SystemExit(f"branch-queue: git check failed: {exc}")
+    if not subprocess_result:
+        raise SystemExit("branch-queue: not inside a git repository.")
+    if pathlib.Path(subprocess_result) != REPO_ROOT:
+        raise SystemExit("branch-queue: must be run from the repo root.")
+
+
+def current_branch() -> str:
+    branch = os.popen("git rev-parse --abbrev-ref HEAD").read().strip()
+    if not branch:
+        raise SystemExit("branch-queue: unable to determine current branch.")
+    return branch
+
+
+def plan_path_for_branch(branch: str) -> pathlib.Path:
+    if not branch.startswith("feature/"):
+        raise SystemExit("branch-queue pull: must be on a feature/* branch before pulling the queue.")
+    slug = branch.replace("/", "-")
+    canonical = REPO_ROOT / "docs" / "branches" / slug / "PLAN.md"
+    legacy = REPO_ROOT / "docs" / "plans" / f"{slug}.md"
+    if canonical.exists():
+        return canonical
+    if legacy.exists():
+        return legacy
+    raise SystemExit(
+        f"branch-queue pull: expected plan file {canonical} (or legacy {legacy}) to exist."
+    )
+
+
+def read_queue(strip: bool = False) -> str:
+    if not QUEUE_FILE.exists():
+        return ""
+    content = QUEUE_FILE.read_text(encoding="utf-8")
+    return content.strip() if strip else content
+
+
+def write_queue(content: str) -> None:
+    QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    QUEUE_FILE.write_text(content, encoding="utf-8")
+
+
+def parse_sections() -> Dict[str, List[str]]:
+    ensure_template()
+    content = read_queue()
+    sections: Dict[str, List[str]] = {"next": [], "backlog": []}
+    current: Optional[str] = None
+    for raw_line in content.splitlines():
+        stripped = raw_line.strip()
+        if stripped == SECTION_NEXT:
+            current = "next"
+            continue
+        if stripped == SECTION_BACKLOG:
+            current = "backlog"
+            continue
+        if stripped.startswith("## "):
+            current = None
+            continue
+        if current:
+            sections[current].append(raw_line)
+
+    def cleanup(lines: List[str]) -> List[str]:
+        cleaned: List[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped == "-":
+                continue
+            cleaned.append(stripped)
+        return cleaned
+
+    return {key: cleanup(value) for key, value in sections.items()}
+
+
+def cmd_path(_: argparse.Namespace) -> int:
+    print(QUEUE_FILE)
+    return 0
+
+
+def ensure_template(force: bool = False) -> None:
+    QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not QUEUE_FILE.exists() or force:
+        QUEUE_FILE.write_text(TEMPLATE, encoding="utf-8")
+
+
+def cmd_init(_: argparse.Namespace) -> int:
+    QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not QUEUE_FILE.exists():
+        ensure_template(force=True)
+        print(f"branch-queue: created scratch queue at {QUEUE_FILE}")
+    else:
+        print(f"branch-queue: queue already exists at {QUEUE_FILE}")
+    return 0
+
+
+def cmd_show(_: argparse.Namespace) -> int:
+    ensure_template()
+    content = read_queue()
+    if not content.strip():
+        print("branch-queue: queue is empty.")
+    else:
+        print(content)
+    return 0
+
+
+def cmd_clear(_: argparse.Namespace) -> int:
+    ensure_template(force=True)
+    print("branch-queue: cleared queue.")
+    return 0
+
+
+def bulletise(items: List[str]) -> List[str]:
+    result: List[str] = []
+    for item in items:
+        text = item
+        if text.lstrip().startswith(('- ', '* ', '• ')):
+            text = text.lstrip()[2:]
+        if text.upper().startswith('TODO:'):
+            text = text.split(':', 1)[1].strip()
+        result.append(f"- {text}")
+    return result
+
+
+def append_to_plan(plan_path: pathlib.Path, items: List[str]) -> None:
+    if not items:
+        return
+    timestamp = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    header = f"\n## Recon Queue Intake ({timestamp})\n"
+    block = header + "\n".join(items) + "\n"
+    with plan_path.open("a", encoding="utf-8") as fh:
+        fh.write(block)
+
+
+def append_to_project_plan(items: List[str]) -> None:
+    if not items:
+        return
+    plan_path = REPO_ROOT / "docs" / "PLAN.md"
+    lines = plan_path.read_text(encoding="utf-8").splitlines()
+    try:
+        idx = lines.index("## Next Focus Areas") + 1
+    except ValueError:
+        idx = len(lines)
+    while idx < len(lines) and not lines[idx].startswith("## "):
+        idx += 1
+    insertion = bulletise(items)
+    if idx > 0 and lines[idx - 1].strip():
+        insertion.insert(0, "")
+    lines[idx:idx] = insertion + [""]
+    plan_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def cmd_pull(_: argparse.Namespace) -> int:
+    sections = parse_sections()
+    if not sections["next"] and not sections["backlog"]:
+        print("branch-queue pull: queue is empty; nothing to copy.")
+        return 0
+
+    if sections["next"]:
+        branch = current_branch()
+        plan_path = plan_path_for_branch(branch)
+        append_to_plan(plan_path, bulletise(sections["next"]))
+
+    if sections["backlog"]:
+        append_to_project_plan(sections["backlog"])
+
+    ensure_template(force=True)
+    print("branch-queue pull: copied queue items into the plan(s) and reset the scratch file.")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Manage the Recon branch queue.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("path", help="print the queue file path")
+    sub.add_parser("init", help="create the queue file if needed")
+    sub.add_parser("show", help="print queue contents")
+    sub.add_parser("clear", help="clear the queue without copying")
+    sub.add_parser("pull", help="copy queue entries into the active feature plan")
+    return parser
+
+
+def dispatch(args: argparse.Namespace) -> int:
+    if args.command == "path":
+        return cmd_path(args)
+    if args.command == "init":
+        return cmd_init(args)
+    if args.command == "show":
+        return cmd_show(args)
+    if args.command == "clear":
+        return cmd_clear(args)
+    if args.command == "pull":
+        return cmd_pull(args)
+    raise SystemExit("branch-queue: unknown command")
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    ensure_repo_root()
+    return dispatch(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

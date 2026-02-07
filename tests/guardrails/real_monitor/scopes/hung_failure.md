@@ -4,7 +4,7 @@ This sandbox emulates a task that stalls indefinitely. Before running it,
 complete the usual bootstrap tasks:
 
 - Run `make read_bootstrap`.
-- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+- Review `AGENTS.md` and `parallelus/engine/custom/README.md` (plus any manuals they
   explicitly reference for this scope).
 - Run `make bootstrap slug=real-hung-failure` so plan/progress notebooks exist.
 - Record guardrail acknowledgements and objectives in

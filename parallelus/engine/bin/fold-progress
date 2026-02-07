@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""
+Fold branch progress notebooks into the canonical docs/PROGRESS.md log and
+verify lossless retention of historical entries.
+
+Usage:
+  fold-progress apply [--target docs/PROGRESS.md] [paths...]
+  fold-progress verify --ref <git-ref> --target docs/PROGRESS.md --deleted <path> [...]
+
+`apply` reads the existing canonical log (if present) plus branch notebooks in
+the working tree and rewrites docs/PROGRESS.md with a chronological, deduplicated
+timeline.
+
+`verify` ensures that every entry from the specified progress notebooks (read
+from <git-ref>) exists verbatim in the current docs/PROGRESS.md. This is used by
+git hooks to prevent accidental summarisation.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+from parallelus_docs_paths import (
+    iter_branch_progress_paths,
+    marker_read_path,
+    marker_write_path,
+    self_improvement_read_roots,
+    self_improvement_write_root,
+)
+
+PROJECT_PROGRESS_HEADER = "# Project Progress"
+DATE_HEADER_RE = re.compile(r"^## (\d{4}-\d{2}-\d{2})$")
+ENTRY_HEADER_RE = re.compile(r"^### (\d{2}:\d{2}:\d{2}) UTC — (.+)$")
+BRANCH_HEADER_RE = re.compile(r"^# Branch Progress — (.+)$")
+TIMESTAMP_RE = re.compile(r"^(?:##\s+)?(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$")
+
+
+@dataclass(frozen=True)
+class ProgressEntry:
+    timestamp: dt.datetime
+    branch: str
+    body: str
+
+    @property
+    def date_str(self) -> str:
+        return self.timestamp.strftime("%Y-%m-%d")
+
+    @property
+    def time_str(self) -> str:
+        return self.timestamp.strftime("%H:%M:%S")
+
+
+def branch_from_slug(slug: str) -> str:
+    if slug.startswith("feature-"):
+        return slug.replace("feature-", "feature/", 1)
+    return slug
+
+
+def slug_from_progress_path(path: pathlib.Path) -> str:
+    if path.name == "PROGRESS.md":
+        return path.parent.name
+    return path.stem
+
+
+def normalise_body(text: str) -> str:
+    lines = text.splitlines()
+    # Drop leading/trailing blank lines but preserve internal spacing.
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
+def parse_branch_progress(content: str, path: Optional[pathlib.Path] = None) -> List[ProgressEntry]:
+    lines = content.splitlines()
+    branch = None
+    for line in lines:
+        match = BRANCH_HEADER_RE.match(line.strip())
+        if match:
+            branch = match.group(1).strip()
+            break
+    if branch is None and path is not None:
+        branch = branch_from_slug(slug_from_progress_path(path))
+    if branch is None:
+        raise ValueError("Unable to determine branch name from progress notebook.")
+
+    entries: List[ProgressEntry] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        ts_match = TIMESTAMP_RE.match(line.strip())
+        if ts_match:
+            date_str, time_str = ts_match.groups()
+            start = i + 1
+            i += 1
+            body_lines: List[str] = []
+            while i < len(lines):
+                next_line = lines[i]
+                if TIMESTAMP_RE.match(next_line.strip()):
+                    break
+                i += 1
+                body_lines.append(next_line)
+            timestamp = dt.datetime.fromisoformat(f"{date_str}T{time_str}")
+            body = normalise_body("\n".join(body_lines))
+            entries.append(ProgressEntry(timestamp=timestamp, branch=branch, body=body))
+        else:
+            i += 1
+    return entries
+
+
+def parse_canonical(content: str) -> List[ProgressEntry]:
+    lines = content.splitlines()
+    entries: List[ProgressEntry] = []
+    current_date: Optional[str] = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        date_match = DATE_HEADER_RE.match(line.strip())
+        if date_match:
+            current_date = date_match.group(1)
+            i += 1
+            continue
+        entry_match = ENTRY_HEADER_RE.match(line.strip())
+        if entry_match:
+            if current_date is None:
+                raise ValueError("Encountered entry header before any date header in docs/PROGRESS.md")
+            time_str, branch = entry_match.groups()
+            start = i + 1
+            i += 1
+            body_lines: List[str] = []
+            while i < len(lines):
+                candidate = lines[i]
+                if ENTRY_HEADER_RE.match(candidate.strip()) or DATE_HEADER_RE.match(candidate.strip()):
+                    break
+                body_lines.append(candidate)
+                i += 1
+            timestamp = dt.datetime.fromisoformat(f"{current_date}T{time_str}")
+            body = normalise_body("\n".join(body_lines))
+            entries.append(ProgressEntry(timestamp=timestamp, branch=branch.strip(), body=body))
+        else:
+            i += 1
+    return entries
+
+
+def render_entries(entries: Sequence[ProgressEntry]) -> str:
+    lines: List[str] = [PROJECT_PROGRESS_HEADER, ""]
+    current_date: Optional[str] = None
+    for entry in sorted(entries, key=lambda e: e.timestamp):
+        if entry.date_str != current_date:
+            if current_date is not None:
+                lines.append("")
+            lines.append(f"## {entry.date_str}")
+            lines.append("")
+            current_date = entry.date_str
+        lines.append(f"### {entry.time_str} UTC — {entry.branch}")
+        lines.append("")
+        if entry.body:
+            lines.append(entry.body)
+        lines.append("")
+    rendered = "\n".join(lines).rstrip() + "\n"
+    return rendered
+
+
+def read_file(path: pathlib.Path) -> Optional[str]:
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+
+
+def git_show(ref: str, path: str) -> Optional[str]:
+    try:
+        data = subprocess.check_output(["git", "show", f"{ref}:{path}"])
+    except subprocess.CalledProcessError:
+        return None
+    return data.decode("utf-8")
+
+
+def git_root() -> pathlib.Path:
+    out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True)
+    return pathlib.Path(out.strip())
+
+
+def parse_marker_timestamp(value: str) -> Optional[dt.datetime]:
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            return dt.datetime.fromisoformat(value[:-1]).replace(tzinfo=dt.timezone.utc)
+        return dt.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
+    allow_without_turn_end = os.environ.get("AGENTS_ALLOW_FOLD_WITHOUT_TURN_END") == "1"
+    repo_root = git_root()
+    current_head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    marker_dirs = [root / "markers" for root in self_improvement_read_roots(repo_root)]
+    canonical_markers_dir = self_improvement_write_root(repo_root) / "markers"
+    if not allow_without_turn_end and not any(path.exists() for path in marker_dirs):
+        rel_dir = canonical_markers_dir.relative_to(repo_root)
+        print(
+            f"fold-progress apply: expected markers directory {rel_dir} is missing.\n"
+            "Run `make turn_end m=\"summary\"` on the feature branch before folding progress notebooks.",
+            file=sys.stderr,
+        )
+        return 1
+
+    canonical_existing = read_file(target)
+    entries: Dict[Tuple[dt.datetime, str], ProgressEntry] = {}
+    if canonical_existing:
+        for entry in parse_canonical(canonical_existing):
+            entries[(entry.timestamp, entry.branch)] = entry
+
+    to_fold = list(paths) if paths else list(iter_branch_progress_paths(repo_root))
+    for notebook in to_fold:
+        content = read_file(notebook)
+        if not content:
+            continue
+        notebook_entries = parse_branch_progress(content, notebook)
+        if not notebook_entries:
+            continue
+        if not allow_without_turn_end:
+            slug = slug_from_progress_path(notebook)
+            marker_path = marker_read_path(repo_root, slug)
+            if not marker_path.exists():
+                marker_path = marker_write_path(repo_root, slug)
+            if not marker_path.exists():
+                rel_marker = marker_path.relative_to(repo_root)
+                branch_name = notebook_entries[0].branch
+                print(
+                    "fold-progress apply: missing latest turn-end marker.\n"
+                    f"Expected: {rel_marker}\n"
+                    f"Run `make turn_end m=\"summary\"` (or another checkpoint message) on branch {branch_name} before folding.\n"
+                    "Set AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1 to override.",
+                    file=sys.stderr,
+                )
+                return 1
+            try:
+                marker_data = json.loads(marker_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                rel_marker = marker_path.relative_to(repo_root)
+                print(
+                    f"fold-progress apply: unable to parse marker {rel_marker}: {exc}",
+                    file=sys.stderr,
+                )
+                return 1
+            marker_ts = parse_marker_timestamp(marker_data.get("timestamp", ""))
+            marker_head = marker_data.get("head") or ""
+            if marker_head and marker_head != current_head:
+                rel_marker = marker_path.relative_to(repo_root)
+                print(
+                    "fold-progress apply: latest marker was recorded for a different commit.\n"
+                    f"Marker: {rel_marker}\n"
+                    f"Marker head: {marker_head}\n"
+                    f"Current head: {current_head}\n"
+                    "Run `make turn_end m=\"summary\"` on the current commit before folding.",
+                    file=sys.stderr,
+                )
+                return 1
+            if marker_ts is None:
+                rel_marker = marker_path.relative_to(repo_root)
+                print(
+                    f"fold-progress apply: marker {rel_marker} is missing a valid timestamp.\n"
+                    "Run `make turn_end m=\"summary\"` before folding.",
+                    file=sys.stderr,
+                )
+                return 1
+            notebook_mtime = dt.datetime.fromtimestamp(notebook.stat().st_mtime, tz=dt.timezone.utc)
+            if marker_ts + dt.timedelta(seconds=1) < notebook_mtime:
+                rel_marker = marker_path.relative_to(repo_root)
+                rel_notebook = notebook.relative_to(repo_root)
+                print(
+                    "fold-progress apply: marker predates the latest notebook edits.\n"
+                    f"Marker: {rel_marker} (timestamp {marker_ts.isoformat()})\n"
+                    f"Notebook: {rel_notebook} (modified {notebook_mtime.isoformat()})\n"
+                    "Run `make turn_end m=\"summary\"` after updating the notebook, then fold again.",
+                    file=sys.stderr,
+                )
+                return 1
+        for entry in notebook_entries:
+            entries[(entry.timestamp, entry.branch)] = entry
+
+    rendered = render_entries(entries.values())
+    if target.exists():
+        current = target.read_text(encoding="utf-8")
+        if current == rendered:
+            return 0
+    target.write_text(rendered, encoding="utf-8")
+    return 0
+
+
+def command_verify(target: pathlib.Path, ref: str, deleted: Sequence[str]) -> int:
+    missing: List[str] = []
+    current_text = read_file(target)
+    if current_text is None:
+        print(f"fold-progress verify: target {target} not found.", file=sys.stderr)
+        return 1
+    actual_entries: Dict[Tuple[dt.datetime, str], ProgressEntry] = {
+        (entry.timestamp, entry.branch): entry for entry in parse_canonical(current_text)
+    }
+
+    for notebook in deleted:
+        notebook_content = git_show(ref, notebook)
+        if notebook_content is None:
+            continue
+        try:
+            expected_entries = parse_branch_progress(notebook_content, pathlib.Path(notebook))
+        except ValueError as exc:
+            print(f"fold-progress verify: {notebook}: {exc}", file=sys.stderr)
+            return 1
+        for entry in expected_entries:
+            key = (entry.timestamp, entry.branch)
+            actual_entry = actual_entries.get(key)
+            if actual_entry is None:
+                missing.append(
+                    f"{notebook} {entry.timestamp.isoformat()} {entry.branch} (entry not found in {target})"
+                )
+                continue
+            if normalise_body(actual_entry.body) != normalise_body(entry.body):
+                missing.append(
+                    f"{notebook} {entry.timestamp.isoformat()} {entry.branch} (entry content diverges)"
+                )
+    if missing:
+        print("fold-progress verify: canonical log is missing detailed entries:", file=sys.stderr)
+        for item in missing:
+            print(f"  - {item}", file=sys.stderr)
+        print("Run `parallelus/engine/bin/fold-progress apply` before deleting branch notebooks.", file=sys.stderr)
+        return 1
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Fold branch progress notebooks into docs/PROGRESS.md")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    apply_parser = subparsers.add_parser("apply", help="Rewrite docs/PROGRESS.md from branch notebooks")
+    apply_parser.add_argument("--target", default="docs/PROGRESS.md", type=pathlib.Path)
+    apply_parser.add_argument("paths", nargs="*", type=pathlib.Path, help="Specific progress notebooks to fold")
+
+    verify_parser = subparsers.add_parser("verify", help="Ensure entries from deleted notebooks exist in the canonical log")
+    verify_parser.add_argument("--target", default="docs/PROGRESS.md", type=pathlib.Path)
+    verify_parser.add_argument(
+        "--ref", default="HEAD", help="Git ref to read deleted notebooks from (default: HEAD)"
+    )
+    verify_parser.add_argument(
+        "--deleted", nargs="+", metavar="PATH", help="Progress notebooks staged for deletion"
+    )
+
+    return parser
+
+
+def main(argv: Sequence[str]) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "apply":
+        return command_apply(args.target, args.paths)
+    if args.command == "verify":
+        deleted = args.deleted or []
+        return command_verify(args.target, args.ref, deleted)
+    parser.error("Unknown command")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

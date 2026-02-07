@@ -3,13 +3,13 @@
 This directory stores two types of artifacts:
 
 1. **Turn markers** (`markers/<branch>.json`) created automatically by
-   `.agents/bin/retro-marker` when the main agent runs `make turn_end`.
+   `parallelus/engine/bin/retro-marker` when the main agent runs `make turn_end`.
    Markers record the timestamp, plan/progress snapshot, session console offset,
    and current commit so retrospective auditors know exactly where to resume
    analysis.
 2. **Retrospective reports** (`reports/<branch>--<marker-timestamp>.json`)
    written by the Retrospective Auditor subagent. Each report must follow the
-  schema described in `.agents/prompts/agent_roles/continuous_improvement_auditor.md` and is
+  schema described in `parallelus/engine/prompts/agent_roles/continuous_improvement_auditor.md` and is
    committed by the main agent after review.
 
 3. **Failures summaries** (`failures/<branch>--<marker-timestamp>.json`)

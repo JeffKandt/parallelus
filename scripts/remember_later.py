@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--capsule-file",
-        default="docs/agents/capsules/remember-later.md",
+        default="parallelus/manuals/capsules/remember-later.md",
         help="Where to append the reminder (default: %(default)s).",
     )
     return parser

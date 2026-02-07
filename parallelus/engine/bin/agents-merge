@@ -1,0 +1,520 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-merge <slug>
+
+Merges feature/<slug> into the detected base branch after verifying guardrails
+(plan/progress notebooks removed, clean working tree, CI checks). This helper
+replaces manual git merge commands.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+slug_input=${1:-}
+if [[ -z "$slug_input" ]]; then
+  echo "agents-merge: slug required" >&2
+  usage >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  echo "agents-merge: not inside a git repository" >&2
+  exit 1
+fi
+
+cd "$repo_root"
+
+install_hooks="$repo_root/parallelus/engine/bin/install-hooks"
+if [[ -x "$install_hooks" ]]; then
+  "$install_hooks" --quiet || true
+fi
+
+if [[ -n $(git status --porcelain) ]]; then
+  echo "agents-merge: working tree dirty; commit, stash, or clean before merging" >&2
+  exit 1
+fi
+
+review_scan="$repo_root/parallelus/engine/bin/review_secret_scan.py"
+if [[ -x "$review_scan" ]]; then
+  "$review_scan" || exit $?
+fi
+
+slug=$(printf '%s' "$slug_input" | tr '[:upper:]' '[:lower:]')
+slug=$(printf '%s' "$slug" | tr -c 'a-z0-9-' '-')
+slug=$(printf '%s' "$slug" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')
+if [[ -z "$slug" ]]; then
+  echo "agents-merge: slug must contain alphanumeric characters" >&2
+  exit 1
+fi
+
+feature_branch="feature/$slug"
+slugged_branch="${feature_branch//\//-}"
+
+resolve_marker_file() {
+  local slugged="$1"
+  local marker_path
+  marker_path="$(parallelus_marker_read_path "$repo_root" "$slugged")"
+  if [[ -f "$marker_path" ]]; then
+    printf '%s\n' "$marker_path"
+    return
+  fi
+  parallelus_marker_write_path "$repo_root" "$slugged"
+}
+
+if ! git show-ref --verify --quiet "refs/heads/$feature_branch"; then
+  echo "agents-merge: branch '$feature_branch' not found" >&2
+  exit 1
+fi
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$current_branch" != "$feature_branch" ]]; then
+  echo "agents-merge: switching to $feature_branch" >&2
+  git checkout "$feature_branch" >/dev/null
+  current_branch="$feature_branch"
+fi
+
+# Verify retrospectives before modifying branch notebooks so audit guardrails fail fast.
+# Install/refresh merge guard hook (supports worktrees via git-path).
+hook_src="$repo_root/parallelus/engine/hooks/pre-merge-commit"
+hooks_dir=$(git rev-parse --git-path hooks 2>/dev/null || true)
+hook_dst=""
+if [[ -n "$hooks_dir" ]]; then
+  hook_dst="$hooks_dir/pre-merge-commit"
+fi
+if [[ -f "$hook_src" && -n "$hook_dst" ]]; then
+  mkdir -p "$hooks_dir"
+  cp "$hook_src" "$hook_dst"
+  chmod +x "$hook_dst"
+fi
+
+# Resolve senior review artifact (supports optional timestamp suffix).
+resolve_review_file() {
+  local branch="$1"
+  local override="$2"
+  local review_dirs_json
+  if [[ -n "$override" ]]; then
+    printf '%s' "$override"
+    return
+  fi
+  review_dirs_json=$(
+    parallelus_reviews_read_dirs "$repo_root" | python3 -c 'import json, sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))'
+  )
+  python3 - "$branch" "$review_dirs_json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+branch = sys.argv[1]
+review_dirs = json.loads(sys.argv[2])
+base = branch.replace('/', '-')
+candidates = []
+
+for raw_dir in review_dirs:
+    reviews_dir = Path(raw_dir)
+    if not reviews_dir.exists():
+        continue
+    direct = reviews_dir / f"{base}.md"
+    if direct.exists():
+        print(direct)
+        sys.exit(0)
+    for path in reviews_dir.glob(f"{base}-*.md"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except FileNotFoundError:
+            continue
+
+if candidates:
+    candidates.sort(reverse=True)
+    print(candidates[0][1])
+PY
+}
+
+check_review() {
+  local file="$1"
+  local branch="$2"
+  local commit_ref="$3"
+  if [[ ! -f "$file" ]]; then
+    echo "agents-merge: senior architect review $file not found." >&2
+    echo "Run the review using parallelus/engine/prompts/agent_roles/senior_architect.md and commit the approved report." >&2
+    exit 1
+  fi
+  if ! grep -qi "^Reviewed-Branch:\s*$branch" "$file"; then
+    echo "agents-merge: review $file must include Reviewed-Branch: $branch." >&2
+    exit 1
+  fi
+  if ! grep -qi '^Decision:\s*approved' "$file"; then
+    echo "agents-merge: review $file is not marked Decision: approved." >&2
+    exit 1
+  fi
+  if ! grep -qi '^Reviewed-On:' "$file"; then
+    echo "agents-merge: review $file must include Reviewed-On: <date>." >&2
+    exit 1
+  fi
+  local review_commit
+  review_commit=$(grep -i '^Reviewed-Commit:' "$file" | head -n1 | sed -E 's/Reviewed-Commit:[[:space:]]*//I')
+  review_commit=${review_commit// /}
+  if [[ -z "$review_commit" ]]; then
+    echo "agents-merge: review $file must include Reviewed-Commit: <commit hash>." >&2
+    exit 1
+  fi
+  local marker_file
+  marker_file="$(resolve_marker_file "$slugged_branch")"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a marker before the senior review." >&2
+    exit 1
+  fi
+  local audit_paths
+  audit_paths=$(
+    python3 - "$marker_file" "$slugged_branch" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+slugged = sys.argv[2]
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+root = marker_path.parent.parent
+report_path = root / "reports" / f"{slugged}--{marker_ts}.json"
+failures_path = root / "failures" / f"{slugged}--{marker_ts}.json"
+print(report_path)
+print(failures_path)
+PY
+  )
+  if [[ -z "$audit_paths" ]]; then
+    exit 1
+  fi
+  local report_path failures_path
+  report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
+  failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  if [[ "$report_path" == "$repo_root/"* ]]; then
+    report_path="${report_path#$repo_root/}"
+  fi
+  if [[ "$failures_path" == "$repo_root/"* ]]; then
+    failures_path="${failures_path#$repo_root/}"
+  fi
+  if ! git cat-file -e "${review_commit}:${report_path}" 2>/dev/null; then
+    echo "agents-merge: senior review must be run after the audit report is committed." >&2
+    echo "Missing ${report_path} in review commit ${review_commit}." >&2
+    exit 1
+  fi
+  if ! git cat-file -e "${review_commit}:${failures_path}" 2>/dev/null; then
+    echo "agents-merge: senior review must be run after failures summary is committed." >&2
+    echo "Missing ${failures_path} in review commit ${review_commit}." >&2
+    exit 1
+  fi
+  if [[ -n "$commit_ref" && "$review_commit" != "$commit_ref" ]]; then
+    if git merge-base --is-ancestor "$review_commit" "$commit_ref" 2>/dev/null; then
+      diff_names=$(git diff --name-only "$review_commit" "$commit_ref")
+      allow_doc_only=1
+      while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        case "$path" in
+          docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|docs/plans/*|docs/progress/*|parallelus/manuals/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
+            ;;
+          *)
+            allow_doc_only=0
+            break
+            ;;
+        esac
+      done <<< "$diff_names"
+      if [[ $allow_doc_only -eq 1 ]]; then
+        echo "agents-merge: review $file covers commit $review_commit; doc-only follow-up commit(s) detected and permitted through $commit_ref." >&2
+      else
+        echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref with additional non-doc changes." >&2
+        echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+        exit 1
+      fi
+    else
+      echo "agents-merge: review $file covers commit $review_commit but feature branch is at $commit_ref (not an ancestor)." >&2
+      echo "Re-run the review against the final commit or override with AGENTS_MERGE_FORCE=1." >&2
+      exit 1
+    fi
+  fi
+  if ! grep -qi 'Session Mode:[[:space:]]*synchronous subagent' "$file"; then
+    echo "agents-merge: review $file is missing the subagent provenance line (Session Mode: synchronous subagent)." >&2
+    echo "Run the senior architect review via the subagent launcher before merging." >&2
+    exit 1
+  fi
+  if grep -Eqi 'Severity:\s*(Blocker|High)' "$file"; then
+    echo "agents-merge: review $file still lists Severity: Blocker/High items." >&2
+    exit 1
+  fi
+}
+
+check_retrospective() {
+  local marker_file reports_dir
+  marker_file="$(resolve_marker_file "$slugged_branch")"
+  reports_dir="$(dirname "$(dirname "$marker_file")")/reports"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a retrospective marker before merging." >&2
+    exit 1
+  fi
+  if [[ ! -d "$reports_dir" ]]; then
+    echo "agents-merge: retrospective reports directory missing; commit auditor output before merging." >&2
+    exit 1
+  fi
+  local report_path
+  local status=0
+  report_path=$(
+    python3 - "$marker_file" "$reports_dir" "$feature_branch" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+reports_dir = Path(sys.argv[2])
+branch = sys.argv[3]
+
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+match = None
+for path in sorted(reports_dir.glob('*.json')):
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        continue
+    if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+        match = path
+        break
+
+if match is None:
+    print(f"agents-merge: no retrospective report found for marker {marker_ts}", file=sys.stderr)
+    sys.exit(4)
+
+print(match)
+PY
+  ) || status=$?
+  if [[ ${status:-0} -ne 0 || -z "$report_path" ]]; then
+    exit 1
+  fi
+  echo "agents-merge: using retrospective report ${report_path#$repo_root/}" >&2
+  export AGENTS_RETRO_MARKER="$marker_file"
+  export AGENTS_RETRO_REPORT="$report_path"
+}
+
+check_failures_summary() {
+  local marker_file failures_dir
+  marker_file="$(resolve_marker_file "$slugged_branch")"
+  failures_dir="$(dirname "$(dirname "$marker_file")")/failures"
+  if [[ ! -f "$marker_file" ]]; then
+    echo "agents-merge: run make turn_end to record a marker before collecting failures." >&2
+    exit 1
+  fi
+  if [[ ! -d "$failures_dir" ]]; then
+    echo "agents-merge: failures summary directory missing; run make collect_failures before merging." >&2
+    exit 1
+  fi
+  local failure_path
+  failure_path=$(
+    python3 - "$marker_file" "$failures_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+marker_path = Path(sys.argv[1])
+failures_dir = Path(sys.argv[2])
+try:
+    marker = json.loads(marker_path.read_text())
+except Exception as exc:
+    print(f"agents-merge: unable to parse {marker_path}: {exc}", file=sys.stderr)
+    sys.exit(2)
+
+marker_ts = marker.get("timestamp")
+if not marker_ts:
+    print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
+    sys.exit(3)
+
+path = failures_dir / f"{marker_path.stem}--{marker_ts}.json"
+if not path.exists():
+    print("", end="")
+    sys.exit(0)
+print(path)
+PY
+  )
+  if [[ -z "$failure_path" || ! -f "$failure_path" ]]; then
+    echo "agents-merge: no failures summary found for latest marker; run make collect_failures before merging." >&2
+    exit 1
+  fi
+  echo "agents-merge: using failures summary ${failure_path#$repo_root/}" >&2
+}
+
+current_commit=$(git rev-parse HEAD)
+review_file=$(resolve_review_file "$feature_branch" "${AGENTS_MERGE_REVIEW_FILE:-}")
+
+if [[ -z "${AGENTS_MERGE_FORCE:-}" ]]; then
+  check_review "$review_file" "$feature_branch" "$current_commit"
+else
+  echo "agents-merge: AGENTS_MERGE_FORCE set; skipping review checks" >&2
+fi
+
+pending_ack=$(grep -Ei 'Severity:\s*(Medium|Low|Info)' "$review_file" || true)
+if [[ -n "$pending_ack" ]]; then
+  if [[ -z "${AGENTS_MERGE_ACK_REVIEW:-}" ]]; then
+    echo "agents-merge: review $review_file notes lower-severity findings:" >&2
+    echo "$pending_ack" >&2
+    echo "Address them or re-run with AGENTS_MERGE_ACK_REVIEW=1 after documenting follow-ups." >&2
+    exit 1
+  fi
+  echo "agents-merge: AGENTS_MERGE_ACK_REVIEW acknowledged; continuing despite lower-severity findings." >&2
+fi
+
+if [[ -z "${AGENTS_MERGE_SKIP_CI:-}" ]]; then
+  if ! make ci; then
+    echo "agents-merge: make ci failed; resolve issues before merging" >&2
+    exit 1
+  fi
+else
+  echo "agents-merge: AGENTS_MERGE_SKIP_CI set; skipping make ci" >&2
+fi
+
+# Clean up artifacts generated during CI runs (e.g., smoke test registry entries).
+git checkout -- parallelus/manuals/subagent-registry.json >/dev/null 2>&1 || true
+
+export AGENTS_MERGE_SKIP_HOOK_CI=1
+export AGENTS_MERGE_BRANCH="$feature_branch"
+export AGENTS_MERGE_REVIEW_FILE="$review_file"
+export AGENTS_MERGE_ACK_REVIEW="${AGENTS_MERGE_ACK_REVIEW:-}"
+export AGENTS_MERGE_COMMIT="$current_commit"
+
+SKIP_RETRO_REQUESTED=0
+SKIP_RETRO_REASON=""
+SKIP_RETRO_TIMESTAMP=""
+SKIP_RETRO_BASENAME=""
+
+if [[ -z "${AGENTS_MERGE_SKIP_RETRO:-}" ]]; then
+  check_failures_summary
+  check_retrospective
+else
+  SKIP_RETRO_REQUESTED=1
+  SKIP_RETRO_REASON=${AGENTS_MERGE_SKIP_RETRO_REASON:-}
+  if [[ -z "$SKIP_RETRO_REASON" ]]; then
+    echo "agents-merge: AGENTS_MERGE_SKIP_RETRO set but AGENTS_MERGE_SKIP_RETRO_REASON is missing." >&2
+    exit 1
+  fi
+  SKIP_RETRO_TIMESTAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+  SKIP_RETRO_BASENAME="${slugged_branch}--${SKIP_RETRO_TIMESTAMP}.json"
+fi
+
+# Ensure branch notebooks are already folded into canonical docs.
+shopt -s nullglob
+plan_files=("$repo_root"/docs/branches/*/PLAN.md "$repo_root"/docs/plans/feature-*.md)
+progress_files=("$repo_root"/docs/branches/*/PROGRESS.md "$repo_root"/docs/progress/feature-*.md)
+shopt -u nullglob
+
+if ((${#plan_files[@]} > 0)); then
+  echo "agents-merge: branch plan notebooks still present:" >&2
+  for f in "${plan_files[@]}"; do
+    echo "  - ${f#$repo_root/}" >&2
+  done
+  echo "Fold plan updates into docs/PLAN.md (or the canonical plan) and remove branch notebooks before merging." >&2
+  exit 1
+fi
+
+if ((${#progress_files[@]} > 0)); then
+  echo "agents-merge: branch progress logs still present:" >&2
+  for f in "${progress_files[@]}"; do
+    echo "  - ${f#$repo_root/}" >&2
+  done
+  echo "Stitch progress notes into docs/PROGRESS.md and delete branch notebooks before merging." >&2
+  exit 1
+fi
+
+# Determine base branch via agents-detect.
+detect_output="$(parallelus/engine/bin/agents-detect)"
+base_branch=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="BASE_BRANCH" {print $2}')
+has_remote=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="HAS_REMOTE" {print $2}')
+
+if [[ -z "$base_branch" ]]; then
+  echo "agents-merge: unable to determine base branch" >&2
+  exit 1
+fi
+
+if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
+  echo "agents-merge: checking out base branch $base_branch" >&2
+  git checkout -b "$base_branch" "${BASE_REMOTE}/$base_branch" >/dev/null 2>&1 || {
+    echo "agents-merge: base branch $base_branch not available locally" >&2
+    exit 1
+  }
+else
+  git checkout "$base_branch" >/dev/null
+fi
+
+if (( SKIP_RETRO_REQUESTED == 1 )); then
+  repo_parent=$(cd "$repo_root/.." && pwd)
+  state_root="$repo_parent/.parallelus"
+  skip_dir="$state_root/retro-skip-logs"
+  if ! mkdir -p "$skip_dir"; then
+    echo "agents-merge: unable to create skip log directory $skip_dir" >&2
+    exit 1
+  fi
+  skip_file="$skip_dir/$SKIP_RETRO_BASENAME"
+  python3 - "$skip_file" "$feature_branch" "$current_commit" "$SKIP_RETRO_TIMESTAMP" "$SKIP_RETRO_REASON" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+data = {
+    "branch": sys.argv[2],
+    "commit": sys.argv[3],
+    "timestamp": sys.argv[4],
+    "reason": sys.argv[5],
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+PY
+  display_path="$skip_file"
+  if [[ "${display_path#"$repo_root/"}" != "$display_path" ]]; then
+    display_path=${display_path#$repo_root/}
+  elif [[ "${display_path#"$state_root"}" != "$display_path" ]]; then
+    display_path=".parallelus${display_path#$state_root}"
+  fi
+  echo "agents-merge: AGENTS_MERGE_SKIP_RETRO acknowledged; justification logged at $display_path" >&2
+fi
+
+if [[ "$has_remote" == true ]]; then
+  git fetch "$BASE_REMOTE" >/dev/null 2>&1 || true
+  git merge --ff-only "${BASE_REMOTE}/$base_branch" >/dev/null 2>&1 || true
+fi
+
+echo "agents-merge: merging $feature_branch into $base_branch" >&2
+if ! git merge --no-ff "$feature_branch"; then
+  echo "agents-merge: merge failed" >&2
+  exit 1
+fi
+
+echo "agents-merge: deleting $feature_branch" >&2
+git branch -d "$feature_branch" >/dev/null
+
+echo "agents-merge: merge complete on $base_branch" >&2

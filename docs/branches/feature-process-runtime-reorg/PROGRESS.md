@@ -1386,3 +1386,105 @@
 
 **Next Actions**
 - await maintainer direction
+
+## 2026-02-07 20:06:56 UTC
+**Objectives**
+- continue layout reorg by executing only `PHASE-04` on `feature/process-runtime-reorg`
+- determine the next incomplete phase from canonical execution + branch notebooks before edits
+- capture startup guardrail acknowledgements and branch snapshot before implementation
+
+**Work Performed**
+- reviewed required startup guardrails:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `.agents/custom/README.md`
+- ran `eval "$(make start_session)"` and captured session `20251059-20260207200509-36187c`
+- captured bootstrap snapshot:
+  - `REPO_MODE=remote-connected`
+  - `BASE_BRANCH=main`
+  - `CURRENT_BRANCH=feature/process-runtime-reorg`
+  - `BASE_REMOTE=origin`
+  - `UNMERGED_REMOTE=origin/feature/multi-agentic-tool-guidance,origin/feature/process-runtime-reorg`
+  - `UNMERGED_LOCAL=feature/multi-agentic-tool-guidance`
+  - `ORPHANED_NOTEBOOKS=` (none)
+- echoed branch snapshot table from bootstrap output:
+  - `feature/multi-agentic-tool-guidance` (`remote & local`) action: `decide: merge/archive/delete`
+  - `feature/process-runtime-reorg` (`remote & local`) action: `decide: merge/archive/delete`
+- read phase + notebook sources:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+- checked legacy vs canonical notebook layout:
+  - confirmed canonical `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md` exists
+  - confirmed legacy pre-migration notebooks are absent (`docs/plans/feature-process-runtime-reorg.md`, `docs/progress/feature-process-runtime-reorg.md`)
+- determined next incomplete phase is `PHASE-04` (`PHASE-01..PHASE-03` already complete in canonical notebooks)
+
+**Next Actions**
+- execute `PHASE-04` scope only:
+  - move `.agents/**` to `parallelus/engine/**`
+  - move `docs/agents/**` to `parallelus/manuals/**`
+  - rewrite hardcoded runtime/script references to the new paths
+- run targeted validations and `make ci`, then start the required Senior Architect review loop on current `HEAD`
+
+## 2026-02-07 20:17:45 UTC
+**Objectives**
+- implement only `PHASE-04` (`Engine and Manuals Relocation`) and satisfy its gate criteria
+- keep legacy `.agents`/`docs/agents` references only where explicitly needed for migration-compatibility detection
+
+**Work Performed**
+- relocated tracked process-owned trees:
+  - `.agents/**` → `parallelus/engine/**`
+  - `docs/agents/**` → `parallelus/manuals/**`
+- updated entrypoint wiring to the relocated engine:
+  - `Makefile` now defaults `AGENTS_DIR ?= $(ROOT)/parallelus/engine`
+  - `parallelus/engine/make/agents.mk` remains the active make integration shim
+  - `.gitignore` queue path updated to `parallelus/engine/queue/next-branch.md`
+- rewrote hardcoded runtime/script/manual paths across engine scripts, hooks, adapters, tests, and manuals to the new namespaces (`parallelus/engine/*`, `parallelus/manuals/*`)
+- fixed relocation-specific path-depth regressions introduced by the move:
+  - `parallelus/engine/bin/deploy_agents_process.sh` source-root resolution corrected to `../../..`
+  - `parallelus/engine/bin/subagent_exec_resume.sh` root resolution corrected to `../../..`
+  - Python repo-root resolvers updated from `parents[2]` to `parents[3]` where scripts/tests moved under `parallelus/engine/**`
+- updated deploy/upgrade flow for the new layout while preserving explicit temporary legacy compatibility:
+  - deployment now validates source engine at `parallelus/engine`
+  - scaffold bootstrap writes `.parallelus/sessions/` and generated Makefile snippets point to `parallelus/engine`
+  - legacy namespace detection in `parallelus/engine/bin/deploy_agents_process.sh` still checks `.agents/**` fingerprints (commented as temporary compatibility for pre-reorg detection)
+  - fixed empty-array `set -u` failure in `--detect-namespace` output (`LEGACY_*_MATCHES` now uses safe array expansion)
+- fixed post-move smoke harness issue:
+  - `parallelus/engine/tests/smoke.sh` now creates `"$TMP_REPO/parallelus"` before copying `parallelus/engine`
+
+**Validation Evidence**
+- shell syntax:
+  - `bash -lc 'set -euo pipefail; while IFS= read -r -d "" f; do read -r first < "$f" || first=""; if [[ "$first" == "#!"*bash* ]]; then bash -n "$f"; fi; done < <(find parallelus/engine/bin parallelus/engine/hooks parallelus/engine/adapters -type f -print0); echo shell-syntax-ok'`
+  - outcome: `shell-syntax-ok`
+- Python compile:
+  - `python3 -m py_compile parallelus/engine/bin/*.py parallelus/engine/bin/branch-queue parallelus/engine/bin/retro-marker parallelus/engine/bin/verify-retrospective parallelus/engine/bin/fold-progress`
+  - outcome: pass
+- targeted tests:
+  - `. parallelus/engine/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q parallelus/engine/tests tests/test_basic.py`
+  - outcome: pass (`26 passed`)
+- smoke flow on relocated engine:
+  - `parallelus/engine/tests/smoke.sh`
+  - outcome: pass (`agents smoke test passed`)
+- broader gate check:
+  - `make ci`
+  - outcome: pass
+- direct relocated session/bootstrapping sanity:
+  - `eval "$(make start_session)" >/tmp/phase04-start-session.log 2>&1; tail -n 20 /tmp/phase04-start-session.log`
+  - outcome: pass (`Session ... at .../.parallelus/sessions/...`)
+- namespace detector sanity (post-fix):
+  - `parallelus/engine/bin/deploy_agents_process.sh --detect-namespace .`
+  - outcome: pass (no shell errors; decision emitted with legacy counters)
+
+**PHASE-04 Gate Status (pre-review)**
+- Gate: no runtime/script references remain to `.agents/` or `docs/agents/` unless temporary compatibility — **Yes (pre-review)**
+  - evidence: runtime/test/docs path rewrites complete; remaining references are isolated to `parallelus/engine/bin/deploy_agents_process.sh` + `parallelus/engine/tests/test_bundle_namespace_detection.py` and explicitly documented as temporary legacy-detection compatibility
+- Gate: primary commands run via direct `parallelus/engine/bin/` entrypoints (Makefile wrappers allowed) — **Yes (pre-review)**
+  - evidence: `Makefile` + `parallelus/engine/make/agents.mk` invoke `AGENTS_BIN=$(AGENTS_DIR)/bin` with `AGENTS_DIR` rooted at `parallelus/engine`; `make start_session`, smoke, and `make ci` passed
+
+**Residual Risks**
+- namespace detection fallback now intentionally targets pre-reorg `.agents/**` signals; repos already moved to `parallelus/engine/**` but lacking sentinels classify as ambiguous/vendor until sentinel/upgrade phases finalize
+- historical planning/log artifacts still contain legacy path mentions; they are retained as historical records and are not runtime entrypoints
+
+**Next Actions**
+- commit and push `PHASE-04` changes
+- run required Senior Architect review loop on pushed `HEAD` and iterate until explicit gate-approved review artifact is captured

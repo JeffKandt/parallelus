@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-turn-end [message]
+
+Appends a progress entry to the current branch's progress log, updates the
+session summary/metadata, and nudges the branch plan's Next Actions section.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-paths.sh
+. "${SCRIPT_DIR}/agents-paths.sh"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  echo "agents-turn-end: not inside a git repository" >&2
+  exit 1
+fi
+
+cd "$repo_root"
+
+current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
+if [[ "$current_branch" == "HEAD" || -z "$current_branch" ]]; then
+  echo "agents-turn-end: detached HEAD not supported" >&2
+  exit 1
+fi
+
+slugged_branch="${current_branch//\//-}"
+plan_file="$(parallelus_branch_plan_read_path "$repo_root" "$slugged_branch")"
+progress_file="$(parallelus_branch_progress_read_path "$repo_root" "$slugged_branch")"
+
+if [[ ! -f "$progress_file" ]]; then
+  echo "agents-turn-end: progress file $progress_file is missing" >&2
+  exit 1
+fi
+
+if [[ ! -f "$plan_file" ]]; then
+  echo "agents-turn-end: plan file $plan_file is missing" >&2
+  exit 1
+fi
+
+session_marker="${repo_root}/parallelus/engine/session-required.${slugged_branch}"
+if [[ -f "$session_marker" ]]; then
+  echo "agents-turn-end: session not started for $current_branch; run make start_session before turn_end" >&2
+  exit 1
+fi
+
+resolve_session_id_fallback() {
+  local write_root pointer candidate sid
+  write_root="$(parallelus_sessions_write_root "$repo_root")"
+  candidate=""
+  for pointer in "$write_root/.current-${slugged_branch}" "$write_root/.current"; do
+    if [[ -f "$pointer" ]]; then
+      sid="$(head -n 1 "$pointer" | tr -d '\r' | xargs || true)"
+      if [[ -n "$sid" ]]; then
+        printf '%s\n' "$sid"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+active_session_id="${SESSION_ID:-}"
+if [[ -z "$active_session_id" ]]; then
+  active_session_id="$(resolve_session_id_fallback || true)"
+fi
+active_session_path=""
+if [[ -n "$active_session_id" ]]; then
+  active_session_path="$(parallelus_resolve_session_dir "$repo_root" "$active_session_id" "${SESSION_DIR:-}")"
+fi
+
+if [[ "${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ]]; then
+  if [[ -z "$active_session_id" ]]; then
+    echo "agents-turn-end: SESSION_ID is not set and no runtime session pointer was found; run make start_session before turn_end" >&2
+    exit 1
+  fi
+  console_path="$active_session_path/console.log"
+  if [[ ! -f "$console_path" ]]; then
+    echo "agents-turn-end: session console log missing at $console_path" >&2
+    exit 1
+  fi
+  if [[ ! -s "$console_path" ]]; then
+    echo "agents-turn-end: session console log is empty; ensure logging is enabled before turn_end" >&2
+    exit 1
+  fi
+fi
+
+message="${*:-Updated progress}"
+
+timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+cat <<PROGRESS >> "$progress_file"
+
+## ${timestamp}
+**Summary**
+- ${message}
+
+**Artifacts**
+- TODO: list touched files.
+
+**Next Actions**
+- [ ] TODO: follow-up
+PROGRESS
+
+if grep -q '^## Next Actions' "$plan_file"; then
+  printf -- '\n- [ ] %s\n' "$message" >> "$plan_file"
+else
+  cat <<PLAN >> "$plan_file"
+
+## Next Actions
+- [ ] ${message}
+PLAN
+fi
+
+if [[ -n "$active_session_id" ]]; then
+  if [[ -d "$active_session_path" ]]; then
+    summary_file="$active_session_path/summary.md"
+    if [[ ! -f "$summary_file" ]]; then
+      printf "# Session %s\n\n## Notes\n\n" "$active_session_id" > "$summary_file"
+    fi
+    printf -- '- %s (%s)\n' "$message" "$timestamp" >> "$summary_file"
+
+    meta_file="$active_session_path/meta.json"
+    if [[ -f "$meta_file" ]]; then
+      python3 - "$meta_file" "$timestamp" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+meta_path = Path(sys.argv[1])
+ts = sys.argv[2]
+try:
+    data = json.loads(meta_path.read_text())
+except Exception:
+    data = {}
+data["updated_at"] = ts
+meta_path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    fi
+  fi
+fi
+
+echo "agents-turn-end: recorded checkpoint for $current_branch at $timestamp"
+
+retro_marker="$repo_root/parallelus/engine/bin/retro-marker"
+if [[ -x "$retro_marker" ]]; then
+  if [[ -n "$active_session_id" ]]; then
+    SESSION_ID="$active_session_id" "$retro_marker" || true
+  else
+    "$retro_marker" || true
+  fi
+fi
