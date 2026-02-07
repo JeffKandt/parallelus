@@ -829,3 +829,17 @@
 
 **Next Actions**
 - commit and push guardrail hardening changes
+
+## 2026-02-07 18:00:10 UTC
+**Objectives**
+- add explicit default senior-review scope rule to the phase kickoff prompt (branch-wide by default, phase-bounded only when explicitly requested)
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` session kickoff prompt:
+  - under review loop step 6, added: default Senior review scope is full branch diff unless the prompt explicitly narrows to current phase
+
+**Validation Evidence**
+- manual review of the kickoff prompt block confirms rule placement under review-loop step 6
+
+**Next Actions**
+- commit and push prompt update

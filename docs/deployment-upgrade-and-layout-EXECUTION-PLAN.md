@@ -230,6 +230,7 @@ Execution requirements:
 
 Review loop (required before declaring phase complete):
 6) Launch Senior Architect review for the current phase scope on current HEAD.
+   - Default review scope rule: Senior review defaults to full branch diff unless this prompt explicitly bounds scope to the current phase.
 7) Reviewer must explicitly evaluate all phase exit gates:
    - gate satisfied? (yes/no)
    - evidence (file paths + command outputs)
