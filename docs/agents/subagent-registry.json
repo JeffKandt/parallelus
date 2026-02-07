@@ -184,5 +184,25 @@
     ],
     "deliverables_status": "waiting",
     "source_commit": "96d8968c4586c016af62be46c2a1ef719e76d4d0"
+  },
+  {
+    "id": "20260207-185934-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-1Zc5pA",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-1Zc5pA/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-1Zc5pA/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-1Zc5pA/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-1Zc5pA/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-185934",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "continuous_improvement_auditor.md",
+    "source_commit": "7930f61f986b4a5f78f36ef51adfccd29798f4a8",
+    "source_branch": "feature/process-runtime-reorg",
+    "timeout_seconds": 600
   }
 ]

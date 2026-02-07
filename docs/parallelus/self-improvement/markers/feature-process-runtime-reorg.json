@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-07T18:09:20.943539+00:00",
+  "timestamp": "2026-02-07T18:59:20.559220+00:00",
   "branch": "feature/process-runtime-reorg",
-  "head": "2bc4a51b4a52882a89ff5cfa27dd7a02d729f354",
-  "plan_path": "docs/plans/feature-process-runtime-reorg.md",
+  "head": "7930f61f986b4a5f78f36ef51adfccd29798f4a8",
+  "plan_path": "docs/branches/feature-process-runtime-reorg/PLAN.md",
   "plan_lines": 29,
-  "progress_path": "docs/progress/feature-process-runtime-reorg.md",
-  "progress_lines": 855,
-  "session_id": "20251057-20260207180919-0296a9",
-  "session_console": null,
-  "session_console_size": null
+  "progress_path": "docs/branches/feature-process-runtime-reorg/PROGRESS.md",
+  "progress_lines": 1061,
+  "session_id": "20251058-20260207183507-d87e2c",
+  "session_console": ".parallelus/sessions/20251058-20260207183507-d87e2c/console.log",
+  "session_console_size": 1417
 }
