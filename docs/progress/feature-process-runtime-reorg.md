@@ -708,3 +708,68 @@
 **Next Actions**
 - commit/push review artifact + registry/progress updates
 - hand off `PHASE-02` completion summary and stop before `PHASE-03`
+
+## 2026-02-07 16:04:34 UTC
+**Objectives**
+- document remediation plan immediately before implementation to avoid context-loss
+- harden subagent review/auditor orchestration after observed harvest/drift/timeout failures
+
+**Work Performed**
+- reviewed guardrails for this turn:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+- initialized a new session via `eval "$(make start_session)"` and captured bootstrap snapshot:
+  - `REPO_MODE=remote-connected`
+  - `BASE_BRANCH=main`
+  - `CURRENT_BRANCH=feature/process-runtime-reorg`
+  - `BASE_REMOTE=origin`
+  - `UNMERGED_REMOTE=origin/feature/multi-agentic-tool-guidance,origin/feature/process-runtime-reorg`
+  - `UNMERGED_LOCAL=feature/multi-agentic-tool-guidance`
+  - branch table included:
+    - `feature/multi-agentic-tool-guidance` (`remote & local`) action: `decide: merge/archive/delete`
+    - `feature/process-runtime-reorg` (`remote & local`) action: `decide: merge/archive/delete`
+- documented remediation package in branch plan before code edits:
+  - same-path deliverable rewrite detection for harvest
+  - cleanup refusal when deliverables are still pending/waiting/ready
+  - senior-review branch/commit context pinning to prevent drift
+  - CI-auditor timeout/prompt hardening and marker-target clarity
+
+**Next Actions**
+- implement remediations in `.agents/bin/subagent_manager.sh` (and related prompt instructions as needed)
+- add targeted regression tests for harvest/cleanup behavior
+- run targeted validations, then commit and push
+
+## 2026-02-07 16:11:48 UTC
+**Objectives**
+- implement documented remediations for review-harvest failures, cleanup safety, context drift, and CI-auditor stall risk
+
+**Work Performed**
+- implemented subagent orchestration hardening in `.agents/bin/subagent_manager.sh`:
+  - deliverable readiness/harvest now supports same-path rewrites via content fingerprints (`baseline_fingerprints`) instead of path-only diffing
+  - senior-review deliverable harvest now validates `Reviewed-Branch`/`Reviewed-Commit` metadata against launch source branch+commit before accepting artifacts
+  - cleanup now refuses non-forced teardown when any deliverable remains unharvested (in addition to the existing running-session guard)
+  - launch now chooses role-specific scope templates for senior-review and CI-auditor runs instead of generic scope placeholder content
+  - launch/prompt instructions now pin expected branch+commit context for read-only reviewer/auditor roles and explicitly restore context when drifted
+  - CI-auditor launches default to exec text mode (`SUBAGENT_CODEX_EXEC_JSON=0`) to reduce JSON parse-warning churn in long runs
+- updated senior review scope template to contextual placeholders:
+  - `docs/agents/templates/senior_architect_scope.md`
+- updated subagent manual to reflect cleanup harvest enforcement:
+  - `docs/agents/subagent-session-orchestration.md`
+- added targeted regression tests:
+  - `.agents/tests/test_subagent_manager.py`
+    - `test_harvest_detects_changed_baseline_review_file`
+    - `test_cleanup_blocks_unharvested_deliverables_without_force`
+
+**Validation Evidence**
+- `bash -n .agents/bin/subagent_manager.sh .agents/bin/launch_subagent.sh`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_subagent_manager.py .agents/tests/test_session_paths.py`
+  - outcome: pass (`8 passed in 4.03s`)
+
+**Residual Risks**
+- context pinning is now explicit and harvest validates review metadata, but model-side behavior can still consume wall-clock time before converging; monitor-loop intervention discipline remains important for long-running subagents
+- legacy registry entries created before this change do not include baseline fingerprints, so same-path rewrite detection applies to new launches and re-harvested entries going forward
+
+**Next Actions**
+- commit and push remediation package on `feature/process-runtime-reorg`
+- if desired, run one live senior-review dry-run to confirm end-to-end behavior in tmux/manual launch flows

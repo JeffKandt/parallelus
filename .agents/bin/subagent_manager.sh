@@ -337,6 +337,7 @@ print_status() {
   local filter_id=${1:-}
 python3 - "$REGISTRY_FILE" "$filter_id" <<'PY'
 import glob
+import hashlib
 import json
 import os
 import sys
@@ -362,6 +363,30 @@ def width_for(header, values, minimum, maximum):
         width = min(width, maximum)
     return width
 
+def fingerprint(path: str) -> str:
+    if os.path.islink(path):
+        return "symlink:" + os.readlink(path)
+    if os.path.isdir(path):
+        digest = hashlib.sha256()
+        for root, dirs, files in os.walk(path):
+            dirs.sort()
+            files.sort()
+            rel_root = os.path.relpath(root, path)
+            digest.update(f"D:{rel_root}\n".encode("utf-8", "ignore"))
+            for name in files:
+                file_path = os.path.join(root, name)
+                rel_path = os.path.relpath(file_path, path)
+                digest.update(f"F:{rel_path}\n".encode("utf-8", "ignore"))
+                with open(file_path, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        digest.update(chunk)
+        return "dir:" + digest.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return "file:" + digest.hexdigest()
+
 now = time.time()
 id_values = [row.get("id", "-") or "-" for row in entries]
 slug_values = [row.get("slug", "-") or "-" for row in entries]
@@ -380,9 +405,17 @@ for row in entries:
             source_glob = item.get("source_glob")
             if status in {"waiting", "pending"} and source_glob:
                 glob_pattern = os.path.join(sandbox_path, source_glob)
-                matches = [os.path.relpath(path, sandbox_path) for path in sorted(glob.glob(glob_pattern))]
                 baseline = set(item.get("baseline") or [])
-                ready = [rel for rel in matches if rel not in baseline]
+                baseline_fingerprints = item.get("baseline_fingerprints") or {}
+                ready = []
+                for path in sorted(glob.glob(glob_pattern)):
+                    rel = os.path.relpath(path, sandbox_path)
+                    if rel not in baseline:
+                        ready.append(rel)
+                        continue
+                    previous = baseline_fingerprints.get(rel)
+                    if previous and previous != fingerprint(path):
+                        ready.append(rel)
                 if ready:
                     if status != "ready" or item.get("ready_files") != ready:
                         item["status"] = "ready"
@@ -769,6 +802,7 @@ create_prompt_file() {
   local role_prompt=${7:-}
   local parent_branch=${8:-}
   local progress_path=${9:-"$sandbox/subagent.progress.md"}
+  local expected_commit=${10:-}
   local role_text=""
   local role_config=""
   local profile_display="default (danger-full-access)"
@@ -822,24 +856,30 @@ PY
   if [[ -z "$parent_branch" ]]; then
     parent_branch="<branch>"
   fi
+  if [[ -z "$expected_commit" ]]; then
+    expected_commit="<commit>"
+  fi
 
   local instructions
   if [[ "$role_name" == "continuous_improvement_auditor" || "$role_name" == "continuous_improvement_auditor.md" ]]; then
     read -r -d '' instructions <<EOF || true
 1. Read AGENTS.md and .agents/prompts/agent_roles/continuous_improvement_auditor.md to confirm guardrails.
-2. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
-3. Gather evidence without modifying the workspace: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
-4. Review the failures summary at docs/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
-5. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
-5. Stay read-only—do not run make bootstrap or alter files. Print the JSON report and exit.
+2. Pin context before auditing: ensure branch is '${parent_branch}' and HEAD is '${expected_commit}'. If either differs, run 'git checkout --quiet ${parent_branch}' and 'git reset --quiet --hard ${expected_commit}'.
+3. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
+4. Gather evidence without modifying tracked files: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
+5. Review the failures summary at docs/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
+6. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
+7. Stay read-only—do not run make bootstrap or alter tracked files. If command output is noisy or stalls, prioritize marker + failures + notebook evidence and finish promptly.
 EOF
   elif [[ "$role_read_only" == "true" ]]; then
     read -r -d '' instructions <<EOF || true
 1. Read AGENTS.md and the role prompt to confirm constraints.
-2. Stay read-only: do not run make bootstrap or edit code/notebooks; your deliverable lives under docs/reviews/.
-3. Run 'make read_bootstrap' to capture context, then review the branch state (diffs, plan/progress notebooks, logs) for ${parent_branch}.
-4. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
-5. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
+2. Pin context before review: ensure branch is '${parent_branch}' and HEAD is '${expected_commit}'. If either differs, run 'git checkout --quiet ${parent_branch}' and 'git reset --quiet --hard ${expected_commit}'.
+3. Stay read-only: do not run make bootstrap or edit code/notebooks; your deliverable lives under docs/reviews/.
+4. Run 'make read_bootstrap' to capture context, then review the branch state (diffs, plan/progress notebooks, logs) for ${parent_branch}.
+5. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
+6. Ensure the final review metadata explicitly targets this context: Reviewed-Branch=${parent_branch}, Reviewed-Commit=${expected_commit}.
+7. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
 EOF
 	  else
 	    read -r -d '' instructions <<EOF || true
@@ -1153,17 +1193,28 @@ USAGE
     restore_env_cmds+=("$_cmd")
   done
 
-	  scope_path="$sandbox/SUBAGENT_SCOPE.md"
-	  create_scope_file "$scope_path" "$scope_override"
-  python3 - <<'PY' "$scope_path" "$parent_branch"
+  scope_path="$sandbox/SUBAGENT_SCOPE.md"
+  local scope_template_source=""
+  if [[ -z "$scope_override" ]]; then
+    if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
+      scope_template_source="$ROOT/docs/agents/templates/senior_architect_scope.md"
+    elif [[ "$normalized_role" == "continuous_improvement_auditor.md" || "$slug" == "ci-audit" ]]; then
+      scope_template_source="$ROOT/docs/agents/templates/ci_audit_scope.md"
+    fi
+  fi
+  create_scope_file "$scope_path" "${scope_override:-$scope_template_source}"
+  python3 - <<'PY' "$scope_path" "$parent_branch" "$current_commit"
+import json
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
 parent_branch = sys.argv[2]
+current_commit = sys.argv[3]
 marker_branch = parent_branch.replace('/', '-')
 marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
 failures_path = f"docs/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
+review_path = f"docs/reviews/{marker_branch}-<YYYY-MM-DD>.md"
 marker_full = Path(marker_path)
 if marker_full.exists():
     try:
@@ -1175,18 +1226,24 @@ if marker_full.exists():
         pass
 
 text = path.read_text(encoding="utf-8")
-if "{{PARENT_BRANCH}}" in text or "{{MARKER_PATH}}" in text or "{{FAILURES_PATH}}" in text:
-    text = text.replace("{{PARENT_BRANCH}}", parent_branch)
-    text = text.replace("{{MARKER_PATH}}", marker_path)
-    text = text.replace("{{FAILURES_PATH}}", failures_path)
-    path.write_text(text, encoding="utf-8")
+placeholders = {
+    "{{PARENT_BRANCH}}": parent_branch,
+    "{{MARKER_PATH}}": marker_path,
+    "{{FAILURES_PATH}}": failures_path,
+    "{{TARGET_COMMIT}}": current_commit,
+    "{{REVIEW_PATH}}": review_path,
+}
+for key, value in placeholders.items():
+    if key in text:
+        text = text.replace(key, value)
+path.write_text(text, encoding="utf-8")
 PY
-	  progress_path="$sandbox/subagent.progress.md"
-	  : >"$progress_path"
-	  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
-	  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch" "$progress_path"
-	  log_path="$sandbox/subagent.log"
-	  : >"$log_path"
+  progress_path="$sandbox/subagent.progress.md"
+  : >"$progress_path"
+  prompt_path="$sandbox/SUBAGENT_PROMPT.txt"
+  create_prompt_file "$prompt_path" "$sandbox" "$scope_path" "$type" "$slug" "$codex_profile" "$normalized_role" "$parent_branch" "$progress_path" "$current_commit"
+  log_path="$sandbox/subagent.log"
+  : >"$log_path"
 
   if [[ -z "$codex_profile" && -n "${SUBAGENT_CODEX_PROFILE:-}" ]]; then
     codex_profile="$SUBAGENT_CODEX_PROFILE"
@@ -1194,6 +1251,15 @@ PY
 
   # Default to exec-mode for subagents to improve transcript quality and machine-readable monitoring.
   # Opt out by setting PARALLELUS_CODEX_USE_TUI=1 (or explicitly unsetting SUBAGENT_CODEX_USE_EXEC).
+  if [[ "$normalized_role" == "continuous_improvement_auditor.md" || "$slug" == "ci-audit" ]]; then
+    # CI auditor runs are stable in text mode and avoid JSON parse-warning noise in long transcripts.
+    if [[ -z "${SUBAGENT_CODEX_USE_EXEC+x}" ]]; then
+      export SUBAGENT_CODEX_USE_EXEC=1
+    fi
+    if [[ -z "${SUBAGENT_CODEX_EXEC_JSON+x}" ]]; then
+      export SUBAGENT_CODEX_EXEC_JSON=0
+    fi
+  fi
   if ! is_enabled "${PARALLELUS_CODEX_USE_TUI:-}" && [[ -z "${SUBAGENT_CODEX_USE_EXEC+x}" ]]; then
     export SUBAGENT_CODEX_USE_EXEC=1
   fi
@@ -1245,9 +1311,34 @@ PY
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
     senior_review_meta=$(python3 - <<'PY' "$sandbox" "$parent_branch"
 import glob
+import hashlib
 import json
 import os
 import sys
+
+def fingerprint(path: str) -> str:
+    if os.path.islink(path):
+        return "symlink:" + os.readlink(path)
+    if os.path.isdir(path):
+        digest = hashlib.sha256()
+        for root, dirs, files in os.walk(path):
+            dirs.sort()
+            files.sort()
+            rel_root = os.path.relpath(root, path)
+            digest.update(f"D:{rel_root}\n".encode("utf-8", "ignore"))
+            for name in files:
+                file_path = os.path.join(root, name)
+                rel_path = os.path.relpath(file_path, path)
+                digest.update(f"F:{rel_path}\n".encode("utf-8", "ignore"))
+                with open(file_path, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        digest.update(chunk)
+        return "dir:" + digest.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return "file:" + digest.hexdigest()
 
 sandbox = sys.argv[1]
 parent_branch = sys.argv[2]
@@ -1255,11 +1346,15 @@ branch_slug = parent_branch.replace('/', '-')
 pattern = f"docs/reviews/{branch_slug}-*.md"
 glob_pattern = os.path.join(sandbox, pattern)
 baseline = []
+baseline_fingerprints = {}
 for path in sorted(glob.glob(glob_pattern)):
-    baseline.append(os.path.relpath(path, sandbox))
+    rel = os.path.relpath(path, sandbox)
+    baseline.append(rel)
+    baseline_fingerprints[rel] = fingerprint(path)
 print(json.dumps({
     "source_glob": pattern,
     "baseline": baseline,
+    "baseline_fingerprints": baseline_fingerprints,
 }))
 PY
     ) || return 1
@@ -1277,6 +1372,7 @@ if meta:
         "kind": "review_markdown",
         "source_glob": meta.get("source_glob"),
         "baseline": meta.get("baseline") or [],
+        "baseline_fingerprints": meta.get("baseline_fingerprints") or {},
         "status": "waiting",
     }
     existing.append(deliverable)
@@ -1285,7 +1381,7 @@ PY
     ) || return 1
   fi
   entry_json=$(
-    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_commit" <<'PY'
+    python3 - "$entry_id" "$type" "$slug" "$sandbox" "$scope_path" "$prompt_path" "$log_path" "$progress_path" "$launcher" "$timestamp" "$codex_profile" "$normalized_role" "$deliverables_payload" "$current_branch" "$current_commit" <<'PY'
 import json
 import sys
 
@@ -1303,8 +1399,9 @@ import sys
     profile,
     role_prompt,
     deliverables_json,
+    source_branch,
     source_commit,
-) = sys.argv[1:15]
+) = sys.argv[1:16]
 
 payload = {
     "id": entry_id,
@@ -1337,6 +1434,8 @@ if deliverables_json:
             payload["deliverables_status"] = "pending"
 if source_commit:
     payload["source_commit"] = source_commit
+if source_branch:
+    payload["source_branch"] = source_branch
 
 print(json.dumps(payload))
 PY
@@ -1514,18 +1613,21 @@ PY
   local harvest_payload
   harvest_payload=$(python3 - <<'PY' "$entry_json" "$dest_root_abs"
 import glob
+import hashlib
 import json
 import os
 import shutil
 import sys
 import time
-from typing import List
+from typing import Dict, List
 
 entry = json.loads(sys.argv[1])
 dest_root = os.path.normpath(sys.argv[2])
 sandbox_root = os.path.normpath(entry.get("path", ""))
 if not sandbox_root:
     raise SystemExit("subagent_manager harvest: registry entry missing sandbox path")
+source_branch = entry.get("source_branch") or ""
+source_commit = entry.get("source_commit") or ""
 
 deliverables: List[dict] = entry.get("deliverables") or []
 if not deliverables:
@@ -1535,11 +1637,81 @@ copied: List[str] = []
 sandbox_root_with_sep = sandbox_root + os.sep
 dest_root_with_sep = dest_root + os.sep
 
+def fingerprint(path: str) -> str:
+    if os.path.islink(path):
+        return "symlink:" + os.readlink(path)
+    if os.path.isdir(path):
+        digest = hashlib.sha256()
+        for root, dirs, files in os.walk(path):
+            dirs.sort()
+            files.sort()
+            rel_root = os.path.relpath(root, path)
+            digest.update(f"D:{rel_root}\n".encode("utf-8", "ignore"))
+            for name in files:
+                file_path = os.path.join(root, name)
+                rel_path = os.path.relpath(file_path, path)
+                digest.update(f"F:{rel_path}\n".encode("utf-8", "ignore"))
+                with open(file_path, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(65536), b""):
+                        digest.update(chunk)
+        return "dir:" + digest.hexdigest()
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return "file:" + digest.hexdigest()
+
+def read_review_metadata(path: str) -> Dict[str, str]:
+    keys = {"Reviewed-Branch", "Reviewed-Commit", "Decision"}
+    out: Dict[str, str] = {}
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            for raw in fh:
+                if ":" not in raw:
+                    continue
+                key, value = raw.split(":", 1)
+                key = key.strip()
+                if key in keys and key not in out:
+                    out[key] = value.strip()
+                if len(out) == len(keys):
+                    break
+    except OSError as exc:
+        raise SystemExit(f"subagent_manager harvest: unable to read review metadata from {path}: {exc}") from exc
+    return out
+
+def validate_review_context(path: str) -> None:
+    if not source_branch and not source_commit:
+        return
+    metadata = read_review_metadata(path)
+    reviewed_branch = metadata.get("Reviewed-Branch", "")
+    reviewed_commit = metadata.get("Reviewed-Commit", "")
+    decision = metadata.get("Decision", "").strip().lower()
+    if not reviewed_branch or not reviewed_commit:
+        raise SystemExit(
+            "subagent_manager harvest: senior review deliverable missing Reviewed-Branch/Reviewed-Commit metadata"
+        )
+    if source_commit and reviewed_commit != source_commit:
+        raise SystemExit(
+            "subagent_manager harvest: review commit mismatch "
+            f"(expected {source_commit}, got {reviewed_commit})"
+        )
+    if source_branch and reviewed_branch not in {source_branch, f"origin/{source_branch}"}:
+        raise SystemExit(
+            "subagent_manager harvest: review branch mismatch "
+            f"(expected {source_branch}, got {reviewed_branch})"
+        )
+    if decision and decision not in {"approved", "changes_requested", "needs_changes"}:
+        raise SystemExit(
+            "subagent_manager harvest: senior review deliverable has unexpected Decision value "
+            f"'{metadata.get('Decision', '')}'"
+        )
+
 for item in deliverables:
     status = (item.get("status") or "pending").lower()
     source_rel = item.get("source")
     source_glob = item.get("source_glob")
     baseline = set(item.get("baseline") or [])
+    baseline_fingerprints = item.get("baseline_fingerprints") or {}
     ready_files = item.get("ready_files") or []
     targets: List[str] = []
 
@@ -1556,9 +1728,13 @@ for item in deliverables:
         else:
             for path in sorted(glob.glob(glob_pattern)):
                 rel = os.path.relpath(path, sandbox_root)
-                if rel in baseline:
+                if rel not in baseline:
+                    matches.append(rel)
                     continue
-                matches.append(rel)
+                previous = baseline_fingerprints.get(rel)
+                if previous and previous != fingerprint(path):
+                    matches.append(rel)
+                    continue
         for rel in matches:
             targets.append((rel, item.get("target") or rel))
         if not matches:
@@ -1576,6 +1752,8 @@ for item in deliverables:
             raise SystemExit(f"subagent_manager harvest: deliverable target escapes repo: {target_rel}")
         if not os.path.exists(source_path):
             raise SystemExit(f"subagent_manager harvest: deliverable not found: {source_rel_path}")
+        if item.get("id") == "senior-review-report":
+            validate_review_context(source_path)
 
         target_parent = os.path.dirname(target_path)
         if target_parent:
@@ -1592,9 +1770,14 @@ for item in deliverables:
         item["status"] = "harvested"
         item["harvested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         item["target_path"] = targets[-1][1]
-        if source_glob and baseline:
+        if source_glob:
             baseline.update(source_rel_path for source_rel_path, _ in targets)
             item["baseline"] = sorted(baseline)
+            for source_rel_path, _ in targets:
+                source_path = os.path.normpath(os.path.join(sandbox_root, source_rel_path))
+                if os.path.exists(source_path):
+                    baseline_fingerprints[source_rel_path] = fingerprint(source_path)
+            item["baseline_fingerprints"] = baseline_fingerprints
         if "ready_files" in item:
             item.pop("ready_files", None)
 
@@ -1685,6 +1868,26 @@ print(handle.get("window_id", ""))
 print(handle.get("pane_id", ""))
 PY
 )
+  local pending_deliverables
+  pending_deliverables=$(python3 - "$entry_json" <<'PY'
+import json
+import sys
+
+entry = json.loads(sys.argv[1])
+items = entry.get("deliverables") or []
+for idx, item in enumerate(items, start=1):
+    status = (item.get("status") or "pending").lower()
+    if status == "harvested":
+        continue
+    label = (
+        item.get("id")
+        or item.get("source_glob")
+        or item.get("source")
+        or f"deliverable-{idx}"
+    )
+    print(f"{label}:{status}")
+PY
+  )
 
   if [[ $force -eq 0 && "$status" == "running" ]]; then
     echo "subagent_manager cleanup: refusing to remove running sandbox $entry_id." >&2
@@ -1692,6 +1895,16 @@ PY
       echo "  Run $MONITOR_HELPER --id $entry_id and wait for it to exit (subagent finished) before cleaning up." >&2
     fi
     echo "  Re-run with --force only if you are certain the subagent has stopped." >&2
+    return 1
+  fi
+  if [[ $force -eq 0 && -n "$pending_deliverables" ]]; then
+    echo "subagent_manager cleanup: refusing to remove sandbox $entry_id while deliverables remain unharvested." >&2
+    echo "  Harvest pending deliverables first:" >&2
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      echo "  - $line" >&2
+    done <<<"$pending_deliverables"
+    echo "  Run '$0 harvest --id $entry_id' and retry cleanup, or use --force to acknowledge data loss risk." >&2
     return 1
   fi
 

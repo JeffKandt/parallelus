@@ -261,9 +261,10 @@ When the loop exits (the helper highlights any registry IDs with pending deliver
 5. Harvest deliverables as soon as they are ready. Subagents must only create `deliverables/.manifest` and `deliverables/.complete` after all files are final, so the presence of those markers is your signal that outputs can be copied back. Use `./.agents/bin/subagent_manager.sh harvest --id <registry-id>` for throwaway sandboxes. Worktree sessions may not register deliverables at all—review their diffs manually.
 6. After issuing follow-up instructions (or after verification/cleanup), restart the monitor loop so
    remaining subagents stay covered.
-7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own and
-   `status` no longer reports the entry as `running`. The helper enforces this guard; use
-   `--force` solely for confirmed-aborted sessions.
+7. Only run `subagent_manager.sh cleanup` once the monitor loop exits on its own,
+   `status` no longer reports the entry as `running`, and deliverables are harvested.
+   The helper now blocks cleanup when deliverables remain unharvested; use `--force`
+   solely for confirmed-aborted sessions where preserving outputs is no longer possible.
 8. Do not rely on typing `exit` inside the sandbox to close the session—the tmux pane
    and registry entry will remain `running`. When the transcript shows the subagent is
    finished (for example, it emits `Session closed.`), rerun the monitor loop once to

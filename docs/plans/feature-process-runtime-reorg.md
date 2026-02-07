@@ -16,6 +16,7 @@
 - [x] update branch plan/progress notebooks with outcomes + follow-ups
 - [x] execute `PHASE-01` (sentinel schema + namespace detection + acceptance gate + approved senior review)
 - [x] execute `PHASE-02` (session path resolver + dual-read compatibility + acceptance gate validations)
+- [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 
 ## Next Actions
 - execute `PHASE-03` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` only (docs namespace migration + tracked artifact relocation for notebooks/reviews/self-improvement paths)
