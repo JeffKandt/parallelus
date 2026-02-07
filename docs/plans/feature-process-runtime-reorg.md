@@ -18,10 +18,10 @@
 - [x] execute `PHASE-02` (session path resolver + dual-read compatibility + acceptance gate validations)
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
+- [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
 
 ## Next Actions
 - execute `PHASE-03` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` only (docs namespace migration + tracked artifact relocation for notebooks/reviews/self-improvement paths)
 - capture `PHASE-03` gate evidence in branch progress (bootstrap/turn_end/fold-progress/merge precheck compatibility under the migrated docs layout)
-- tighten marker generation/session discipline so marker metadata always includes `session_id` and `session_console` (auditor follow-up)
 - decide whether to mirror phase slices as Beads items for queue visibility
 - keep implementation strictly phased (do not start `PHASE-04+` until `PHASE-03` is approved)

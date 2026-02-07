@@ -174,6 +174,12 @@ if [[ -n "$current_branch" && "$current_branch" != "HEAD" ]]; then
   fi
 fi
 
+# Persist a runtime pointer so stateless shells can recover the active session id.
+printf '%s\n' "$SID" > "$SESSION_WRITE_ROOT/.current"
+if [[ -n "$current_branch" && "$current_branch" != "HEAD" ]]; then
+  printf '%s\n' "$SID" > "$SESSION_WRITE_ROOT/.current-${current_branch//\//-}"
+fi
+
 if [[ "${AGENTS_SESSION_LOG_AUTO:-1}" != "0" ]]; then
   printf 'if [ -z "${AGENTS_SESSION_LOGGING:-}" ]; then export AGENTS_SESSION_LOGGING=1; exec > >(tee -a "%s") 2>&1; fi\n' "$SDIR/console.log"
 fi

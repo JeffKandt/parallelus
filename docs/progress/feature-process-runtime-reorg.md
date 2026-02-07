@@ -859,3 +859,36 @@
 
 **Next Actions**
 - Start the next session and execute the next incomplete phase from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`.
+
+## 2026-02-07 18:18:24 UTC
+**Objectives**
+- make session lifecycle tooling resilient in stateless-shell environments (Codex.app-style command execution)
+
+**Work Performed**
+- updated `.agents/bin/agents-session-start` to persist runtime session pointers:
+  - `.parallelus/sessions/.current`
+  - `.parallelus/sessions/.current-<branch-slug>`
+- updated `.agents/bin/agents-turn-end` to recover active session context when `SESSION_ID` is missing from the shell:
+  - falls back to branch/global runtime session pointer
+  - continues validating non-empty session console log under resolved session path
+  - propagates recovered `SESSION_ID` to `retro-marker`
+- updated `.agents/bin/retro-marker`:
+  - resolves active session via env or runtime pointers
+  - resolves console path via shared path resolver (new + legacy roots), not legacy-only `sessions/`
+- added regression coverage in `.agents/tests/test_session_paths.py`:
+  - `test_session_start_writes_to_parallelus_sessions_root` now verifies pointer files
+  - `test_turn_end_uses_runtime_session_pointer_without_env_session_id` validates turn_end + marker flow without shell `SESSION_ID`
+
+**Validation Evidence**
+- `bash -n .agents/bin/agents-session-start .agents/bin/agents-turn-end .agents/bin/retro-marker`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_session_paths.py`
+  - outcome: pass (`7 passed in 3.76s`)
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_subagent_manager.py .agents/tests/monitor_loop.py`
+  - outcome: pass (`14 passed in 8.35s`)
+
+**Residual Risks**
+- branch/global pointer files are runtime hints; if stale due manual filesystem edits, turn_end may resolve an older session id. Running `make start_session` refreshes pointers immediately.
+
+**Next Actions**
+- commit and push stateless-shell compatibility hardening

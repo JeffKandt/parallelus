@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from parallelus_paths import resolve_session_dir, sessions_write_root
+
 NEW_AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
 LEGACY_AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
 ROLE_VAR = "AGENT_CI_AGENT_ROLE"
@@ -57,6 +59,24 @@ def load_agentrc(repo: Path) -> dict:
     return data
 
 
+def resolve_active_session_id(repo: Path, slugged_branch: str) -> Optional[str]:
+    sid = (os.environ.get("SESSION_ID") or "").strip()
+    if sid:
+        return sid
+
+    write_root = sessions_write_root(repo)
+    for pointer in (write_root / f".current-{slugged_branch}", write_root / ".current"):
+        try:
+            if not pointer.exists():
+                continue
+            sid = pointer.read_text(encoding="utf-8").splitlines()[0].strip()
+            if sid:
+                return sid
+        except Exception:
+            continue
+    return None
+
+
 def find_report_for_marker(repo: Path, branch: str, marker_path: Path, role_prompt: str) -> Path:
     try:
         marker = json.loads(marker_path.read_text())
@@ -92,9 +112,10 @@ def main() -> None:
     repo = git_root()
     branch = current_branch()
     slugged = branch.replace("/", "-")
+    agentrc = load_agentrc(repo)
 
     timestamp = datetime.now(timezone.utc).isoformat()
-    session_id = os.environ.get("SESSION_ID")
+    session_id = resolve_active_session_id(repo, slugged)
 
     plan_path = repo / "docs" / "plans" / f"{slugged}.md"
     progress_path = repo / "docs" / "progress" / f"{slugged}.md"
@@ -102,15 +123,13 @@ def main() -> None:
     session_console = None
     session_console_size = None
     if session_id:
-        console_candidate = repo / "sessions" / session_id / "console.log"
+        console_candidate = resolve_session_dir(repo, session_id, configured_root=agentrc.get("SESSION_DIR")) / "console.log"
         if console_candidate.exists():
             session_console = str(console_candidate.relative_to(repo))
             session_console_size = console_candidate.stat().st_size
 
     markers_dir = repo / "docs" / "self-improvement" / "markers"
     marker_path = markers_dir / f"{slugged}.json"
-
-    agentrc = load_agentrc(repo)
     require_retro = agentrc.get(NEW_AGENT_RC_FLAG)
     if require_retro is None:
         require_retro = agentrc.get(LEGACY_AGENT_RC_FLAG, "1")

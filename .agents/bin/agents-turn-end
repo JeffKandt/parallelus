@@ -55,13 +55,37 @@ if [[ -f "$session_marker" ]]; then
   exit 1
 fi
 
+resolve_session_id_fallback() {
+  local write_root pointer candidate sid
+  write_root="$(parallelus_sessions_write_root "$repo_root")"
+  candidate=""
+  for pointer in "$write_root/.current-${slugged_branch}" "$write_root/.current"; do
+    if [[ -f "$pointer" ]]; then
+      sid="$(head -n 1 "$pointer" | tr -d '\r' | xargs || true)"
+      if [[ -n "$sid" ]]; then
+        printf '%s\n' "$sid"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+active_session_id="${SESSION_ID:-}"
+if [[ -z "$active_session_id" ]]; then
+  active_session_id="$(resolve_session_id_fallback || true)"
+fi
+active_session_path=""
+if [[ -n "$active_session_id" ]]; then
+  active_session_path="$(parallelus_resolve_session_dir "$repo_root" "$active_session_id" "${SESSION_DIR:-}")"
+fi
+
 if [[ "${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ]]; then
-  if [[ -z "${SESSION_ID:-}" ]]; then
-    echo "agents-turn-end: SESSION_ID is not set; run make start_session before turn_end" >&2
+  if [[ -z "$active_session_id" ]]; then
+    echo "agents-turn-end: SESSION_ID is not set and no runtime session pointer was found; run make start_session before turn_end" >&2
     exit 1
   fi
-  session_path="$(parallelus_resolve_session_dir "$repo_root" "$SESSION_ID" "${SESSION_DIR:-}")"
-  console_path="$session_path/console.log"
+  console_path="$active_session_path/console.log"
   if [[ ! -f "$console_path" ]]; then
     echo "agents-turn-end: session console log missing at $console_path" >&2
     exit 1
@@ -99,16 +123,15 @@ else
 PLAN
 fi
 
-if [[ -n "${SESSION_ID:-}" ]]; then
-  session_path="$(parallelus_resolve_session_dir "$repo_root" "$SESSION_ID" "${SESSION_DIR:-}")"
-  if [[ -d "$session_path" ]]; then
-    summary_file="$session_path/summary.md"
+if [[ -n "$active_session_id" ]]; then
+  if [[ -d "$active_session_path" ]]; then
+    summary_file="$active_session_path/summary.md"
     if [[ ! -f "$summary_file" ]]; then
-      printf "# Session %s\n\n## Notes\n\n" "$SESSION_ID" > "$summary_file"
+      printf "# Session %s\n\n## Notes\n\n" "$active_session_id" > "$summary_file"
     fi
     printf -- '- %s (%s)\n' "$message" "$timestamp" >> "$summary_file"
 
-    meta_file="$session_path/meta.json"
+    meta_file="$active_session_path/meta.json"
     if [[ -f "$meta_file" ]]; then
       python3 - "$meta_file" "$timestamp" <<'PY'
 import json
@@ -132,5 +155,9 @@ echo "agents-turn-end: recorded checkpoint for $current_branch at $timestamp"
 
 retro_marker="$repo_root/.agents/bin/retro-marker"
 if [[ -x "$retro_marker" ]]; then
-  "$retro_marker" || true
+  if [[ -n "$active_session_id" ]]; then
+    SESSION_ID="$active_session_id" "$retro_marker" || true
+  else
+    "$retro_marker" || true
+  fi
 fi

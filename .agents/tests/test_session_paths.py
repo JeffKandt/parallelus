@@ -69,6 +69,11 @@ def test_session_start_writes_to_parallelus_sessions_root() -> None:
         assert session_id
         assert session_dir.is_dir()
         assert session_dir.parent.resolve() == sessions_write_root(repo).resolve()
+        branch_slug = "feature-demo"
+        branch_pointer = sessions_write_root(repo) / f".current-{branch_slug}"
+        global_pointer = sessions_write_root(repo) / ".current"
+        assert branch_pointer.read_text(encoding="utf-8").strip() == session_id
+        assert global_pointer.read_text(encoding="utf-8").strip() == session_id
 
 
 def test_turn_end_reads_legacy_session_directory() -> None:
@@ -97,6 +102,44 @@ def test_turn_end_reads_legacy_session_directory() -> None:
         assert "legacy checkpoint" in (legacy_session / "summary.md").read_text(encoding="utf-8")
         progress = repo / "docs" / "progress" / "feature-legacy-turn-end.md"
         assert "legacy checkpoint" in progress.read_text(encoding="utf-8")
+
+
+def test_turn_end_uses_runtime_session_pointer_without_env_session_id() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-pointer-turn-end-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/pointer-turn-end"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        session_id = "20260207-pointer"
+        session_root = sessions_write_root(repo)
+        session_dir = session_root / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        (session_dir / "console.log").write_text("pointer turn-end log\n", encoding="utf-8")
+        (session_dir / "summary.md").write_text("# Session pointer\n", encoding="utf-8")
+        (session_dir / "meta.json").write_text("{\"session_id\": \"pointer\"}\n", encoding="utf-8")
+        (session_root / f".current-{slug}").write_text(session_id + "\n", encoding="utf-8")
+        (session_root / ".current").write_text(session_id + "\n", encoding="utf-8")
+
+        marker = repo / ".agents" / f"session-required.{slug}"
+        if marker.exists():
+            marker.unlink()
+
+        result = _run(
+            [str(repo / ".agents" / "bin" / "agents-turn-end"), "pointer checkpoint"],
+            cwd=repo,
+            env={"AGENTS_RETRO_SKIP_VALIDATE": "1"},
+        )
+        assert result.returncode == 0, result.stderr
+
+        progress = repo / "docs" / "progress" / f"{slug}.md"
+        assert "pointer checkpoint" in progress.read_text(encoding="utf-8")
+        assert "pointer checkpoint" in (session_dir / "summary.md").read_text(encoding="utf-8")
+
+        marker_path = repo / "docs" / "self-improvement" / "markers" / f"{slug}.json"
+        marker_data = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert marker_data.get("session_id") == session_id
+        assert marker_data.get("session_console", "").startswith(".parallelus/sessions/")
 
 
 def test_collect_failures_scans_new_and_legacy_session_logs() -> None:
