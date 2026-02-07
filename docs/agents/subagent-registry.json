@@ -266,5 +266,41 @@
     "source_commit": "0d6f5a93b2d9fe0af41134c206f8e776e885a6dc",
     "source_branch": "feature/process-runtime-reorg",
     "timeout_seconds": 600
+  },
+  {
+    "id": "20260207-192758-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-192758",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "id": "senior-review-report",
+        "kind": "review_markdown",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
+        "baseline": [
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
+        ],
+        "baseline_fingerprints": {
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md": "file:7431a75012034ccde62233aedee7e4cb027794494c6ecee7e76c91b46a00e760"
+        },
+        "status": "harvested",
+        "harvested_at": "2026-02-07T19:42:25Z",
+        "target_path": "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
+      }
+    ],
+    "deliverables_status": "harvested",
+    "source_commit": "6caff9b5339311ada452af26f0b8a6ffd187e9fb",
+    "source_branch": "feature/process-runtime-reorg"
   }
 ]

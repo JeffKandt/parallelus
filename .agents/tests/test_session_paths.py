@@ -253,9 +253,20 @@ def test_collect_failures_dedupes_overlapping_parallelus_globs() -> None:
 
 def test_deploy_scaffold_gitignore_includes_parallelus_runtime_dir() -> None:
     with tempfile.TemporaryDirectory(prefix="session-path-deploy-gitignore-") as tmpdir:
+        runner_repo = Path(tmpdir) / "runner-repo"
+        _init_repo(runner_repo, branch="feature/deploy-runner")
+
+        before_branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=runner_repo).stdout.strip()
+        before_head = _run(["git", "rev-parse", "HEAD"], cwd=runner_repo).stdout.strip()
+
         target = Path(tmpdir) / "scaffolded"
-        result = _run([str(DEPLOY_SCRIPT), str(target)], cwd=REPO_ROOT)
+        result = _run([str(DEPLOY_SCRIPT), str(target)], cwd=runner_repo)
         assert result.returncode == 0, result.stderr
+
+        after_branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=runner_repo).stdout.strip()
+        after_head = _run(["git", "rev-parse", "HEAD"], cwd=runner_repo).stdout.strip()
+        assert after_branch == before_branch
+        assert after_head == before_head
 
         entries = {
             line.strip()

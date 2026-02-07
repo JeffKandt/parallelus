@@ -1263,3 +1263,31 @@
 **Next Actions**
 - commit/push refreshed retrospective artifacts and CI-auditor registry/progress updates
 - rerun marker/failures/report for the post-commit `HEAD` if needed, then launch Senior Architect review
+
+## 2026-02-07 20:30:00 UTC
+**Objectives**
+- resolve blocker from Senior Architect run `20260207-192758-senior-review` and prepare rerun on updated commit
+
+**Work Performed**
+- launched Senior Architect subagent on `HEAD 6caff9b`:
+  - id: `20260207-192758-senior-review`
+  - sandbox: `/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-MU7jsK`
+  - runner log: `/tmp/senior-review-20260207-192758.log`
+  - harvested review: `docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md`
+  - cleanup: `.agents/bin/subagent_manager.sh cleanup --id 20260207-192758-senior-review --force`
+- review decision: `changes_requested` (blocker)
+  - blocker: unquoted heredocs in `.agents/bin/deploy_agents_process.sh` executed markdown backticks as command substitution when deploy scaffolding was invoked from repo root
+  - blocker: deploy-scaffold regression test used `cwd=REPO_ROOT`, allowing branch/worktree mutation side effects
+- implemented fixes:
+  - escaped markdown backticks in deploy-generated README heredocs (`.agents/bin/deploy_agents_process.sh`)
+  - isolated deploy-scaffold test execution to an ephemeral temp git repo and added branch/HEAD invariance assertions (`.agents/tests/test_session_paths.py`)
+- validations after fixes:
+  - `bash -n .agents/bin/deploy_agents_process.sh`
+  - `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q .agents/tests/test_session_paths.py::test_deploy_scaffold_gitignore_includes_parallelus_runtime_dir` -> `1 passed`
+  - `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q .agents/tests` -> `23 passed`
+  - `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q tests` -> `1 passed`
+
+**Next Actions**
+- commit + push blocker fix and notebook updates
+- refresh marker/failures/report for post-fix `HEAD`
+- relaunch Senior Architect review and iterate until approved
