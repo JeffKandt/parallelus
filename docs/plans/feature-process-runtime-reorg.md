@@ -16,6 +16,6 @@
 - [ ] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
-- start `PR-01` from the execution plan (sentinel schema + namespace detection + tests)
-- decide whether to mirror PR slices as Beads items for queue visibility
-- keep implementation strictly phased (no broad file moves before PR-01/PR-02 gates pass)
+- start `PHASE-01` from the execution plan (sentinel schema + namespace detection + tests)
+- decide whether to mirror phase slices as Beads items for queue visibility
+- keep implementation strictly phased (no broad file moves before PHASE-01/PHASE-02 gates pass)

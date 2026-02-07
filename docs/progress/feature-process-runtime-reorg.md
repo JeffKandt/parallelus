@@ -238,3 +238,34 @@
 - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
 - `docs/deployment-upgrade-and-layout-PLAN.md`
 - `docs/plans/feature-process-runtime-reorg.md`
+
+## 2026-02-07 14:05:35 UTC
+**Objectives**
+- align execution-plan terminology with local branch workflow and provide
+  reusable phase-neutral kickoff prompt text
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`:
+  - renamed `PR-01..PR-07` to `PHASE-01..PHASE-07`
+  - updated validation/references to phase terminology
+  - added a phase-neutral “Session Kickoff Prompt” template that instructs each
+    new session to detect and execute the next incomplete phase
+- updated branch plan next actions to reference `PHASE-01/PHASE-02` wording
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+- `docs/plans/feature-process-runtime-reorg.md`
+
+## 2026-02-07 14:09:36 UTC
+**Objectives**
+- make phase-neutral kickoff prompt robust to notebook path migration during execution
+
+**Work Performed**
+- updated the kickoff prompt in
+  `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` to:
+  - detect active branch notebook paths across both layouts
+  - prefer `docs/branches/<slug>/...` when both old and new paths exist
+  - require updates to whichever notebook layout is active for the phase
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
