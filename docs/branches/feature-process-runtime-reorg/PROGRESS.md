@@ -1214,3 +1214,52 @@
 - run targeted validation for updated subagent manager behavior
 - commit/push the launcher fix
 - rerun marker/failures/report refresh and relaunch Senior Architect review
+
+## 2026-02-07 19:55:00 UTC
+**Objectives**
+- stage current launcher fix, re-confirm subagent manual gates, and begin final PHASE-03 review loop on current `HEAD`
+
+**Work Performed**
+- validated pending launcher patch:
+  - `bash -n .agents/bin/subagent_manager.sh`
+  - `PY_TEST_CMD='pytest -q .agents/tests/test_subagent_manager.py' .agents/adapters/python/test.sh`
+  - outcome: `1 passed`
+- committed and pushed launcher + notebook update:
+  - commit: `0d6f5a9`
+  - push: `feature/process-runtime-reorg -> feature/process-runtime-reorg`
+- re-read required subagent launch manuals before next subagent commands:
+  - `docs/agents/subagent-session-orchestration.md`
+  - `docs/agents/manuals/senior-architect.md`
+
+**Next Actions**
+- refresh marker/failures/report on `HEAD 0d6f5a9`
+- launch CI auditor for the refreshed marker and verify retrospective linkage
+- launch Senior Architect review on current `HEAD` and iterate until approved
+
+## 2026-02-07 20:05:00 UTC
+**Objectives**
+- refresh retrospective artifacts for current commit and satisfy senior-review preflight requirements
+
+**Work Performed**
+- refreshed marker/failures on `HEAD 0d6f5a9`:
+  - `.agents/bin/retro-marker` -> marker timestamp `2026-02-07T19:20:06.950969+00:00`
+  - initial `make collect_failures` raced marker refresh because the commands were launched in parallel and rewrote the prior marker artifact
+  - reran sequentially:
+    - `make collect_failures`
+    - outcome: `docs/parallelus/self-improvement/failures/feature-process-runtime-reorg--2026-02-07T19:20:06.950969+00:00.json`
+- launched CI auditor subagent:
+  - launch command: `PATH="$PWD/.venv/bin:$PATH" .agents/bin/subagent_manager.sh launch --type throwaway --slug ci-audit --role continuous_improvement_auditor --launcher manual`
+  - id: `20260207-192028-ci-audit`
+  - sandbox runner: `/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-Xe4IoH/.parallelus_run_subagent.sh`
+  - runner log: `/tmp/ci-audit-20260207-192028.log`
+  - cleanup: `.agents/bin/subagent_manager.sh cleanup --id 20260207-192028-ci-audit --force`
+- captured marker-matched retrospective report for current marker:
+  - `docs/parallelus/self-improvement/reports/feature-process-runtime-reorg--2026-02-07T19:20:06.950969+00:00.json`
+  - `.agents/bin/verify-retrospective` -> report found for marker `2026-02-07T19:20:06.950969+00:00`
+
+**Residual Risks**
+- running `retro-marker` and `collect_failures` in parallel continues to create stale-timestamp artifacts; keep these commands serialized
+
+**Next Actions**
+- commit/push refreshed retrospective artifacts and CI-auditor registry/progress updates
+- rerun marker/failures/report for the post-commit `HEAD` if needed, then launch Senior Architect review
