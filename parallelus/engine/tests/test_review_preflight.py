@@ -21,6 +21,9 @@ def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subpro
 
 def _init_repo(tmp: Path, branch: str = "feature/preflight") -> None:
     shutil.copytree(REPO_ROOT / "parallelus/engine", tmp / "parallelus/engine")
+    shutil.copytree(REPO_ROOT / "parallelus/manuals/templates", tmp / "parallelus/manuals/templates")
+    for cache_dir in (tmp / "parallelus/engine").rglob("__pycache__"):
+        shutil.rmtree(cache_dir, ignore_errors=True)
 
     slug = branch.replace("/", "-")
     notebook_dir = tmp / "docs" / "branches" / slug
@@ -111,3 +114,44 @@ def test_review_preflight_no_launch_creates_marker_linked_artifacts() -> None:
 
         verify = _run([str(repo / "parallelus/engine" / "bin" / "verify-retrospective")], cwd=repo)
         assert verify.returncode == 0, verify.stderr
+
+
+def test_review_preflight_default_launch_marks_awaiting_when_not_started() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-launch-status-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-launch-status"
+        _init_repo(repo, branch=branch)
+        for name in ("markers", "reports", "failures"):
+            leaf = repo / "docs" / "parallelus" / "self-improvement" / name
+            leaf.mkdir(parents=True, exist_ok=True)
+            (leaf / ".gitkeep").write_text("", encoding="utf-8")
+        manuals_dir = repo / "parallelus" / "manuals"
+        manuals_dir.mkdir(parents=True, exist_ok=True)
+        (manuals_dir / "subagent-registry.json").write_text("[]\n", encoding="utf-8")
+        _run(["git", "add", "docs/parallelus/self-improvement"], cwd=repo)
+        _run(["git", "add", "parallelus/manuals/subagent-registry.json"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "seed self-improvement scaffold"], cwd=repo)
+        (repo / ".gitignore").write_text(".parallelus/\nparallelus/engine/bin/__pycache__/\n", encoding="utf-8")
+        _run(["git", "add", ".gitignore"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "ignore runtime workspace"], cwd=repo)
+
+        # Stub launcher emits no handle/json, simulating "print manual instructions only".
+        launcher_stub_dir = Path(tempfile.mkdtemp(prefix="review-preflight-launcher-stub-"))
+        launcher_stub = launcher_stub_dir / "launcher-stub.sh"
+        launcher_stub.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        launcher_stub.chmod(0o755)
+
+        cmd = _run(
+            [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight"],
+            cwd=repo,
+            env={"SUBAGENT_LAUNCH_HELPER": str(launcher_stub)},
+        )
+        assert cmd.returncode == 0, cmd.stderr
+        assert "awaiting_manual_launch" in cmd.stderr
+
+        registry_path = repo / "parallelus" / "manuals" / "subagent-registry.json"
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+        assert data, "expected a launch registry entry"
+        entry = data[-1]
+        assert entry["launcher"] == "auto"
+        assert entry["status"] == "awaiting_manual_launch"

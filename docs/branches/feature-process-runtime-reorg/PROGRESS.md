@@ -1502,3 +1502,36 @@
 **Next Actions**
 - run serialized preflight and launch senior review via `make senior_review_preflight`
 - harvest review artifact, remediate findings if needed, and rerun until approved
+
+## 2026-02-07 20:39:09 UTC
+**Objectives**
+- remediate Senior Architect `changes-required` findings for `PHASE-04` without expanding into later phase scope
+- prove default `review-preflight` launch behavior cannot report `running` without an actual launch handle
+
+**Work Performed**
+- completed launch-state hardening in `parallelus/engine/bin/subagent_manager.sh`:
+  - default `review-preflight` launcher remains `auto` (manual still explicit)
+  - launch helper now supports env override via `SUBAGENT_LAUNCH_HELPER`
+  - registry lifecycle now starts at `pending_launch` and transitions to `running` only on successful launch metadata write
+  - failed/non-launch paths now set `awaiting_manual_launch` with explicit operator message
+- completed regression coverage in `parallelus/engine/tests/test_review_preflight.py`:
+  - added launch-path test `test_review_preflight_default_launch_marks_awaiting_when_not_started`
+  - fixture now seeds `parallelus/manuals/templates/` so default senior-review launch path has required scope template material
+- removed stale tracked artifacts from a previous failed review iteration (`docs/parallelus/reviews/...`, marker, registry) to keep the remediation commit scoped and unblock preflight worktree gating
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py` -> `3 passed`
+- `bash -n parallelus/engine/bin/subagent_manager.sh` -> pass
+- `PATH="$PWD/.venv/bin:$PATH" make ci` -> pass (`All checks passed!`, project tests + smoke)
+
+**PHASE-04 Gate Status (in review loop)**
+- Gate: no runtime/script legacy references except explicit temporary compatibility — **Yes (unchanged from previous checkpoint)**
+- Gate: primary command entrypoints run under `parallelus/engine/bin/` — **Yes (unchanged from previous checkpoint)**
+- Gate: Senior Architect approval on current `HEAD` — **Pending rerun after this remediation commit**
+
+**Residual Risks**
+- low-severity schema/runtime parity follow-up in deploy manifest validation remains out-of-scope for `PHASE-04` remediation and is still tracked for later phase planning
+
+**Next Actions**
+- commit and push the remediation diff
+- rerun `make senior_review_preflight` on new `HEAD`, harvest review artifact, and iterate until `Decision: approved`

@@ -25,6 +25,6 @@
 - [x] implement post-phase retrospective/senior-review remediations (serialized preflight command, no-parallel policy docs, local commit-aware auditor mode)
 
 ## Next Actions
-- execute `PHASE-04` only, keeping scope to `.agents/**` and `docs/agents/**` relocation plus required reference rewrites
-- run targeted validations plus required broader checks (`make ci`) and capture evidence in progress + review artifacts
-- decide whether to mirror phase slices as Beads items for queue visibility
+- close the `PHASE-04` review loop by landing launch-state remediations from the latest senior review and rerunning review on updated `HEAD`
+- keep validation scoped to the changed review/preflight scripts plus required `PHASE-04` broader gate (`make ci`)
+- capture refreshed gate evidence in canonical branch notebooks and mark `PHASE-04` complete only after explicit approved review artifact

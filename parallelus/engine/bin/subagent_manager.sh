@@ -24,7 +24,7 @@ REGISTRY_FILE=${SUBAGENT_REGISTRY_FILE:-parallelus/manuals/subagent-registry.jso
 SCOPE_TEMPLATE="parallelus/manuals/templates/subagent_scope_template.md"
 SANDBOX_ROOT="$ROOT/.parallelus/subagents/sandboxes"
 WORKTREE_ROOT="$ROOT/.parallelus/subagents/worktrees"
-LAUNCH_HELPER="$ROOT/parallelus/engine/bin/launch_subagent.sh"
+LAUNCH_HELPER="${SUBAGENT_LAUNCH_HELPER:-$ROOT/parallelus/engine/bin/launch_subagent.sh}"
 DEPLOY_HELPER="$ROOT/parallelus/engine/bin/deploy_agents_process.sh"
 VERIFY_HELPER="$ROOT/parallelus/engine/bin/verify_process_run.py"
 RETRO_LOCAL_AUDITOR="$ROOT/parallelus/engine/bin/retro_audit_local.py"
@@ -128,7 +128,7 @@ ensure_clean_worktree() {
     [[ -z "$line" ]] && continue
     path="${line:3}"
     case "$path" in
-      docs/parallelus/self-improvement/*|docs/self-improvement/*)
+      docs/parallelus|docs/parallelus/|docs/parallelus/self-improvement|docs/parallelus/self-improvement/*|docs/self-improvement|docs/self-improvement/|docs/self-improvement/*)
         ;;
       *)
         allowlist_only=0
@@ -1077,7 +1077,8 @@ EOF
 
 ensure_tmux_ready() {
   local launcher=$1
-  if [[ "$launcher" == "manual" ]]; then
+  # Auto launcher can safely fall back to manual launch instructions.
+  if [[ "$launcher" == "manual" || "$launcher" == "auto" ]]; then
     return 0
   fi
   if tmux_available; then
@@ -1140,7 +1141,7 @@ run_launch() {
   if [[ ! -x "$LAUNCH_HELPER" ]]; then
     echo "launch helper $LAUNCH_HELPER not found; run manually:" >&2
     echo "cd '$sandbox' && codex --cd '$sandbox' \"$(cat "$prompt")\"" >&2
-    return 0
+    return 1
   fi
   launch_json=$("$LAUNCH_HELPER" --launcher "$launcher" --path "$sandbox" --prompt "$prompt" --log "$log_path" --type "$type" --title "$entry_id" 2>/dev/null) || true
   if [[ -n "$launch_json" ]]; then
@@ -1161,12 +1162,14 @@ else:
 with open(registry_path, "w", encoding="utf-8") as fh:
     json.dump(data, fh, indent=2)
 PY
+    return 0
   fi
+  return 1
 }
 
 cmd_review_preflight() {
   local launcher auditor_mode skip_launch
-  launcher="manual"
+  launcher="auto"
   auditor_mode="local"
   skip_launch=0
   while [[ $# -gt 0 ]]; do
@@ -1579,7 +1582,7 @@ payload = {
     "log_path": log_path,
     "progress_path": progress_path,
     "launcher": launcher,
-    "status": "running",
+    "status": "pending_launch",
     "launched_at": timestamp,
     "window_title": "",
     "launcher_kind": "",
@@ -1630,7 +1633,12 @@ PY
     export SUBAGENT_CODEX_PROFILE="$codex_profile"
   fi
 
-  run_launch "$launcher" "$sandbox" "$prompt_path" "$type" "$log_path" "$entry_id" || true
+  if run_launch "$launcher" "$sandbox" "$prompt_path" "$type" "$log_path" "$entry_id"; then
+    update_registry "$entry_id" "row['status'] = 'running'"
+  else
+    update_registry "$entry_id" "row['status'] = 'awaiting_manual_launch'"
+    echo "Subagent not auto-launched; status set to awaiting_manual_launch." >&2
+  fi
 
   for _cmd in "${restore_env_cmds[@]}"; do
     eval "$_cmd"
