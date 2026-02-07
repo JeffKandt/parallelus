@@ -224,5 +224,27 @@
     "source_commit": "5015ee81b921bcf1a350b0b57ecaa5c29f756dc4",
     "source_branch": "feature/process-runtime-reorg",
     "timeout_seconds": 600
+  },
+  {
+    "id": "20260207-191010-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-VHcGO7",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-VHcGO7/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-VHcGO7/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-VHcGO7/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-VHcGO7/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-191010",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "continuous_improvement_auditor.md",
+    "source_commit": "0386eca8bcf14bc50dc0c6d90d76f2a3bd727ac3",
+    "source_branch": "feature/process-runtime-reorg",
+    "timeout_seconds": 600,
+    "aborted_reason": "timeout",
+    "aborted_at": "2026-02-07T19:15:34Z"
   }
 ]
