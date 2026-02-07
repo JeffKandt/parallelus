@@ -1,0 +1,10 @@
+{
+  "branch": "feature/process-runtime-reorg",
+  "marker_timestamp": "2026-02-06T15:38:52.371063+00:00",
+  "summary": "No issues detected.",
+  "issues": [],
+  "follow_ups": [
+    "Persist this auditor output to docs/self-improvement/reports/feature-process-runtime-reorg--2026-02-06T15:38:52.371063+00:00.json.",
+    "Commit and push the report, then launch the Senior Architect review for HEAD 6a34fdc0c3c9824b5b04096e95afac09ce4ed687."
+  ]
+}

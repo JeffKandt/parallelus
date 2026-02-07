@@ -54,5 +54,23 @@
       "pane_id": "%48"
     },
     "source_commit": "00013fec7ad299e998e5645a660b6483fd745727"
+  },
+  {
+    "id": "20260207-143050-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-143050",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "continuous_improvement_auditor.md",
+    "source_commit": "6a34fdc0c3c9824b5b04096e95afac09ce4ed687"
   }
 ]
