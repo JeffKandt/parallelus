@@ -773,3 +773,22 @@
 **Next Actions**
 - commit and push remediation package on `feature/process-runtime-reorg`
 - if desired, run one live senior-review dry-run to confirm end-to-end behavior in tmux/manual launch flows
+
+## 2026-02-07 17:25:42 UTC
+**Objectives**
+- generalize senior architect scope template wording so it remains canonical for mainstream branch-level reviews while preserving phased-review compatibility
+
+**Work Performed**
+- updated `docs/agents/templates/senior_architect_scope.md` to remove hardcoded phase-specific framing:
+  - goal now defaults to full feature-branch review for merge-to-main readiness
+  - objectives/acceptance language now refers to requested scope and required criteria/gates (generic)
+  - notes now explicitly allow bounded/phased reviews when requested, while requiring explicit out-of-scope disclosure
+
+**Validation Evidence**
+- manual template inspection confirms placeholders remain intact:
+  - `{{PARENT_BRANCH}}`
+  - `{{TARGET_COMMIT}}`
+  - `{{REVIEW_PATH}}`
+
+**Next Actions**
+- commit and push template generalization

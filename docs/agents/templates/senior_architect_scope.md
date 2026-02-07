@@ -4,25 +4,27 @@
 - Parent branch: {{PARENT_BRANCH}}
 - Commit under review: {{TARGET_COMMIT}}
 - Expected review output path: {{REVIEW_PATH}}
-- Goal: provide an explicit gate evaluation for the current phase scope only.
+- Goal: provide an explicit architecture review for the requested scope
+  (default: all feature-branch changes intended for merge to `main`).
 
 ## Preconditions
 - Workspace context is pinned to branch `{{PARENT_BRANCH}}` at commit `{{TARGET_COMMIT}}`.
 - Review is performed on committed state; no new implementation changes during this pass.
-- Focus remains within the requested phase scope and acceptance gates.
+- Scope is explicit (full branch or bounded subset) and documented in the review.
 
 ## Objectives
-- [ ] Review all relevant changes for the requested phase on `{{PARENT_BRANCH}}`.
-- [ ] Evaluate each phase exit gate with explicit `yes/no` status and supporting evidence.
+- [ ] Review all relevant changes for the requested scope on `{{PARENT_BRANCH}}`.
+- [ ] Evaluate required acceptance criteria/gates with explicit `yes/no` status and supporting evidence.
 - [ ] Identify remaining risks, regressions, or missing validation.
 - [ ] Confirm the review metadata targets `{{PARENT_BRANCH}}` + `{{TARGET_COMMIT}}`.
 
 ## Acceptance Criteria
 - Review file includes `Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`, `Decision`.
-- Each required gate has: satisfaction status, evidence (paths + command outputs), and residual risks.
+- Each required gate/criterion has: satisfaction status, evidence (paths + command outputs), and residual risks.
 - Findings are severity-classified and include actionable remediation notes.
 
 ## Notes
 - Operate read-only except for writing the review markdown deliverable.
 - Do not run bootstrap helpers or branch-changing workflows (`make bootstrap`, etc.).
+- If the request is a partial or phased review, state the bounded scope explicitly and call out what remains out-of-scope.
 - If branch or commit context drifts, restore it before continuing and call out the incident in the review notes.
