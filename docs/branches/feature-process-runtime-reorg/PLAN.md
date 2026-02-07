@@ -21,6 +21,7 @@
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
 - [x] harden `make read_bootstrap` logging gate for stateless-shell environments (session context helper + pointer fallback)
+- [x] implement post-phase retrospective/senior-review remediations (serialized preflight command, no-parallel policy docs, local commit-aware auditor mode)
 
 ## Next Actions
 - await maintainer direction before starting `PHASE-04`

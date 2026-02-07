@@ -7,7 +7,7 @@ PLAN_DIR ?= docs/branches
 PROGRESS_DIR ?= docs/branches
 SESSION_DIR ?= .parallelus/sessions
 
-.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures
+.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures retro_audit_local senior_review_preflight
 
 read_bootstrap:
 	@if [ "$${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ] && ! $(AGENTS_BIN)/agents-session-logging-active --quiet; then \
@@ -53,6 +53,16 @@ turn_end:
 
 collect_failures:
 	@$(AGENTS_BIN)/collect_failures.py
+
+retro_audit_local:
+	@$(AGENTS_BIN)/retro_audit_local.py
+
+senior_review_preflight:
+ifdef ARGS
+	@$(AGENTS_BIN)/subagent_manager.sh review-preflight $(ARGS)
+else
+	@$(AGENTS_BIN)/subagent_manager.sh review-preflight
+endif
 
 archive:
 ifndef b

@@ -40,9 +40,12 @@ report progress or decisions back in plain language.
 > The launcher now enforces that the Continuous Improvement audit (including the
 > failures summary) has been completed before the senior review is launched.
 
-> **Retrospective audits:** Before the senior architect review, run `make collect_failures`, then launch the
-> Continuous Improvement Auditor prompt (`.agents/prompts/agent_roles/continuous_improvement_auditor.md`). The auditor
-> works read-only, analyses evidence starting from the marker recorded in
+> **Retrospective audits:** Do not run marker/failures/auditor steps in
+> parallel. Use `make senior_review_preflight` (recommended) to run the
+> serialized pipeline (`retro-marker` -> `collect_failures` -> local
+> commit-aware auditor -> `verify-retrospective`) and launch the senior review.
+> If you run the steps manually, keep the same strict order. The auditor
+> analyses evidence starting from the marker recorded in
 > `docs/parallelus/self-improvement/markers/<branch>.json` (and the failures summary in
 > `docs/parallelus/self-improvement/failures/<branch>--<marker>.json` when present), and
 > returns a JSON report to be saved under

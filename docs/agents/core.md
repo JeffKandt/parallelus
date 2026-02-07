@@ -135,9 +135,12 @@ and records the retro marker; supply a descriptive message so reviewers
 understand the outcome.
 
 ### Merge-Time Retrospective Audit
-- Before merging, run `make collect_failures`, then launch the Continuous
-  Improvement Auditor (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`)
-  and save its JSON report under `docs/parallelus/self-improvement/reports/<branch>--<marker>.json`.
+- Do not run `retro-marker`, `collect_failures`, and the auditor in parallel.
+- Preferred path: run `make senior_review_preflight` to execute the serialized
+  retrospective pipeline and launch senior review.
+- Manual fallback: run `retro-marker` -> `collect_failures` -> auditor in that
+  exact order, then save the JSON report under
+  `docs/parallelus/self-improvement/reports/<branch>--<marker>.json`.
 
 ### Session Wrap (feature complete)
 - Add end timestamp & duration to `meta.json`.

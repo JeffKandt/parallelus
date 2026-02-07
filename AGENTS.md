@@ -140,8 +140,9 @@ every session if it exists and record that acknowledgement in the progress log.
   prompt (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the latest
   marker. The auditor responds with JSON; save it to
   `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`
-  and carry TODOs into the branch plan. Run `make collect_failures` before the
-  audit so failed tool calls are reviewed and mitigations are documented.
+  and carry TODOs into the branch plan. Marker + failures + audit must run
+  sequentially (never in parallel). Use `make senior_review_preflight` to
+  enforce the serialized pipeline and launch the senior review from one command.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
@@ -149,6 +150,7 @@ every session if it exists and record that acknowledgement in the progress log.
 - `SESSION_PROMPT="..." eval "$(make start_session)"` – initialise session artifacts and logging.
 - `make turn_end m="summary"` – checkpoint plan/progress + session meta.
 - `make ci` – run lint, tests, and smoke suite inside the configured adapters.
+- `make senior_review_preflight` – run serialized retrospective preflight and launch senior review.
 - `.agents/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.
 
 ## 4. Operational Gates (Read-on-Trigger Manuals)

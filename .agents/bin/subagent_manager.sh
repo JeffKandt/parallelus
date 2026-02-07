@@ -27,6 +27,7 @@ WORKTREE_ROOT="$ROOT/.parallelus/subagents/worktrees"
 LAUNCH_HELPER="$ROOT/.agents/bin/launch_subagent.sh"
 DEPLOY_HELPER="$ROOT/.agents/bin/deploy_agents_process.sh"
 VERIFY_HELPER="$ROOT/.agents/bin/verify_process_run.py"
+RETRO_LOCAL_AUDITOR="$ROOT/.agents/bin/retro_audit_local.py"
 SESSION_HELPER="$ROOT/.agents/bin/get_current_session_id.sh"
 RESUME_HELPER="$ROOT/.agents/bin/resume_in_tmux.sh"
 EXEC_RESUME_HELPER="$ROOT/.agents/bin/subagent_exec_resume.sh"
@@ -39,6 +40,9 @@ usage() {
 Usage: subagent_manager.sh <command> [options]
 Commands:
   launch   Create a sandbox/worktree and launch a subagent session
+  review-preflight
+           Serialize retrospective preflight (marker -> failures -> local audit)
+           and optionally launch the senior review subagent
   status   List registry entries (optionally filter by --id)
   resume   Resume an exec-mode subagent session (follow-up prompt)
   verify   Validate a completed subagent sandbox/worktree
@@ -1160,6 +1164,72 @@ PY
   fi
 }
 
+cmd_review_preflight() {
+  local launcher auditor_mode skip_launch
+  launcher="manual"
+  auditor_mode="local"
+  skip_launch=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --launcher)
+        launcher=$2; shift 2 ;;
+      --auditor-mode)
+        auditor_mode=$2; shift 2 ;;
+      --no-launch)
+        skip_launch=1; shift ;;
+      --help)
+        cat <<'USAGE'
+Usage: subagent_manager.sh review-preflight [--launcher MODE] [--auditor-mode local] [--no-launch]
+
+Runs a serialized retrospective preflight:
+  1) .agents/bin/retro-marker
+  2) .agents/bin/collect_failures.py
+  3) .agents/bin/retro_audit_local.py
+  4) .agents/bin/verify-retrospective
+
+By default it then launches the senior architect review subagent.
+Use --no-launch to stop after preflight artifact generation.
+USAGE
+        return 0 ;;
+      *)
+        echo "Unknown option $1" >&2; return 1 ;;
+    esac
+  done
+
+  if [[ "$auditor_mode" != "local" ]]; then
+    echo "subagent_manager review-preflight: unsupported auditor mode '$auditor_mode' (supported: local)" >&2
+    return 1
+  fi
+  if [[ ! -x "$RETRO_LOCAL_AUDITOR" ]]; then
+    echo "subagent_manager review-preflight: missing local auditor helper $RETRO_LOCAL_AUDITOR" >&2
+    return 1
+  fi
+
+  ensure_not_main
+  local branch head
+  branch=$(git rev-parse --abbrev-ref HEAD)
+  head=$(git rev-parse HEAD)
+
+  echo "review-preflight: recording marker for $branch@$head" >&2
+  "$ROOT/.agents/bin/retro-marker"
+
+  echo "review-preflight: collecting failures (must run after marker; do not parallelize)" >&2
+  "$ROOT/.agents/bin/collect_failures.py"
+
+  echo "review-preflight: generating marker-matched retrospective report (local commit-aware mode)" >&2
+  "$RETRO_LOCAL_AUDITOR"
+
+  echo "review-preflight: verifying retrospective linkage" >&2
+  "$ROOT/.agents/bin/verify-retrospective"
+
+  if (( skip_launch == 1 )); then
+    echo "review-preflight: complete (launch skipped)" >&2
+    return 0
+  fi
+
+  cmd_launch --type throwaway --slug senior-review --role senior_architect --launcher "$launcher"
+}
+
 cmd_launch() {
   local type slug launcher scope_override codex_profile role_prompt
   local -a deliverables_specs=()
@@ -2123,6 +2193,7 @@ main() {
   cd "$ROOT"
   case "$cmd" in
     launch) cmd_launch "$@" ;;
+    review-preflight) cmd_review_preflight "$@" ;;
     status) cmd_status "$@" ;;
     resume) cmd_resume "$@" ;;
     verify) cmd_verify "$@" ;;

@@ -1330,3 +1330,48 @@
 **Next Actions**
 - commit/push final PHASE-03 notebook + artifact updates
 - stop here and await maintainer direction before starting `PHASE-04`
+
+## 2026-02-07 20:01:02 UTC
+**Objectives**
+- implement post-phase remediations for retrospective/senior-review workflow stability
+
+**Work Performed**
+- added commit-aware local retrospective auditor helper:
+  - `.agents/bin/retro_audit_local.py`
+  - validates marker/head alignment, consumes marker-matched failures summary, writes marker-matched report under `docs/parallelus/self-improvement/reports/`
+- added single serialized preflight command in subagent manager:
+  - `.agents/bin/subagent_manager.sh review-preflight`
+  - pipeline order enforced: `retro-marker` -> `collect_failures.py` -> `retro_audit_local.py` -> `verify-retrospective`
+  - by default launches senior review (`cmd_launch --slug senior-review --role senior_architect`); `--no-launch` supported for preflight-only runs
+- wired Makefile shortcuts:
+  - `.agents/make/agents.mk`
+  - `make retro_audit_local`
+  - `make senior_review_preflight`
+- codified no-parallel rule + new preflight flow in guardrail docs/prompts:
+  - `AGENTS.md`
+  - `docs/agents/subagent-session-orchestration.md`
+  - `docs/agents/manuals/senior-architect.md`
+  - `docs/agents/core.md`
+  - `.agents/prompts/agent_roles/continuous_improvement_auditor.md`
+- added regression tests for the new flow:
+  - `.agents/tests/test_review_preflight.py`
+
+**Next Actions**
+- run targeted validation for new scripts/tests/manual references
+- commit and push remediation bundle
+
+## 2026-02-07 20:03:30 UTC
+**Objectives**
+- validate remediation scripts/tests and confirm guardrail docs reflect serialized preflight policy
+
+**Validation**
+- `bash -n .agents/bin/subagent_manager.sh`
+- `python3 -m py_compile .agents/bin/retro_audit_local.py`
+- `PATH="$PWD/.venv/bin:$PATH" .agents/bin/subagent_manager.sh review-preflight --help`
+- `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q .agents/tests/test_review_preflight.py .agents/tests/test_subagent_manager.py` -> `6 passed`
+- `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q .agents/tests` -> `25 passed`
+- `make ci` -> passed
+
+**Next Actions**
+- commit/push remediation bundle
+- answer maintainer question about `PROJECT_AGENTS.md` deployment behavior with source-path evidence

@@ -52,6 +52,9 @@ Return an object with the following fields:
 
 ## Analysis Expectations
 
+0. The main agent must run marker/failures/auditor steps sequentially. Never run
+   `retro-marker` and `collect_failures` in parallel; use the latest marker and
+   marker-matched failures summary only.
 1. Start from the evidence offset identified in the marker file so earlier turns
    are not re-analysed.
 2. Examine:
