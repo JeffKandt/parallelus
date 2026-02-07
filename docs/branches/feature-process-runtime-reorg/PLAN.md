@@ -17,7 +17,7 @@
 - [x] execute `PHASE-01` (sentinel schema + namespace detection + acceptance gate + approved senior review)
 - [x] execute `PHASE-02` (session path resolver + dual-read compatibility + acceptance gate validations)
 - [x] execute `PHASE-03` (docs namespace migration + tracked artifact relocation + acceptance gate + approved senior review)
-- [ ] execute `PHASE-04` (engine/manual relocation + hardcoded path rewrite + acceptance gate + approved senior review)
+- [x] execute `PHASE-04` (engine/manual relocation + hardcoded path rewrite + acceptance gate + approved senior review)
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
@@ -25,6 +25,5 @@
 - [x] implement post-phase retrospective/senior-review remediations (serialized preflight command, no-parallel policy docs, local commit-aware auditor mode)
 
 ## Next Actions
-- close the `PHASE-04` review loop by landing launch-state remediations from the latest senior review and rerunning review on updated `HEAD`
-- keep validation scoped to the changed review/preflight scripts plus required `PHASE-04` broader gate (`make ci`)
-- capture refreshed gate evidence in canonical branch notebooks and mark `PHASE-04` complete only after explicit approved review artifact
+- hold here after `PHASE-04` completion and wait for maintainer direction before starting `PHASE-05`
+- if authorized to continue, execute only `PHASE-05` customization-contract scope (`docs/parallelus/custom/*` hooks/config) with fresh phase-specific gate evidence
