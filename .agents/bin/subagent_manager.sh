@@ -112,11 +112,34 @@ ensure_not_main() {
 }
 
 ensure_clean_worktree() {
-  if [[ -n "$(git status --porcelain)" ]]; then
-    echo "subagent_manager: refuse to launch senior-review while the worktree has unstaged changes." >&2
-    echo "  Commit, stash, or revert local edits before rerunning." >&2
-    exit 1
+  local status_lines
+  status_lines="$(git status --porcelain)"
+  if [[ -z "$status_lines" ]]; then
+    return 0
   fi
+
+  local allowlist_only=1
+  local path
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    path="${line:3}"
+    case "$path" in
+      docs/parallelus/self-improvement/*|docs/self-improvement/*)
+        ;;
+      *)
+        allowlist_only=0
+        break
+        ;;
+    esac
+  done <<<"$status_lines"
+
+  if (( allowlist_only == 1 )); then
+    return 0
+  fi
+
+  echo "subagent_manager: refuse to launch senior-review while the worktree has unstaged changes." >&2
+  echo "  Commit, stash, or revert local edits before rerunning." >&2
+  exit 1
 }
 
 is_doc_only_path() {

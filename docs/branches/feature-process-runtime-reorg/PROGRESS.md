@@ -1194,3 +1194,23 @@
 **Next Actions**
 - commit + push updated retrospective artifacts/progress log
 - relaunch Senior Architect review on current `HEAD` now that marker/report preflight is satisfied
+
+## 2026-02-07 19:49:22 UTC
+**Objectives**
+- unblock Senior Architect launch by resolving marker-freshness vs clean-worktree deadlock in review preflight
+
+**Work Performed**
+- identified launch deadlock:
+  - senior-review requires marker/report aligned to current `HEAD`
+  - generating fresh marker/report after commit leaves retrospective artifacts dirty
+  - strict clean-worktree gate then blocks launch before preflight can use those refreshed artifacts
+- patched `.agents/bin/subagent_manager.sh::ensure_clean_worktree`:
+  - launch remains blocked for general dirty worktrees
+  - launch is now permitted when only retrospective artifact paths are dirty:
+    - `docs/parallelus/self-improvement/*`
+    - legacy fallback `docs/self-improvement/*`
+
+**Next Actions**
+- run targeted validation for updated subagent manager behavior
+- commit/push the launcher fix
+- rerun marker/failures/report refresh and relaunch Senior Architect review
