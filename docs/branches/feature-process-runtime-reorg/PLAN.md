@@ -16,14 +16,13 @@
 - [x] update branch plan/progress notebooks with outcomes + follow-ups
 - [x] execute `PHASE-01` (sentinel schema + namespace detection + acceptance gate + approved senior review)
 - [x] execute `PHASE-02` (session path resolver + dual-read compatibility + acceptance gate validations)
-- [ ] execute `PHASE-03` (docs namespace migration + tracked artifact relocation + acceptance gate + approved senior review)
+- [x] execute `PHASE-03` (docs namespace migration + tracked artifact relocation + acceptance gate + approved senior review)
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
 - [x] harden `make read_bootstrap` logging gate for stateless-shell environments (session context helper + pointer fallback)
 
 ## Next Actions
-- run the required `PHASE-03` review loop (collect failures + retrospective auditor + Senior Architect review) against current `HEAD`
-- address any review findings, re-run review until `Decision: approved`, and then mark `PHASE-03` complete
+- await maintainer direction before starting `PHASE-04`
 - decide whether to mirror phase slices as Beads items for queue visibility
-- keep implementation strictly phased (do not start `PHASE-04+` until `PHASE-03` is approved)
+- carry low-severity senior-review follow-up (manifest validation parity) into the appropriate upcoming phase scope
