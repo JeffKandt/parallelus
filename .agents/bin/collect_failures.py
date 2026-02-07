@@ -5,6 +5,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from parallelus_paths import sessions_read_roots
+
 
 def git_root() -> Path:
     out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True)
@@ -162,7 +164,8 @@ def main() -> None:
     sources = []
 
     candidates = []
-    candidates += list(repo.glob("sessions/*/console.log"))
+    for session_root in sessions_read_roots(repo):
+        candidates += list(session_root.glob("*/console.log"))
     candidates += list(repo.glob(".parallelus/**/subagent.exec_events.jsonl"))
     candidates += list(repo.glob(".parallelus/**/subagent.session.jsonl"))
     candidates += list(repo.glob(".parallelus/guardrails/runs/**/session.jsonl"))

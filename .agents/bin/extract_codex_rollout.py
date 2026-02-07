@@ -5,6 +5,8 @@ import os
 import re
 from pathlib import Path
 
+from parallelus_paths import load_agentrc, resolve_session_dir
+
 REDACTION_PATTERNS = [
     (re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----"), "[REDACTED_PRIVATE_KEY]"),
     (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[REDACTED_AWS_ACCESS_KEY]"),
@@ -51,9 +53,19 @@ def find_rollouts(root: Path, nonce: str) -> list:
 
 
 def default_output_dir(repo_root: Path) -> Path:
-    session_dir = Path(os.environ.get("SESSION_DIR", "")).expanduser()
-    if session_dir and (session_dir / "console.log").exists():
-        return session_dir / "artifacts"
+    session_dir_raw = os.environ.get("SESSION_DIR", "").strip()
+    if session_dir_raw:
+        session_dir = Path(session_dir_raw).expanduser()
+        if (session_dir / "console.log").exists():
+            return session_dir / "artifacts"
+
+    session_id = os.environ.get("SESSION_ID", "").strip()
+    if session_id:
+        configured_root = load_agentrc(repo_root).get("SESSION_DIR")
+        resolved = resolve_session_dir(repo_root, session_id, configured_root=configured_root)
+        if (resolved / "console.log").exists():
+            return resolved / "artifacts"
+
     return repo_root / ".parallelus" / "guardrails" / "runs" / "extracted"
 
 
@@ -297,7 +309,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Directory for redacted outputs (default: sessions/<ID>/artifacts or sessions/extracted)",
+        help="Directory for redacted outputs (default: active session artifacts or .parallelus/guardrails/runs/extracted)",
     )
     parser.add_argument(
         "--output-jsonl",

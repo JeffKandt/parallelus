@@ -134,7 +134,7 @@ if [[ -n "$expected_commit" && "$review_commit" != "$expected_commit" ]]; then
     while IFS= read -r path; do
       [[ -z "$path" ]] && continue
       case "$path" in
-        docs/guardrails/runs/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/plans/*|docs/progress/*|docs/agents/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
+        docs/guardrails/runs/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/plans/*|docs/progress/*|docs/agents/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*|sessions/*|.parallelus/sessions/*)
           ;;
         *)
           allow_doc_only=0

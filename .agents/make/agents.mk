@@ -5,7 +5,7 @@ AGENTS_DIR ?= $(abspath .agents)
 AGENTS_BIN := $(AGENTS_DIR)/bin
 PLAN_DIR ?= docs/plans
 PROGRESS_DIR ?= docs/progress
-SESSION_DIR ?= sessions
+SESSION_DIR ?= .parallelus/sessions
 
 .PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures
 

@@ -33,7 +33,7 @@ fi
 needs_plan_log_reminder=0
 for path in $staged_files; do
   case "$path" in
-    docs/plans/*|docs/progress/*|sessions/*)
+    docs/plans/*|docs/progress/*|sessions/*|.parallelus/sessions/*)
       ;; # docs already included
     *)
       needs_plan_log_reminder=1

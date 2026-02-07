@@ -44,6 +44,15 @@ MAKE
   eval "$(.agents/bin/agents-session-start)"
   test -n "${SESSION_ID:-}"
   test -d "${SESSION_DIR:-}"
+  session_dir_real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${SESSION_DIR:-}")"
+  expected_sessions_root="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$TMP_REPO/.parallelus/sessions")"
+  case "$session_dir_real" in
+    "$expected_sessions_root/"*) ;;
+    *)
+      echo "expected SESSION_DIR under .parallelus/sessions, got: ${SESSION_DIR:-}" >&2
+      exit 1
+      ;;
+  esac
 
   # Record a checkpoint
   AGENTS_RETRO_SKIP_VALIDATE=1 .agents/bin/agents-turn-end "smoke checkpoint"

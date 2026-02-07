@@ -244,5 +244,6 @@ Handoff:
     - what validated
     - review artifact path
     - explicit statement whether the next phase is unblocked.
+    - any difficulties experienced during execution which might warrant considering a change to the plan, process, or prompt used for future phases. Propose any such changes but do not implement them without user permission.
 11) Stop after completing that one phase. Do not begin the following phase.
 ```

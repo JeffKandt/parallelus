@@ -18,6 +18,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-paths.sh
+. "${SCRIPT_DIR}/agents-paths.sh"
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
@@ -58,7 +60,7 @@ if [[ "${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ]]; then
     echo "agents-turn-end: SESSION_ID is not set; run make start_session before turn_end" >&2
     exit 1
   fi
-  session_path="${SESSION_DIR%/}/$SESSION_ID"
+  session_path="$(parallelus_resolve_session_dir "$repo_root" "$SESSION_ID" "${SESSION_DIR:-}")"
   console_path="$session_path/console.log"
   if [[ ! -f "$console_path" ]]; then
     echo "agents-turn-end: session console log missing at $console_path" >&2
@@ -98,7 +100,7 @@ PLAN
 fi
 
 if [[ -n "${SESSION_ID:-}" ]]; then
-  session_path="${SESSION_DIR%/}/$SESSION_ID"
+  session_path="$(parallelus_resolve_session_dir "$repo_root" "$SESSION_ID" "${SESSION_DIR:-}")"
   if [[ -d "$session_path" ]]; then
     summary_file="$session_path/summary.md"
     if [[ ! -f "$summary_file" ]]; then

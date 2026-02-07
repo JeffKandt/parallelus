@@ -466,3 +466,63 @@
 **Next Actions**
 - commit/push refreshed review artifact + registry updates
 - hand off `PHASE-01` completion summary and stop before `PHASE-02`
+
+## 2026-02-07 15:11:49 UTC
+**Objectives**
+- continue execution and complete only `PHASE-02` (`Central Path Resolution + Session Dual-Read`)
+- determine the next incomplete phase from execution plan + active branch notebooks
+
+**Work Performed**
+- reviewed startup guardrails:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `.agents/custom/README.md`
+- ran `SESSION_PROMPT="Continue layout reorg execution" eval "$(make start_session)"` and confirmed branch snapshot + session logging (`20251055-20260207150048-7252a8`)
+- read:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/plans/feature-process-runtime-reorg.md`
+  - `docs/progress/feature-process-runtime-reorg.md`
+- confirmed active notebook layout is still pre-migration only (`docs/plans|docs/progress`); no `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md` files exist yet
+- determined next incomplete phase is `PHASE-02` (phase-01 already completed/approved in prior entries)
+- implemented `PHASE-02` scope:
+  - added shared shell resolver: `.agents/bin/agents-paths.sh`
+  - added shared Python resolver: `.agents/bin/parallelus_paths.py`
+  - updated session lifecycle scripts:
+    - `.agents/bin/agents-session-start` (single-write to `./.parallelus/sessions/`, ID continuity across new+legacy roots)
+    - `.agents/bin/agents-turn-end` (dual-read session resolution for log/summary/meta updates)
+  - updated Python readers:
+    - `.agents/bin/collect_failures.py` (scan both new and legacy session roots)
+    - `.agents/bin/extract_codex_rollout.py` (resolve active session artifacts via env/session-id + dual-read roots)
+  - updated config/hook defaults:
+    - `.agents/agentrc` (`SESSION_DIR=".parallelus/sessions"`)
+    - `.agents/make/agents.mk` (`SESSION_DIR ?= .parallelus/sessions`)
+    - `.agents/hooks/pre-commit` (treat `.parallelus/sessions/*` like legacy session paths for reminder scope)
+    - `.agents/hooks/pre-merge-commit` (doc-only follow-up allowlist includes session path variants)
+  - updated targeted tests:
+    - added `.agents/tests/test_session_paths.py` (write-root, legacy read, failure-scan dual-root, extractor legacy fallback)
+    - updated `.agents/tests/smoke.sh` to assert the new session root using canonical realpaths
+
+**Validation Evidence**
+- `bash -n .agents/bin/agents-paths.sh .agents/bin/agents-session-start .agents/bin/agents-turn-end .agents/hooks/pre-commit .agents/hooks/pre-merge-commit`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_session_paths.py .agents/tests/test_bundle_namespace_detection.py`
+  - outcome: pass (`11 passed in 1.53s`)
+- `.agents/tests/smoke.sh`
+  - outcome: pass (`agents smoke test passed`)
+- `python3 -m py_compile .agents/bin/parallelus_paths.py .agents/bin/collect_failures.py .agents/bin/extract_codex_rollout.py .agents/bin/fold-progress`
+  - outcome: pass
+- `AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1 .agents/bin/fold-progress apply --target "$(mktemp)" docs/progress/feature-process-runtime-reorg.md`
+  - outcome: pass (`fold-progress-apply-ok:...`)
+
+**Phase Gate Check (`PHASE-02`)**
+- New sessions write to `./.parallelus/sessions/`: satisfied (smoke + `test_session_start_writes_to_parallelus_sessions_root`)
+- Legacy `sessions/` remains readable: satisfied (`test_turn_end_reads_legacy_session_directory`, `test_collect_failures_scans_new_and_legacy_session_logs`, extractor fallback test)
+- Marker/failure extraction/folding still works on existing branches: satisfied (`collect_failures.py` dual-root test + fold-progress apply on current branch notebook)
+
+**Residual Risks**
+- fold-progress validation was performed with `AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1` to avoid mutating canonical logs during phase validation; full non-override flow remains exercised during normal turn-end/merge workflows
+- session path handling now resolves new+legacy roots centrally, but additional path migrations in `PHASE-03+` will need coordinated updates across docs/tooling references
+
+**Next Actions**
+- commit and push `PHASE-02` changes
+- execute the required review loop for this phase: collect failures, run retrospective auditor, launch Senior Architect review, and iterate until approved

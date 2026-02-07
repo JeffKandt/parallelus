@@ -1,0 +1,147 @@
+"""Session path migration tests for PHASE-02."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BIN_DIR = REPO_ROOT / ".agents" / "bin"
+if str(BIN_DIR) not in sys.path:
+    sys.path.insert(0, str(BIN_DIR))
+
+import extract_codex_rollout as rollout_extractor  # noqa: E402
+from parallelus_paths import sessions_write_root  # noqa: E402
+
+
+def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
+    return subprocess.run(cmd, cwd=cwd, env=run_env, text=True, capture_output=True, check=False)
+
+
+def _init_repo(tmp: Path, branch: str = "feature/demo") -> None:
+    shutil.copytree(REPO_ROOT / ".agents", tmp / ".agents")
+    (tmp / "docs" / "plans").mkdir(parents=True, exist_ok=True)
+    (tmp / "docs" / "progress").mkdir(parents=True, exist_ok=True)
+    slug = branch.replace("/", "-")
+    (tmp / "docs" / "plans" / f"{slug}.md").write_text(f"# Branch Plan — {branch}\n", encoding="utf-8")
+    (tmp / "docs" / "progress" / f"{slug}.md").write_text(f"# Branch Progress — {branch}\n", encoding="utf-8")
+
+    _run(["git", "init", "-q"], cwd=tmp)
+    _run(["git", "config", "user.name", "Session Paths"], cwd=tmp)
+    _run(["git", "config", "user.email", "session.paths@example.com"], cwd=tmp)
+    (tmp / "README.md").write_text("session-paths\n", encoding="utf-8")
+    _run(["git", "add", "README.md"], cwd=tmp)
+    _run(["git", "commit", "-q", "-m", "init"], cwd=tmp)
+    _run(["git", "checkout", "-q", "-b", branch], cwd=tmp)
+
+
+def _parse_export(stdout: str, key: str) -> str:
+    prefix = f"export {key}="
+    for line in stdout.splitlines():
+        if line.startswith(prefix):
+            value = line[len(prefix) :]
+            if value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+            return value
+    raise AssertionError(f"missing export for {key}: {stdout}")
+
+
+def test_session_start_writes_to_parallelus_sessions_root() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-start-") as tmpdir:
+        repo = Path(tmpdir)
+        _init_repo(repo)
+
+        result = _run([str(repo / ".agents" / "bin" / "agents-session-start")], cwd=repo)
+        assert result.returncode == 0, result.stderr
+
+        session_id = _parse_export(result.stdout, "SESSION_ID")
+        session_dir = Path(_parse_export(result.stdout, "SESSION_DIR"))
+
+        assert session_id
+        assert session_dir.is_dir()
+        assert session_dir.parent.resolve() == sessions_write_root(repo).resolve()
+
+
+def test_turn_end_reads_legacy_session_directory() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-turn-end-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/legacy-turn-end"
+        _init_repo(repo, branch=branch)
+
+        session_id = "20260207-legacy"
+        legacy_session = repo / "sessions" / session_id
+        legacy_session.mkdir(parents=True, exist_ok=True)
+        (legacy_session / "console.log").write_text("turn-end log\n", encoding="utf-8")
+        (legacy_session / "summary.md").write_text("# Session legacy\n", encoding="utf-8")
+        (legacy_session / "meta.json").write_text("{\"session_id\": \"legacy\"}\n", encoding="utf-8")
+
+        marker = repo / ".agents" / "session-required.feature-legacy-turn-end"
+        if marker.exists():
+            marker.unlink()
+
+        result = _run(
+            [str(repo / ".agents" / "bin" / "agents-turn-end"), "legacy checkpoint"],
+            cwd=repo,
+            env={"SESSION_ID": session_id, "AGENTS_RETRO_SKIP_VALIDATE": "1"},
+        )
+        assert result.returncode == 0, result.stderr
+        assert "legacy checkpoint" in (legacy_session / "summary.md").read_text(encoding="utf-8")
+        progress = repo / "docs" / "progress" / "feature-legacy-turn-end.md"
+        assert "legacy checkpoint" in progress.read_text(encoding="utf-8")
+
+
+def test_collect_failures_scans_new_and_legacy_session_logs() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-failures-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/failure-scan"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        marker_dir = repo / "docs" / "self-improvement" / "markers"
+        marker_dir.mkdir(parents=True, exist_ok=True)
+        marker = marker_dir / f"{slug}.json"
+        marker_ts = "2026-02-07T15:00:00Z"
+        marker.write_text(json.dumps({"timestamp": marker_ts}, indent=2) + "\n", encoding="utf-8")
+
+        new_log = repo / ".parallelus" / "sessions" / "new" / "console.log"
+        new_log.parent.mkdir(parents=True, exist_ok=True)
+        new_log.write_text("ERROR new session failure\n", encoding="utf-8")
+
+        legacy_log = repo / "sessions" / "old" / "console.log"
+        legacy_log.parent.mkdir(parents=True, exist_ok=True)
+        legacy_log.write_text("ERROR legacy session failure\n", encoding="utf-8")
+
+        result = _run([str(repo / ".agents" / "bin" / "collect_failures.py")], cwd=repo)
+        assert result.returncode == 0, result.stderr
+
+        rel_out = result.stdout.strip().split("wrote ", 1)[-1]
+        report = json.loads((repo / rel_out).read_text(encoding="utf-8"))
+        failure_sources = {
+            str(Path(item.get("source", "")).resolve()) for item in report.get("failures", []) if item.get("source")
+        }
+        assert str(new_log.resolve()) in failure_sources
+        assert str(legacy_log.resolve()) in failure_sources
+
+
+def test_default_output_dir_uses_legacy_session_when_env_dir_not_set(monkeypatch) -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-output-dir-") as tmpdir:
+        repo = Path(tmpdir)
+        _init_repo(repo)
+
+        session_id = "20260207-output"
+        legacy_session = repo / "sessions" / session_id
+        legacy_session.mkdir(parents=True, exist_ok=True)
+        (legacy_session / "console.log").write_text("log\n", encoding="utf-8")
+
+        monkeypatch.delenv("SESSION_DIR", raising=False)
+        monkeypatch.setenv("SESSION_ID", session_id)
+
+        assert rollout_extractor.default_output_dir(repo).resolve() == (legacy_session / "artifacts").resolve()
