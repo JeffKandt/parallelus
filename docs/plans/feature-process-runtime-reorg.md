@@ -20,5 +20,7 @@
 ## Next Actions
 - execute `PHASE-03` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` only (docs namespace migration + tracked artifact relocation for notebooks/reviews/self-improvement paths)
 - capture `PHASE-03` gate evidence in branch progress (bootstrap/turn_end/fold-progress/merge precheck compatibility under the migrated docs layout)
+- add retrospective preflight guardrail to block review progression when `marker.head != HEAD` or marker-matched report is missing (auditor follow-up)
+- tighten marker generation/session discipline so marker metadata always includes `session_id` and `session_console` (auditor follow-up)
 - decide whether to mirror phase slices as Beads items for queue visibility
 - keep implementation strictly phased (do not start `PHASE-04+` until `PHASE-03` is approved)
