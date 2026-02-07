@@ -58,5 +58,23 @@
     ],
     "deliverables_status": "pending",
     "source_commit": "c0a8ef53a60959f9e407fc882256477200e862eb"
+  },
+  {
+    "id": "20260207-151346-ci-audit",
+    "type": "throwaway",
+    "slug": "ci-audit",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-AT2ma0",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-AT2ma0/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-AT2ma0/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-AT2ma0/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-AT2ma0/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-151346",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "continuous_improvement_auditor.md",
+    "source_commit": "3f6dc2696547f7e516fa5cd1dd81fe2b54a386fc"
   }
 ]

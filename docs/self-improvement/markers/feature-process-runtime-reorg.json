@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-06T15:38:52.371063+00:00",
+  "timestamp": "2026-02-07T15:13:40.240318+00:00",
   "branch": "feature/process-runtime-reorg",
-  "head": "83d814318579cd217e23bd9c3e97a4feea212f61",
+  "head": "3f6dc2696547f7e516fa5cd1dd81fe2b54a386fc",
   "plan_path": "docs/plans/feature-process-runtime-reorg.md",
-  "plan_lines": 22,
+  "plan_lines": 24,
   "progress_path": "docs/progress/feature-process-runtime-reorg.md",
-  "progress_lines": 138,
-  "session_id": "20251052-20260206153352-1ea6a4",
-  "session_console": "sessions/20251052-20260206153352-1ea6a4/console.log",
-  "session_console_size": 1331
+  "progress_lines": 542,
+  "session_id": null,
+  "session_console": null,
+  "session_console_size": null
 }
