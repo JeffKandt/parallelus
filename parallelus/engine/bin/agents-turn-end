@@ -31,6 +31,14 @@ fi
 
 cd "$repo_root"
 
+custom_hook_runner="$repo_root/parallelus/engine/bin/agents-custom-hook"
+run_custom_hook() {
+  local event="$1"
+  if [[ -x "$custom_hook_runner" ]]; then
+    "$custom_hook_runner" --repo-root "$repo_root" --event "$event"
+  fi
+}
+
 current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
 if [[ "$current_branch" == "HEAD" || -z "$current_branch" ]]; then
   echo "agents-turn-end: detached HEAD not supported" >&2
@@ -102,6 +110,8 @@ message="${*:-Updated progress}"
 
 timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
 
+run_custom_hook pre_turn_end
+
 cat <<PROGRESS >> "$progress_file"
 
 ## ${timestamp}
@@ -163,3 +173,5 @@ if [[ -x "$retro_marker" ]]; then
     "$retro_marker" || true
   fi
 fi
+
+run_custom_hook post_turn_end

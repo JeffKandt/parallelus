@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+"""Execute project custom lifecycle hooks for Parallelus commands."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import selectors
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+VALID_EVENTS = {
+    "pre_bootstrap",
+    "post_bootstrap",
+    "pre_start_session",
+    "post_start_session",
+    "pre_turn_end",
+    "post_turn_end",
+}
+DEFAULT_TIMEOUT_SECONDS = 30
+
+
+class ConfigError(RuntimeError):
+    """Raised when custom hook configuration is invalid."""
+
+
+def _log(event: str, message: str) -> None:
+    sys.stderr.write(f"[custom-hook:{event}] {message}\n")
+    sys.stderr.flush()
+
+
+def _strip_inline_comment(text: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    out: list[str] = []
+    for ch in text:
+        if ch == "\\" and (in_single or in_double):
+            escaped = not escaped
+            out.append(ch)
+            continue
+        if ch == "'" and not in_double and not escaped:
+            in_single = not in_single
+        elif ch == '"' and not in_single and not escaped:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double:
+            break
+        out.append(ch)
+        escaped = False
+    return "".join(out).rstrip()
+
+
+def _parse_scalar(raw: str) -> Any:
+    value = raw.strip()
+    if value == "":
+        return ""
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        return value[1:-1]
+    lowered = value.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+        return int(value)
+    return value
+
+
+def _parse_simple_yaml(text: str) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    current_root_map: str | None = None
+    current_hook: str | None = None
+
+    for line_no, raw_line in enumerate(text.splitlines(), start=1):
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if "\t" in raw_line[: len(raw_line) - len(raw_line.lstrip("\t"))]:
+            raise ConfigError(f"line {line_no}: tabs are not supported")
+
+        line = _strip_inline_comment(raw_line)
+        if not line.strip():
+            continue
+
+        indent = len(line) - len(line.lstrip(" "))
+        content = line.strip()
+
+        if indent == 0:
+            current_hook = None
+            if content.endswith(":"):
+                key = content[:-1].strip()
+                if key != "hooks":
+                    raise ConfigError(f"line {line_no}: unsupported mapping root '{key}'")
+                data.setdefault("hooks", {})
+                current_root_map = "hooks"
+                continue
+            if ":" not in content:
+                raise ConfigError(f"line {line_no}: expected key: value")
+            key, raw_value = content.split(":", 1)
+            data[key.strip()] = _parse_scalar(raw_value)
+            current_root_map = None
+            continue
+
+        if indent == 2:
+            if current_root_map != "hooks":
+                raise ConfigError(f"line {line_no}: nested keys only supported under hooks")
+            if not content.endswith(":"):
+                raise ConfigError(f"line {line_no}: expected hook mapping '<name>:'")
+            hook_name = content[:-1].strip()
+            if not hook_name:
+                raise ConfigError(f"line {line_no}: empty hook name")
+            hooks = data.setdefault("hooks", {})
+            if not isinstance(hooks, dict):
+                raise ConfigError("'hooks' must be a mapping")
+            hooks.setdefault(hook_name, {})
+            current_hook = hook_name
+            continue
+
+        if indent == 4:
+            if current_root_map != "hooks" or current_hook is None:
+                raise ConfigError(f"line {line_no}: hook setting without hook name")
+            if ":" not in content:
+                raise ConfigError(f"line {line_no}: expected key: value")
+            key, raw_value = content.split(":", 1)
+            hooks = data["hooks"]
+            hook_cfg = hooks[current_hook]
+            if not isinstance(hook_cfg, dict):
+                raise ConfigError(f"line {line_no}: hook config must be a mapping")
+            hook_cfg[key.strip()] = _parse_scalar(raw_value)
+            continue
+
+        raise ConfigError(f"line {line_no}: unsupported indentation level {indent}")
+
+    return data
+
+
+def _load_config(config_path: Path) -> dict[str, Any] | None:
+    if not config_path.exists():
+        return None
+
+    raw = config_path.read_text(encoding="utf-8")
+    stripped = raw.lstrip()
+    if not stripped:
+        raise ConfigError("config.yaml is empty")
+
+    try:
+        if stripped.startswith("{"):
+            parsed: Any = json.loads(raw)
+        else:
+            parsed = _parse_simple_yaml(raw)
+    except (json.JSONDecodeError, ConfigError) as exc:
+        raise ConfigError(f"unable to parse {config_path}: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise ConfigError("config root must be a mapping")
+
+    version = parsed.get("version")
+    if not isinstance(version, int):
+        raise ConfigError("'version' must be an integer")
+
+    return parsed
+
+
+def _resolve_bundle_root(repo_root: Path, requested: str | None) -> Path:
+    if requested:
+        bundle_root = Path(requested)
+        if not bundle_root.is_absolute():
+            bundle_root = (repo_root / bundle_root).resolve()
+        return bundle_root
+
+    for candidate in (repo_root / "parallelus", repo_root / "vendor" / "parallelus"):
+        if (candidate / "engine").is_dir():
+            return candidate.resolve()
+    return (repo_root / "parallelus").resolve()
+
+
+def _coerce_bool(value: Any, field: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    raise ConfigError(f"'{field}' must be boolean")
+
+
+def _coerce_timeout(value: Any, field: str) -> int:
+    if not isinstance(value, int):
+        raise ConfigError(f"'{field}' must be an integer")
+    if value <= 0:
+        raise ConfigError(f"'{field}' must be > 0")
+    return value
+
+
+def _resolve_policy(event: str, config: dict[str, Any] | None) -> tuple[bool, int, str]:
+    is_pre = event.startswith("pre_")
+    enabled = True
+    timeout_seconds = DEFAULT_TIMEOUT_SECONDS
+    on_error = "fail" if is_pre else "warn"
+
+    if config is None:
+        return enabled, timeout_seconds, on_error
+
+    if "enabled" in config:
+        enabled = _coerce_bool(config["enabled"], "enabled")
+
+    hooks_cfg = config.get("hooks", {})
+    if hooks_cfg is None:
+        hooks_cfg = {}
+    if not isinstance(hooks_cfg, dict):
+        raise ConfigError("'hooks' must be a mapping")
+
+    event_cfg = hooks_cfg.get(event, {})
+    if event_cfg is None:
+        event_cfg = {}
+    if not isinstance(event_cfg, dict):
+        raise ConfigError(f"hooks.{event} must be a mapping")
+
+    if "enabled" in event_cfg:
+        enabled = _coerce_bool(event_cfg["enabled"], f"hooks.{event}.enabled")
+
+    if "timeout_seconds" in event_cfg:
+        timeout_seconds = _coerce_timeout(event_cfg["timeout_seconds"], f"hooks.{event}.timeout_seconds")
+
+    if "on_error" in event_cfg:
+        raw = event_cfg["on_error"]
+        if raw not in {"fail", "warn"}:
+            raise ConfigError(f"hooks.{event}.on_error must be 'fail' or 'warn'")
+        on_error = str(raw)
+
+    # Safety rule: post hooks never abort already-completed parent work.
+    if event.startswith("post_"):
+        on_error = "warn"
+
+    return enabled, timeout_seconds, on_error
+
+
+def _stream_process_output(event: str, proc: subprocess.Popen[str], timeout_seconds: int) -> tuple[int, bool]:
+    selector = selectors.DefaultSelector()
+    timed_out = False
+    deadline = time.monotonic() + timeout_seconds
+
+    assert proc.stdout is not None
+    assert proc.stderr is not None
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    selector.register(proc.stderr, selectors.EVENT_READ)
+
+    while selector.get_map():
+        if proc.poll() is None and time.monotonic() >= deadline:
+            timed_out = True
+            proc.kill()
+
+        events = selector.select(timeout=0.1)
+        if not events:
+            continue
+
+        for key, _ in events:
+            line = key.fileobj.readline()
+            if line:
+                _log(event, line.rstrip("\n"))
+                continue
+            selector.unregister(key.fileobj)
+            key.fileobj.close()
+
+    return_code = proc.wait()
+    return return_code, timed_out
+
+
+def run_event(repo_root: Path, bundle_root: Path, event: str) -> int:
+    custom_root = repo_root / "docs" / "parallelus" / "custom"
+    config_path = custom_root / "config.yaml"
+    hooks_dir = custom_root / "hooks"
+    hook_path = hooks_dir / f"{event}.sh"
+
+    try:
+        config = _load_config(config_path)
+        enabled, timeout_seconds, on_error = _resolve_policy(event, config)
+    except ConfigError as exc:
+        _log(event, f"invalid config: {exc}")
+        return 1 if event.startswith("pre_") else 0
+
+    if not enabled:
+        return 0
+
+    if not hook_path.exists():
+        return 0
+
+    if not hook_path.is_file():
+        _log(event, f"ignoring non-file hook path: {hook_path}")
+        return 0
+
+    hooks_dir_resolved = hooks_dir.resolve()
+    hook_resolved = hook_path.resolve()
+    try:
+        hook_resolved.relative_to(hooks_dir_resolved)
+    except ValueError:
+        _log(event, f"hook path escapes custom hooks directory: {hook_resolved}")
+        return 1 if on_error == "fail" else 0
+
+    if not os.access(hook_resolved, os.X_OK):
+        _log(event, f"ignoring non-executable hook: {hook_resolved}")
+        return 0
+
+    env = os.environ.copy()
+    env["PARALLELUS_REPO_ROOT"] = str(repo_root)
+    env["PARALLELUS_BUNDLE_ROOT"] = str(bundle_root)
+    env["PARALLELUS_EVENT"] = event
+
+    try:
+        proc = subprocess.Popen(
+            ["/bin/sh", str(hook_resolved)],
+            cwd=str(repo_root),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+    except OSError as exc:
+        _log(event, f"failed to launch hook: {exc}")
+        return 1 if on_error == "fail" else 0
+
+    return_code, timed_out = _stream_process_output(event, proc, timeout_seconds)
+    if timed_out:
+        _log(event, f"timed out after {timeout_seconds}s: {hook_resolved}")
+        return_code = 124
+
+    if return_code == 0:
+        return 0
+
+    _log(event, f"hook exited with code {return_code}")
+    if on_error == "fail":
+        return return_code or 1
+    return 0
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo-root", default=".", help="Repository root path (default: cwd)")
+    parser.add_argument("--bundle-root", default=None, help="Parallelus bundle root path")
+    parser.add_argument("--event", required=True, choices=sorted(VALID_EVENTS), help="Lifecycle event")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    repo_root = Path(args.repo_root).resolve()
+    bundle_root = _resolve_bundle_root(repo_root, args.bundle_root)
+    return run_event(repo_root, bundle_root, args.event)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

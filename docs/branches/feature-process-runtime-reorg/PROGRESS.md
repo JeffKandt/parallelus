@@ -1634,3 +1634,77 @@
 **Next Actions**
 - commit and push these documentation/prompt hardening changes
 - keep PHASE execution paused until maintainer authorizes starting `PHASE-05`
+
+## 2026-02-07 22:22:16 UTC
+**Objectives**
+- continue execution by implementing only `PHASE-05` (`Customization Contract Implementation`) on `feature/process-runtime-reorg`
+- determine the next incomplete phase from execution plan + canonical notebooks before edits
+- capture startup guardrail acknowledgements and execute phase-scoped validations
+
+**Work Performed**
+- reviewed required startup guardrails and project extensions:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `parallelus/engine/custom/README.md`
+- ran `eval "$(make start_session)"` and captured session `20251061-20260207221510-12389a`
+- captured bootstrap snapshot and branch table:
+  - `CURRENT_BRANCH=feature/process-runtime-reorg`
+  - `BASE_BRANCH=main`
+  - `UNMERGED_REMOTE=origin/feature/multi-agentic-tool-guidance,origin/feature/process-runtime-reorg`
+  - `UNMERGED_LOCAL=feature/multi-agentic-tool-guidance`
+  - snapshot table rows:
+    - `feature/multi-agentic-tool-guidance` (`remote & local`) action `decide: merge/archive/delete`
+    - `feature/process-runtime-reorg` (`remote & local`) action `decide: merge/archive/delete`
+- read phase + notebook sources:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+- confirmed canonical notebook layout is active and legacy duplicates are absent:
+  - canonical exists: `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md`
+  - legacy missing: `docs/plans/feature-process-runtime-reorg.md`, `docs/progress/feature-process-runtime-reorg.md`
+- determined next incomplete phase: `PHASE-05`
+- implemented customization contract runtime support:
+  - added central hook runner `parallelus/engine/bin/agents-custom-hook`
+    - discovers `docs/parallelus/custom/config.yaml`
+    - supports per-hook policy (`enabled`, `timeout_seconds`, `on_error`) with defaults
+    - enforces lifecycle event allowlist and hook-root safety (`docs/parallelus/custom/hooks/*.sh`)
+    - runs hooks via `/bin/sh` from repo root with required env:
+      - `PARALLELUS_REPO_ROOT`
+      - `PARALLELUS_BUNDLE_ROOT`
+      - `PARALLELUS_EVENT`
+    - prefixes hook output as `[custom-hook:<event>]`
+    - ignores non-executable hooks with warnings
+    - enforces post-hook safety rule (`post_*` never abort parent command)
+  - wired lifecycle hook invocation into primary entrypoints:
+    - `parallelus/engine/bin/agents-ensure-feature` (`pre_bootstrap`, `post_bootstrap`)
+    - `parallelus/engine/bin/agents-session-start` (`pre_start_session`, `post_start_session`)
+    - `parallelus/engine/bin/agents-turn-end` (`pre_turn_end`, `post_turn_end`)
+- documented the contract for host-project operators:
+  - `docs/parallelus/custom/README.md`
+  - placeholder hooks folder `docs/parallelus/custom/hooks/.gitkeep`
+  - updated structure reference `parallelus/manuals/project/structure.md`
+- added targeted regression coverage for phase gates:
+  - `parallelus/engine/tests/test_custom_hooks.py`
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/agents-ensure-feature parallelus/engine/bin/agents-session-start parallelus/engine/bin/agents-turn-end`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" python3 -m py_compile parallelus/engine/bin/agents-custom-hook`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_custom_hooks.py parallelus/engine/tests/test_session_paths.py`
+  - outcome: pass (`13 passed in 9.37s`)
+
+**PHASE-05 Gate Status (pre-review)**
+- Gate: Hooks execute at documented lifecycle events. — **Yes (pre-review)**
+  - evidence: `test_custom_hooks_run_for_bootstrap_start_session_and_turn_end` validates all six lifecycle hooks execute with expected env/cwd/output tagging
+- Gate: `pre_*` failure behavior blocks as configured; `post_*` failure behavior warns. — **Yes (pre-review)**
+  - evidence: `test_pre_hook_fail_blocks_when_configured` (pre fail blocks), `test_pre_hook_warn_continues_and_post_hook_failure_warns` (pre warn continues, post failure warns/non-blocking)
+- Gate: Disabled/custom-missing modes are no-op and safe. — **Yes (pre-review)**
+  - evidence: `test_custom_hooks_disabled_and_missing_are_safe_noops`
+
+**Residual Risks**
+- the YAML parser in `agents-custom-hook` intentionally supports the contract’s narrow schema subset (root keys + `hooks.<event>` scalar fields) rather than full YAML syntax; unusual YAML constructs outside the contract may be rejected as invalid config
+
+**Next Actions**
+- commit and push `PHASE-05` implementation
+- launch required Senior Architect review loop on current `HEAD` and iterate until `Decision: approved`

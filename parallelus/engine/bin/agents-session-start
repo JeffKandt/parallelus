@@ -36,6 +36,16 @@ cd "$ROOT"
 current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 SESSION_CONFIGURED_ROOT="${SESSION_DIR:-}"
 SESSION_WRITE_ROOT="$(parallelus_sessions_write_root "$ROOT")"
+custom_hook_runner="$ROOT/parallelus/engine/bin/agents-custom-hook"
+
+run_custom_hook() {
+  local event="$1"
+  if [[ -x "$custom_hook_runner" ]]; then
+    "$custom_hook_runner" --repo-root "$ROOT" --event "$event"
+  fi
+}
+
+run_custom_hook pre_start_session
 
 next_id_from_progress() {
   local last max_id last_dir root
@@ -213,5 +223,7 @@ if [[ -z "${PARALLELUS_SUPPRESS_TMUX_EXPORT:-}" ]]; then
     fi
   fi
 fi
+
+run_custom_hook post_start_session
 
 printf "echo \"Session %s at %s\"\n" "$SID" "$SDIR"

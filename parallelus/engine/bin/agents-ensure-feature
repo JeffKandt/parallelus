@@ -37,6 +37,16 @@ fi
 
 cd "$repo_root"
 
+custom_hook_runner="$repo_root/parallelus/engine/bin/agents-custom-hook"
+run_custom_hook() {
+  local event="$1"
+  if [[ -x "$custom_hook_runner" ]]; then
+    "$custom_hook_runner" --repo-root "$repo_root" --event "$event"
+  fi
+}
+
+run_custom_hook pre_bootstrap
+
 install_hooks="$repo_root/parallelus/engine/bin/install-hooks"
 if [[ -x "$install_hooks" ]]; then
   "$install_hooks" --quiet || true
@@ -142,5 +152,7 @@ printf '[agents-ensure-feature] Ensured %s\n' "$progress_file" >&2
 
 session_marker="$repo_root/parallelus/engine/session-required.${feature_branch//\//-}"
 printf '%s\n' "branch=$feature_branch" "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$session_marker"
+
+run_custom_hook post_bootstrap
 
 echo "✅ Ready on branch ${feature_branch}"
