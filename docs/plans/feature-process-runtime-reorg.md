@@ -15,7 +15,6 @@
 - [ ] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
-- iterate on `docs/deployment-upgrade-and-layout-PLAN.md` (structure + mapping + open questions)
-- confirm which remaining items are plan-only vs in-scope implementation work for this branch
-- decide the sentinel manifest format + deployment detection behavior for `parallelus/` vs `vendor/parallelus/`
-- define the customization lookup contract (`docs/parallelus/custom/…`)
+- finalize `docs/deployment-upgrade-and-layout-PLAN.md` for implementation readiness
+- confirm which resulting tasks are in-scope for this branch vs later rollout phases
+- define implementation ordering and acceptance checks for the first executable reorg PR

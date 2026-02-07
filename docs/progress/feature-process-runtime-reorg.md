@@ -168,3 +168,55 @@
 **Artifacts**
 - `docs/deployment-upgrade-and-layout-PLAN.md`
 - `docs/plans/feature-process-runtime-reorg.md`
+
+## 2026-02-07 00:12:00 UTC
+**Objectives**
+- add explicit pre-reorg host repo upgrade coverage to the layout plan
+
+**Work Performed**
+- added a dedicated pre-reorg host upgrade path to the plan, including:
+  - host-state classification (legacy/reorg/conflict/mixed)
+  - ordered idempotent migration algorithm
+  - compatibility + rollback policy
+  - acceptance criteria for successful host upgrades
+- added one new open question to resolve deterministic first-upgrade detection
+  for legacy repos that have no sentinel yet
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+
+## 2026-02-07 13:32:34 UTC
+**Objectives**
+- convert the accepted legacy-detection recommendation into concrete plan policy
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-PLAN.md` to resolve the
+  first-upgrade/no-sentinel detection question with explicit:
+  - strong fingerprints + context markers
+  - threshold-based classification rules
+  - forced-mode override env vars and conflict behavior
+  - audit-output requirements for upgrade runs
+- removed that item from “Open Questions” and recorded it under resolved
+  decisions
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+
+## 2026-02-07 13:36:37 UTC
+**Objectives**
+- resolve the final two open questions and mark the layout plan as design-complete
+
+**Work Performed**
+- updated `docs/deployment-upgrade-and-layout-PLAN.md` to resolve:
+  - bundle ownership detection (`parallelus/` vs `vendor/parallelus/`) with
+    sentinel schema, precedence, and conflict handling
+  - project customization interface under `docs/parallelus/custom/` with
+    concrete layout, config schema, hook execution contract, and safety rules
+- removed the remaining open-question entries and marked the plan as having no
+  unresolved design questions
+- updated branch plan next actions to focus on implementation sequencing rather
+  than outstanding design decisions
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+- `docs/plans/feature-process-runtime-reorg.md`

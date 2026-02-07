@@ -218,9 +218,8 @@ software contexts:
   results in the first 200 matches, which suggests there is no strong existing
   convention, but it is **not** a comprehensive dataset.
 
-This is “good enough” to proceed with `parallelus/` as the default, but the plan
-retains an open question about using a more vendor-like namespace
-(e.g. `vendor/parallelus/`) for extremely collision-sensitive repos.
+This is “good enough” to proceed with `parallelus/` as the default, with a
+resolved escape hatch to `vendor/parallelus/` for collision-sensitive repos.
 
 ## Migration Mapping (No Moves Yet)
 
@@ -238,7 +237,7 @@ planned and reviewed. It does not imply the files have already moved.
 - `docs/agents/adapters/*.md` → `parallelus/manuals/adapters/*.md`
 - `docs/agents/project/*.md` → `parallelus/manuals/project/*.md`
 - `docs/agents/templates/*.md` → `parallelus/templates/*.md`
-- `docs/agents/scopes/*` → `parallelus/scopes/*` (see “Scopes” in Open Questions)
+- `docs/agents/scopes/*` → `parallelus/scopes/*` (see resolved scopes decision)
 
 ### Engine (`.agents/`) relocation
 
@@ -301,13 +300,147 @@ layout.
 - **Self-improvement evidence:** update any scripts that read/write markers and
   reports so they target `docs/parallelus/self-improvement/…` (tracked) vs
   `./.parallelus/…` (runtime), per the decided split.
-- **Customizations:** design a stable lookup mechanism for project-owned
-  customizations under `docs/parallelus/custom/…` (Open Question 9).
+- **Customizations:** implement the resolved customization contract under
+  `docs/parallelus/custom/…` (config + hooks).
 - **Deploy/upgrade tooling:** update deployment helpers to treat `parallelus/…`
   as the replaceable bundle and `docs/parallelus/…` as preserved state.
 - **Validation checklist:** add a “clean-room” validation procedure (fresh clone
   or clean worktree) that verifies bootstrap, CI, subagents, folding, and merge
   gates against the new layout.
+
+## Pre-Reorg Host Repo Upgrade Path
+
+This section defines how to upgrade host repos that were deployed before the
+reorg (legacy `.agents/`, `docs/agents/`, `docs/plans|progress`, root
+`sessions/`, and no bundle sentinel).
+
+### Host state detection
+
+Before making changes, classify the host repo:
+
+1. **Legacy deployment (pre-reorg):**
+   - `.agents/` exists, `parallelus/.parallelus-bundle.*` missing.
+2. **Reorg deployment (current):**
+   - `parallelus/` exists with valid sentinel manifest.
+3. **Conflict namespace:**
+   - `parallelus/` exists without valid sentinel (assume unrelated).
+4. **Mixed / interrupted migration:**
+   - partial move detected (for example both `.agents/` and `parallelus/engine/`).
+
+### Bundle ownership detection policy (resolved)
+
+Use a sentinel manifest to determine whether a namespace is Parallelus-managed.
+
+**Sentinel path:**
+- `<bundle-root>/.parallelus-bundle.json` where `<bundle-root>` is either
+  `parallelus/` or `vendor/parallelus/`.
+
+**Required sentinel fields:**
+- `bundle_id` (must equal `parallelus.bundle.v1`)
+- `layout_version` (integer)
+- `upstream_repo` (string URL)
+- `bundle_version` (git sha or semver string)
+- `installed_on` (timestamp string)
+- `managed_paths` (array; must include at least `engine` and `manuals`)
+
+**Detection precedence:**
+1. If `parallelus/.parallelus-bundle.json` is valid, treat `parallelus/` as
+   managed and upgrade in place.
+2. Else if `vendor/parallelus/.parallelus-bundle.json` is valid, treat
+   `vendor/parallelus/` as managed and upgrade in place there.
+3. Else fall back to the resolved legacy heuristic below.
+4. If legacy heuristic is ambiguous, deploy into `vendor/parallelus/` and do
+   not mutate existing `parallelus/`.
+
+**Conflict handling:**
+- If both `parallelus/` and `vendor/parallelus/` have valid sentinels, prefer
+  `parallelus/` and warn that dual-managed namespaces were found.
+- If sentinel exists but is malformed/invalid, treat that namespace as
+  unmanaged and continue detection; do not overwrite it without explicit force.
+
+### Legacy detection heuristic (resolved; first upgrade without sentinel)
+
+When no valid bundle sentinel exists yet, use this deterministic rule set to
+decide whether `.agents/` is a legacy Parallelus install.
+
+**Strong fingerprints (file must exist):**
+- `.agents/bin/agents-session-start`
+- `.agents/bin/agents-ensure-feature`
+- `.agents/hooks/pre-commit`
+- `.agents/prompts/agent_roles/senior_architect.md`
+
+**Context markers (content match):**
+- `AGENTS.md` contains `Parallelus Agent Core Guardrails`
+- `Makefile` references `make start_session` and/or `.agents/bin/`
+
+**Classification rule:**
+- If `strong_count >= 2` and `context_count >= 1`: classify as
+  `legacy_parallelus` and migrate in place.
+- Otherwise: classify as `ambiguous_or_unrelated`; do not mutate existing
+  `parallelus/`, deploy to `vendor/parallelus/`, and emit a warning.
+
+**Explicit overrides (for operators):**
+- `PARALLELUS_UPGRADE_FORCE_IN_PLACE=1`: force in-place migration.
+- `PARALLELUS_UPGRADE_FORCE_VENDOR=1`: force `vendor/parallelus/`.
+- If both are set: fail fast with an error.
+
+**Auditability requirement:**
+- Upgrade output must print detection inputs (`strong_count`, `context_count`,
+  matched paths/markers), selected mode, and whether an override was used.
+
+### Upgrade algorithm (idempotent)
+
+The deploy/upgrade helper should execute these steps in order, and be safe to
+re-run if interrupted:
+
+1. **Detect + lock mode:**
+   - Decide target namespace (`parallelus/` or `vendor/parallelus/`) from state
+     detection rules.
+   - Emit a migration summary in dry-run mode before mutating files.
+2. **Install bundle payload:**
+   - Copy/update bundle files into target namespace.
+   - Write/update sentinel manifest with `bundle_id`, `layout_version`,
+     `upstream_repo`, and `bundle_version`.
+3. **Migrate tracked docs paths (if present):**
+   - `docs/agents/**` → `parallelus/manuals/**`
+   - `docs/plans/*.md` + `docs/progress/*.md` →
+     `docs/branches/<slug>/{PLAN,PROGRESS}.md`
+   - `docs/reviews/**` + `docs/self-improvement/**` →
+     `docs/parallelus/**`
+4. **Migrate runtime/session paths:**
+   - root `sessions/` → `./.parallelus/sessions/` using the migration helper.
+   - Switch writers to `./.parallelus/sessions/` and keep dual-read during
+     transition.
+5. **Migrate engine paths:**
+   - `.agents/**` → `<bundle-root>/engine/**` (where `<bundle-root>` is either
+     `parallelus` or `vendor/parallelus`).
+   - Update internal references/entrypoints to direct script paths.
+6. **Finalize + verify:**
+   - Run structural validation checks for expected new paths and required files.
+   - Report legacy leftovers that were intentionally kept or need manual review.
+
+### Compatibility and rollback policy
+
+- **Dual-read window:** for one layout-version window, readers accept both legacy
+  and new locations for sessions and select process artifacts.
+- **Single-write rule:** once upgraded, writers only emit to new locations.
+- **No destructive deletes in upgrade step:** legacy paths are archived or left
+  in place until validation passes; cleanup happens in an explicit follow-up
+  step.
+- **Safe retry:** interrupted upgrades can be re-run without duplicating files or
+  corrupting state.
+
+### Acceptance criteria for pre-reorg upgrades
+
+An upgraded host repo is considered successful when all are true:
+
+1. Bundle sentinel exists and validates in the active bundle namespace.
+2. Process entrypoints resolve to direct scripts under
+   `<bundle-root>/engine/bin/…`.
+3. New sessions are written under `./.parallelus/sessions/`.
+4. Plan/progress/reviews/self-improvement artifacts resolve to the new tracked
+   locations.
+5. `make deploy` and core workflow checks pass after migration.
 
 ### Session migration mitigations (`sessions/` → `./.parallelus/sessions/`)
 
@@ -370,45 +503,66 @@ longer treated as open questions:
 - Entrypoints: switch to **direct script entrypoints** as the primary interface
   (including in this repo), and treat Makefile integration as an optional shim
   rather than the core contract.
+- Legacy-first-upgrade detection (no sentinel): use the fingerprint heuristic in
+  “Pre-Reorg Host Repo Upgrade Path” with conservative fallback to
+  `vendor/parallelus/` when ambiguous.
+- Bundle ownership detection for `parallelus/` vs `vendor/parallelus/`: use the
+  sentinel policy and precedence rules in “Pre-Reorg Host Repo Upgrade Path”.
+- Project customizations contract: use `docs/parallelus/custom/` with the
+  configuration and hook interface defined below.
+
+## Customization Contract (Resolved)
+
+Project-owned customizations are loaded from `docs/parallelus/custom/` so they
+survive replacement of the bundle in `parallelus/` or `vendor/parallelus/`.
+
+### Layout
+
+```
+docs/parallelus/custom/
+  config.yaml
+  hooks/
+    pre_bootstrap.sh
+    post_bootstrap.sh
+    pre_start_session.sh
+    post_start_session.sh
+    pre_turn_end.sh
+    post_turn_end.sh
+```
+
+Files are optional. Missing files mean “no customization” for that hook/event.
+
+### `config.yaml` schema
+
+- `version`: required integer (`1` for initial contract).
+- `enabled`: optional boolean (default `true`).
+- `hooks`: optional object keyed by hook name with values:
+  - `enabled`: optional boolean (default `true`)
+  - `timeout_seconds`: optional integer (default `30`)
+  - `on_error`: `fail` or `warn` (default: `fail` for `pre_*`, `warn` for `post_*`)
+
+### Discovery and execution rules
+
+1. Engine checks `docs/parallelus/custom/config.yaml`.
+2. If config missing, execute hooks by file presence with defaults.
+3. If config exists and `enabled=false`, skip all custom hooks.
+4. Hooks execute with:
+   - CWD = repo root
+   - executable = `/bin/sh`
+   - env vars:
+     - `PARALLELUS_REPO_ROOT`
+     - `PARALLELUS_BUNDLE_ROOT`
+     - `PARALLELUS_EVENT` (hook/event name)
+5. Timeouts and error handling follow `config.yaml` policy.
+6. Hook output is streamed and tagged with `[custom-hook:<name>]`.
+
+### Safety rules
+
+- Hooks must live under `docs/parallelus/custom/hooks/`; no external paths.
+- Non-executable hook files are ignored with a warning.
+- Failed `pre_*` hooks with `on_error=fail` abort the parent command.
+- `post_*` hook failures never abort already-completed primary work.
 
 ## Open Questions (Remaining)
 
-Only the items below still require a decision.
-
-### 1) Detecting “our” `parallelus/` vs a host repo’s unrelated `parallelus/`
-
-Requirement:
-- If `parallelus/` already exists in a host repo, deployment/upgrade must decide
-  whether it is an existing Parallelus bundle that should be upgraded *in place*
-  or an unrelated folder that should be left untouched (triggering
-  `vendor/parallelus/` deployment instead).
-
-Recommendation:
-- Make the bundle self-identifying via a **sentinel manifest** that is extremely
-  unlikely to exist accidentally:
-  - `parallelus/.parallelus-bundle.json` (or `.toml`) containing:
-    - `bundle_id` (fixed string, e.g. `"parallelus.bundle.v1"`)
-    - `layout_version` (monotonic int)
-    - `upstream_repo` (URL)
-    - `bundle_version` (git sha or semver)
-    - `installed_on` (timestamp, optional)
-- Deployment logic:
-  - If `parallelus/` exists **and** sentinel manifest is present + valid:
-    upgrade in place.
-  - If `parallelus/` exists **without** a valid sentinel: do not touch it;
-    deploy to `vendor/parallelus/`.
-  - Provide an explicit override flag for rare edge cases.
-
-### 2) Customizations lookup contract (project-owned hooks/config)
-
-We are moving `.agents/**` into the replaceable bundle (`parallelus/engine/**`),
-so project-specific customizations cannot live under the bundle long-term.
-
-Open design question:
-- What is the minimal, stable “customization interface” the engine should
-  support (config file path, hook scripts, optional manuals), and how should it
-  be discovered?
-
-Current recommendation (accepted direction, but contract details TBD):
-- Keep project-owned customizations under `docs/parallelus/custom/…` and define a
-  stable lookup mechanism for the engine to load them when present.
+No open design questions remain in this plan revision.
