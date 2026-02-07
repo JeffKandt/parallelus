@@ -608,3 +608,34 @@
 **Next Actions**
 - launch senior-review subagent for current `HEAD`
 - harvest review artifact and evaluate phase gate coverage
+
+## 2026-02-07 15:34:52 UTC
+**Objectives**
+- remediate Senior Architect `changes_requested` findings for current `PHASE-02` review cycle
+
+**Work Performed**
+- applied fixes for actionable review findings:
+  - `.agents/bin/deploy_agents_process.sh`
+    - `ensure_gitignore` now includes `.parallelus/` in scaffolded ignore entries so runtime paths are ignored by default
+  - `.agents/bin/collect_failures.py`
+    - deduplicated candidate source paths before scanning to prevent duplicate failure records from overlapping glob patterns
+  - `.agents/tests/test_session_paths.py`
+    - added regression test: `test_collect_failures_dedupes_overlapping_parallelus_globs`
+    - added regression test: `test_deploy_scaffold_gitignore_includes_parallelus_runtime_dir`
+
+**Validation Evidence**
+- `bash -n .agents/bin/deploy_agents_process.sh .agents/bin/collect_failures.py .agents/bin/agents-session-start .agents/bin/agents-turn-end`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_session_paths.py .agents/tests/test_bundle_namespace_detection.py`
+  - outcome: pass (`13 passed in 3.20s`)
+- `.agents/tests/smoke.sh`
+  - outcome: pass (`agents smoke test passed`)
+- `out="$(mktemp -d)/scaffolded"; ./.agents/bin/deploy_agents_process.sh "$out" >/tmp/deploy-check-fixed.log 2>&1; grep -n '^\\.parallelus/$' "$out/.gitignore"`
+  - outcome: pass (`.parallelus/` present in scaffolded `.gitignore`)
+
+**Residual Risks**
+- prior senior-review artifact was not harvested before cleanup due manual-run sequencing; rerunning senior review after this fix commit to generate final artifact for current `HEAD`
+
+**Next Actions**
+- commit/push remediation changes
+- rerun Senior Architect review on updated `HEAD` and capture final gate-evaluated artifact

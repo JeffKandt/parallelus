@@ -94,5 +94,35 @@
     "launcher_handle": null,
     "role_prompt": "continuous_improvement_auditor.md",
     "source_commit": "8cf6ca70b35f5ce163a5070a9e7c29a5bd881707"
+  },
+  {
+    "id": "20260207-152511-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-IcJPpE",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-IcJPpE/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-IcJPpE/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-IcJPpE/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-IcJPpE/subagent.progress.md",
+    "launcher": "manual",
+    "status": "cleaned",
+    "launched_at": "20260207-152511",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "id": "senior-review-report",
+        "kind": "review_markdown",
+        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "baseline": [
+          "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+        ],
+        "status": "waiting"
+      }
+    ],
+    "deliverables_status": "pending",
+    "source_commit": "7c63f6795dbbe0b560c5b35be2c46604d8f38e78"
   }
 ]

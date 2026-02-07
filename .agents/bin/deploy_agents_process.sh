@@ -875,6 +875,7 @@ ensure_gitignore() {
         "venv/"
         "__pycache__/"
         "*.pyc"
+        ".parallelus/"
         "sessions/"
         "out/"
         "*.log"

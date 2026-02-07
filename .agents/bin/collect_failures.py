@@ -163,15 +163,25 @@ def main() -> None:
     warnings = []
     sources = []
 
-    candidates = []
+    candidates: list[Path] = []
+    seen_candidates: set[Path] = set()
+
+    def add_candidates(paths) -> None:
+        for path in paths:
+            resolved = path.resolve()
+            if resolved in seen_candidates:
+                continue
+            seen_candidates.add(resolved)
+            candidates.append(path)
+
     for session_root in sessions_read_roots(repo):
-        candidates += list(session_root.glob("*/console.log"))
-    candidates += list(repo.glob(".parallelus/**/subagent.exec_events.jsonl"))
-    candidates += list(repo.glob(".parallelus/**/subagent.session.jsonl"))
-    candidates += list(repo.glob(".parallelus/guardrails/runs/**/session.jsonl"))
-    candidates += list(repo.glob(".parallelus/guardrails/runs/**/subagent.exec_events.jsonl"))
-    candidates += list(repo.glob("docs/guardrails/runs/**/session.jsonl"))
-    candidates += list(repo.glob("docs/guardrails/runs/**/subagent.exec_events.jsonl"))
+        add_candidates(session_root.glob("*/console.log"))
+    add_candidates(repo.glob(".parallelus/**/subagent.exec_events.jsonl"))
+    add_candidates(repo.glob(".parallelus/**/subagent.session.jsonl"))
+    add_candidates(repo.glob(".parallelus/guardrails/runs/**/session.jsonl"))
+    add_candidates(repo.glob(".parallelus/guardrails/runs/**/subagent.exec_events.jsonl"))
+    add_candidates(repo.glob("docs/guardrails/runs/**/session.jsonl"))
+    add_candidates(repo.glob("docs/guardrails/runs/**/subagent.exec_events.jsonl"))
 
     for path in candidates:
         sources.append(str(path))

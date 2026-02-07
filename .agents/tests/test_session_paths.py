@@ -12,6 +12,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BIN_DIR = REPO_ROOT / ".agents" / "bin"
+DEPLOY_SCRIPT = BIN_DIR / "deploy_agents_process.sh"
 if str(BIN_DIR) not in sys.path:
     sys.path.insert(0, str(BIN_DIR))
 
@@ -145,3 +146,48 @@ def test_default_output_dir_uses_legacy_session_when_env_dir_not_set(monkeypatch
         monkeypatch.setenv("SESSION_ID", session_id)
 
         assert rollout_extractor.default_output_dir(repo).resolve() == (legacy_session / "artifacts").resolve()
+
+
+def test_collect_failures_dedupes_overlapping_parallelus_globs() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-failure-dedupe-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/failure-dedupe"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        marker_dir = repo / "docs" / "self-improvement" / "markers"
+        marker_dir.mkdir(parents=True, exist_ok=True)
+        marker_ts = "2026-02-07T16:00:00Z"
+        (marker_dir / f"{slug}.json").write_text(json.dumps({"timestamp": marker_ts}, indent=2) + "\n", encoding="utf-8")
+
+        events_path = repo / ".parallelus" / "guardrails" / "runs" / "demo" / "subagent.exec_events.jsonl"
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        event = {"msg": {"type": "exec_command_end", "exit_code": 2, "command": "false", "stderr": "boom"}}
+        events_path.write_text(json.dumps(event) + "\n", encoding="utf-8")
+
+        result = _run([str(repo / ".agents" / "bin" / "collect_failures.py")], cwd=repo)
+        assert result.returncode == 0, result.stderr
+
+        rel_out = result.stdout.strip().split("wrote ", 1)[-1]
+        report = json.loads((repo / rel_out).read_text(encoding="utf-8"))
+        matching = [
+            item
+            for item in report.get("failures", [])
+            if Path(item.get("source", "")).resolve() == events_path.resolve()
+            and item.get("kind") == "exec_command_end"
+        ]
+        assert len(matching) == 1
+
+
+def test_deploy_scaffold_gitignore_includes_parallelus_runtime_dir() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-deploy-gitignore-") as tmpdir:
+        target = Path(tmpdir) / "scaffolded"
+        result = _run([str(DEPLOY_SCRIPT), str(target)], cwd=REPO_ROOT)
+        assert result.returncode == 0, result.stderr
+
+        entries = {
+            line.strip()
+            for line in (target / ".gitignore").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        }
+        assert ".parallelus/" in entries
