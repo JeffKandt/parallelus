@@ -27,7 +27,7 @@ Key flags:
 - `--overlay-upgrade` – convenience flag for clean upgrades: implies overlay mode, asserts the target working tree is clean, sets `--overlay-no-backup`, and auto-consents to the overwrite warning.
 - `--remote URL` – configure the `origin` remote after initialization.
 
-The script copies the canonical assets (`AGENTS.md`, `.agents/`, `docs/agents/`), scaffolds `docs/PLAN.md`, `docs/PROGRESS.md`, and the `docs/self-improvement/` folders, wires the Makefile snippet, updates `.agents/agentrc`, and (for scaffold mode) creates an initial commit. If the target Makefile references optional helper scripts (for example `remember_later` / `capsule_prompt`), the corresponding `scripts/` files are copied when missing. During overlay deployments, any existing `docs/agents/project/` content is preserved so project-specific narratives stay intact; copy new template material in manually if you want to adopt the updates. Overlay mode emits a notice in `AGENTS.md` only when backups are generated; when you opt out of backups (`--overlay-no-backup` or `--overlay-upgrade`), no notice is added. Likewise, overlays refresh only `docs/reviews/README.md` so historical project reviews remain untouched.
+The script copies the canonical assets (`AGENTS.md`, `.agents/`, `docs/agents/`), scaffolds `docs/PLAN.md`, `docs/PROGRESS.md`, and the `docs/parallelus/self-improvement/` folders, wires the Makefile snippet, updates `.agents/agentrc`, and (for scaffold mode) creates an initial commit. If the target Makefile references optional helper scripts (for example `remember_later` / `capsule_prompt`), the corresponding `scripts/` files are copied when missing. During overlay deployments, any existing `docs/agents/project/` content is preserved so project-specific narratives stay intact; copy new template material in manually if you want to adopt the updates. Overlay mode emits a notice in `AGENTS.md` only when backups are generated; when you opt out of backups (`--overlay-no-backup` or `--overlay-upgrade`), no notice is added. Likewise, overlays refresh only `docs/parallelus/reviews/README.md` so historical project reviews remain untouched.
 
 ### AGENTS.md Customization Policy (Recommended)
 
@@ -62,8 +62,8 @@ When automation is unavailable, perform the steps manually:
    - `.agents/` (entire directory)
    - `docs/agents/` tree
    - `docs/PLAN.md` and `docs/PROGRESS.md` (scaffold if missing)
-   - `docs/self-improvement/` (`README.md`, `markers/`, `reports/`, `failures/`)
-   - Create empty `docs/plans/` and `docs/progress/` folders
+   - `docs/parallelus/self-improvement/` (`README.md`, `markers/`, `reports/`, `failures/`)
+   - Create `docs/branches/` for per-branch notebooks (`<slug>/PLAN.md`, `<slug>/PROGRESS.md`)
    - Create an empty `sessions/` directory
 2. Update `.agents/agentrc` for the new project (`PROJECT_NAME`, `DEFAULT_BASE`, `LANG_ADAPTERS`, etc.).
 3. Add the Makefile integration (see snippet below) and install the `pre-merge-commit` hook.
@@ -99,7 +99,7 @@ Add additional `ifneq` blocks as you create new adapters.
    SESSION_PROMPT="Smoke test" eval "$(make start_session)"
    make turn_end m="initial checkpoint"
    ```
-   Confirm branch notebooks appear under `docs/plans/` and `docs/progress/`.
+   Confirm branch notebooks appear under `docs/branches/<slug>/PLAN.md` and `docs/branches/<slug>/PROGRESS.md`.
 
 2. **Smoke test:** `make agents-smoke` exercises detect → branch → session → checkpoint → archive.
 

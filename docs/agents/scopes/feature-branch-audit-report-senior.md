@@ -28,7 +28,7 @@
 - `docs/agents/git-workflow.md`
 
 ## Deliverable
-- Create `docs/reviews/feature-branch-audit-report-2025-11-03.md` containing:
+- Create `docs/parallelus/reviews/feature-branch-audit-report-2025-11-03.md` containing:
   - `Reviewed-Branch: feature/branch-audit-report`
   - `Reviewed-Commit: $(git rev-parse HEAD)`
   - Decision, severity-labelled findings, and recommended follow-ups.

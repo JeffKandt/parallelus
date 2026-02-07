@@ -4,6 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 
+from parallelus_docs_paths import marker_read_path, reports_write_dir, self_improvement_read_roots
+
 ALLOWED_SKIP_VAR = "AGENTS_RETRO_SKIP_VALIDATE"
 NEW_AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
 LEGACY_AGENT_RC_FLAG = "REQUIRE_AGENT_CI_AUDITS"
@@ -52,13 +54,17 @@ def main() -> None:
     if os.environ.get(ALLOWED_SKIP_VAR):
         return
 
-    reports_dir = repo / "docs" / "self-improvement" / "reports"
-    markers_dir = repo / "docs" / "self-improvement" / "markers"
-    marker_path = markers_dir / f"{slugged}.json"
+    report_dirs = [root / "reports" for root in self_improvement_read_roots(repo)]
+    marker_path = marker_read_path(repo, slugged)
 
     if not marker_path.exists():
         pattern = f"{slugged}--*.json"
-        if not reports_dir.exists() or not any(reports_dir.glob(pattern)):
+        any_reports = False
+        for reports_dir in report_dirs:
+            if reports_dir.exists() and any(reports_dir.glob(pattern)):
+                any_reports = True
+                break
+        if not any_reports:
             return  # nothing to validate yet
         raise SystemExit(
             "verify-retrospective: marker not found but reports exist; please run the "
@@ -74,14 +80,21 @@ def main() -> None:
     if not marker_ts:
         raise SystemExit(f"verify-retrospective: marker {marker_path} missing timestamp")
 
-    if not reports_dir.exists():
+    if not any(path.exists() for path in report_dirs):
         raise SystemExit(
             "verify-retrospective: no reports directory; run the "
             f"{role_prompt} prompt before make turn_end."
         )
 
     expected = f"{slugged}--{marker_ts}.json"
-    target = reports_dir / expected
+    target = None
+    for reports_dir in report_dirs:
+        candidate = reports_dir / expected
+        if candidate.exists():
+            target = candidate
+            break
+    if target is None:
+        target = reports_write_dir(repo) / expected
     if not target.exists():
         raise SystemExit(
             "verify-retrospective: latest marker has no matching retrospective report. "
@@ -100,7 +113,7 @@ def main() -> None:
         )
 
     print(
-        f"verify-retrospective: found report docs/self-improvement/reports/{expected}",
+        f"verify-retrospective: found report {target.relative_to(repo)}",
         flush=True,
     )
 

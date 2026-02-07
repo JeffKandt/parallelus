@@ -17,9 +17,9 @@ guardrails, then document that acknowledgement in the branch progress log.
 - `integrations/` – adapter and platform overlays (Codex, Python, Node). Read
   the relevant integration manual the first time you enable that tooling or
   whenever the environment changes.
-- `../reviews/` – permanent store for senior architect reviews required before
+- `../parallelus/reviews/` – permanent store for senior architect reviews required before
   merging feature branches.
-- `../self-improvement/` – turn markers (`markers/`) and stored retrospective
+- `../parallelus/self-improvement/` – turn markers (`markers/`) and stored retrospective
   reports (`reports/`) produced by the synchronous audit workflow.
 
 Add new manuals here when specialised workflows emerge, and update `AGENTS.md`

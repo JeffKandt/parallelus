@@ -29,6 +29,13 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from parallelus_docs_paths import (
+    iter_branch_progress_paths,
+    marker_read_path,
+    marker_write_path,
+    self_improvement_read_roots,
+    self_improvement_write_root,
+)
 
 PROJECT_PROGRESS_HEADER = "# Project Progress"
 DATE_HEADER_RE = re.compile(r"^## (\d{4}-\d{2}-\d{2})$")
@@ -52,6 +59,18 @@ class ProgressEntry:
         return self.timestamp.strftime("%H:%M:%S")
 
 
+def branch_from_slug(slug: str) -> str:
+    if slug.startswith("feature-"):
+        return slug.replace("feature-", "feature/", 1)
+    return slug
+
+
+def slug_from_progress_path(path: pathlib.Path) -> str:
+    if path.name == "PROGRESS.md":
+        return path.parent.name
+    return path.stem
+
+
 def normalise_body(text: str) -> str:
     lines = text.splitlines()
     # Drop leading/trailing blank lines but preserve internal spacing.
@@ -71,7 +90,7 @@ def parse_branch_progress(content: str, path: Optional[pathlib.Path] = None) -> 
             branch = match.group(1).strip()
             break
     if branch is None and path is not None:
-        branch = path.name.rsplit(".", 1)[0].replace("feature-", "feature/", 1)
+        branch = branch_from_slug(slug_from_progress_path(path))
     if branch is None:
         raise ValueError("Unable to determine branch name from progress notebook.")
 
@@ -187,9 +206,10 @@ def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
     allow_without_turn_end = os.environ.get("AGENTS_ALLOW_FOLD_WITHOUT_TURN_END") == "1"
     repo_root = git_root()
     current_head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    markers_dir = repo_root / "docs" / "self-improvement" / "markers"
-    if not allow_without_turn_end and not markers_dir.exists():
-        rel_dir = markers_dir.relative_to(repo_root)
+    marker_dirs = [root / "markers" for root in self_improvement_read_roots(repo_root)]
+    canonical_markers_dir = self_improvement_write_root(repo_root) / "markers"
+    if not allow_without_turn_end and not any(path.exists() for path in marker_dirs):
+        rel_dir = canonical_markers_dir.relative_to(repo_root)
         print(
             f"fold-progress apply: expected markers directory {rel_dir} is missing.\n"
             "Run `make turn_end m=\"summary\"` on the feature branch before folding progress notebooks.",
@@ -203,7 +223,7 @@ def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
         for entry in parse_canonical(canonical_existing):
             entries[(entry.timestamp, entry.branch)] = entry
 
-    to_fold = paths or sorted(target.parent.glob("progress/feature-*.md"))
+    to_fold = list(paths) if paths else list(iter_branch_progress_paths(repo_root))
     for notebook in to_fold:
         content = read_file(notebook)
         if not content:
@@ -212,8 +232,10 @@ def command_apply(target: pathlib.Path, paths: Sequence[pathlib.Path]) -> int:
         if not notebook_entries:
             continue
         if not allow_without_turn_end:
-            slug = notebook.stem
-            marker_path = markers_dir / f"{slug}.json"
+            slug = slug_from_progress_path(notebook)
+            marker_path = marker_read_path(repo_root, slug)
+            if not marker_path.exists():
+                marker_path = marker_write_path(repo_root, slug)
             if not marker_path.exists():
                 rel_marker = marker_path.relative_to(repo_root)
                 branch_name = notebook_entries[0].branch

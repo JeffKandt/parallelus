@@ -20,6 +20,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-paths.sh
 . "${SCRIPT_DIR}/agents-paths.sh"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
@@ -36,8 +38,8 @@ if [[ "$current_branch" == "HEAD" || -z "$current_branch" ]]; then
 fi
 
 slugged_branch="${current_branch//\//-}"
-plan_file="$PLAN_DIR/$slugged_branch.md"
-progress_file="$PROGRESS_DIR/$slugged_branch.md"
+plan_file="$(parallelus_branch_plan_read_path "$repo_root" "$slugged_branch")"
+progress_file="$(parallelus_branch_progress_read_path "$repo_root" "$slugged_branch")"
 
 if [[ ! -f "$progress_file" ]]; then
   echo "agents-turn-end: progress file $progress_file is missing" >&2

@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from parallelus_docs_paths import (
+    branch_plan_read_path,
+    branch_progress_read_path,
+    marker_write_path,
+    self_improvement_read_roots,
+)
 from parallelus_paths import resolve_session_dir, sessions_write_root
 
 NEW_AGENT_RC_FLAG = "AGENTS_REQUIRE_RETRO"
@@ -87,20 +93,21 @@ def find_report_for_marker(repo: Path, branch: str, marker_path: Path, role_prom
     if not marker_ts:
         raise SystemExit(f"retro-marker: marker {marker_path} missing timestamp")
 
-    reports_dir = repo / "docs" / "self-improvement" / "reports"
-    if not reports_dir.exists():
+    report_dirs = [root / "reports" for root in self_improvement_read_roots(repo)]
+    if not any(path.exists() for path in report_dirs):
         raise SystemExit(
             "retro-marker: latest turn not audited; "
             f"run the {role_prompt} prompt before make turn_end."
         )
 
-    for path in sorted(reports_dir.glob("*.json")):
-        try:
-            data = json.loads(path.read_text())
-        except Exception:
-            continue
-        if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
-            return path
+    for reports_dir in report_dirs:
+        for path in sorted(reports_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text())
+            except Exception:
+                continue
+            if data.get("branch") == branch and data.get("marker_timestamp") == marker_ts:
+                return path
 
     raise SystemExit(
         "retro-marker: latest marker has no matching retrospective report. "
@@ -117,8 +124,8 @@ def main() -> None:
     timestamp = datetime.now(timezone.utc).isoformat()
     session_id = resolve_active_session_id(repo, slugged)
 
-    plan_path = repo / "docs" / "plans" / f"{slugged}.md"
-    progress_path = repo / "docs" / "progress" / f"{slugged}.md"
+    plan_path = branch_plan_read_path(repo, slugged)
+    progress_path = branch_progress_read_path(repo, slugged)
 
     session_console = None
     session_console_size = None
@@ -128,8 +135,7 @@ def main() -> None:
             session_console = str(console_candidate.relative_to(repo))
             session_console_size = console_candidate.stat().st_size
 
-    markers_dir = repo / "docs" / "self-improvement" / "markers"
-    marker_path = markers_dir / f"{slugged}.json"
+    marker_path = marker_write_path(repo, slugged)
     require_retro = agentrc.get(NEW_AGENT_RC_FLAG)
     if require_retro is None:
         require_retro = agentrc.get(LEGACY_AGENT_RC_FLAG, "1")
@@ -160,7 +166,7 @@ def main() -> None:
         "session_console_size": session_console_size,
     }
 
-    markers_dir.mkdir(parents=True, exist_ok=True)
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
     marker_path.write_text(json.dumps(marker, indent=2) + "\n", encoding="utf-8")
 
     print(f"retro-marker: recorded marker for {branch} at {timestamp}")

@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
@@ -15,8 +17,8 @@ cd "$repo_root"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
 sanitized_branch=${current_branch//\//-}
-expected_plan="$PLAN_DIR/${sanitized_branch}.md"
-expected_progress="$PROGRESS_DIR/${sanitized_branch}.md"
+expected_plan="$(parallelus_branch_plan_read_path "$repo_root" "$sanitized_branch")"
+expected_progress="$(parallelus_branch_progress_read_path "$repo_root" "$sanitized_branch")"
 remote_list="$(git remote)"
 
 has_remote=false
@@ -79,12 +81,16 @@ local_csv="$(join_by_comma "${local_unmerged[@]-}")"
 # Detect orphaned notebooks
 shopt -s nullglob
 declare -a orphan_paths=()
-for path in "$PLAN_DIR"/*.md "$PROGRESS_DIR"/*.md; do
+for path in \
+  "$repo_root"/docs/branches/*/PLAN.md \
+  "$repo_root"/docs/branches/*/PROGRESS.md \
+  "$repo_root"/docs/plans/feature-*.md \
+  "$repo_root"/docs/progress/feature-*.md; do
   [[ $(basename "$path") == "README.md" ]] && continue
   if [[ "$path" == "$expected_plan" || "$path" == "$expected_progress" ]]; then
     continue
   fi
-  orphan_paths+=("$path")
+  orphan_paths+=("${path#$repo_root/}")
 done
 shopt -u nullglob
 orphan_csv="$(join_by_comma "${orphan_paths[@]-}")"

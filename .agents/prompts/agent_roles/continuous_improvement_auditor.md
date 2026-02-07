@@ -58,7 +58,7 @@ Return an object with the following fields:
    - Commands executed (shell transcript).
    - Changes recorded in plan/progress docs.
    - Test, lint, or format output.
-   - Failure summary from `docs/self-improvement/failures/<branch>--<marker>.json` (if present).
+   - Failure summary from `docs/parallelus/self-improvement/failures/<branch>--<marker>.json` (if present).
    - Any anomalies, skipped steps, or guardrail violations.
 3. For each issue found, decide whether it is **blocking**. If blocking, note it
    explicitly in the `summary` so the main agent can halt work immediately.

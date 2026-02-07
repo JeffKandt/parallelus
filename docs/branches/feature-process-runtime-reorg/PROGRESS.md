@@ -944,3 +944,101 @@
 
 **Next Actions**
 - commit and push stateless-shell hardening updates
+
+## 2026-02-07 18:37:40 UTC
+**Objectives**
+- continue execution by completing only `PHASE-03` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+- migrate tracked docs artifacts + tooling references from legacy `docs/plans|progress|reviews|self-improvement` paths to the phase-03 layout
+
+**Work Performed**
+- reviewed startup guardrails and project overlays for this session:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `.agents/custom/README.md`
+- ran `eval "$(make start_session)"` to initialize session logging (`20251058-20260207183507-d87e2c`) and captured branch snapshot output
+- read phase-tracking inputs:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/plans/feature-process-runtime-reorg.md`
+  - `docs/progress/feature-process-runtime-reorg.md`
+- confirmed only pre-migration notebook layout exists at start of this turn (`docs/plans|docs/progress`); no `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md` files existed yet
+- determined next incomplete phase is `PHASE-03` (`PHASE-01` and `PHASE-02` already completed in prior entries)
+- mapped required tooling updates for phase scope:
+  - `.agents/bin/agents-ensure-feature`
+  - `.agents/bin/agents-turn-end`
+  - `.agents/bin/agents-merge`
+  - `.agents/bin/fold-progress`
+  - `.agents/bin/collect_failures.py`
+  - `.agents/bin/subagent_manager.sh`
+  - plus dependent guardrail scripts/hooks/tests that currently hardcode legacy docs paths
+
+**Next Actions**
+- implement only `PHASE-03` path migrations (new docs namespace + branch notebook layout) with compatibility where needed
+- run targeted validations for migrated tooling and capture explicit acceptance-gate evidence
+- commit + push, run mandatory retrospective + Senior Architect review loop, and iterate until approved
+
+## 2026-02-07 19:00:12 UTC
+**Objectives**
+- complete only `PHASE-03` (docs namespace migration + tracked artifact relocation + required tooling updates)
+- validate phase gates for bootstrap/turn-end/fold-progress/merge prechecks on migrated layout
+
+**Work Performed**
+- migrated tracked docs artifacts to the phase-03 layout:
+  - `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md` now canonical (moved from legacy `docs/plans|docs/progress`)
+  - `docs/reviews/*` moved to `docs/parallelus/reviews/*`
+  - `docs/self-improvement/*` moved to `docs/parallelus/self-improvement/*`
+  - added `docs/branches/README.md` and marked `docs/plans/README.md` + `docs/progress/README.md` as legacy migration fallbacks
+- updated phase-03 tooling targets (plus tightly-coupled guardrail helpers) for new-path write + legacy read compatibility:
+  - `.agents/bin/agents-ensure-feature`
+  - `.agents/bin/agents-turn-end`
+  - `.agents/bin/agents-merge`
+  - `.agents/bin/fold-progress`
+  - `.agents/bin/collect_failures.py`
+  - `.agents/bin/subagent_manager.sh`
+  - additional compatibility/support updates:
+    - `.agents/bin/agents-detect`
+    - `.agents/bin/retro-marker`
+    - `.agents/bin/verify-retrospective`
+    - `.agents/bin/agents-monitor-real.sh`
+    - `.agents/hooks/pre-commit`
+    - `.agents/hooks/pre-merge-commit`
+    - `.agents/bin/deploy_agents_process.sh`
+    - `.agents/bin/branch-queue`
+    - new shared path helpers: `.agents/bin/agents-doc-paths.sh`, `.agents/bin/parallelus_docs_paths.py`
+- aligned prompts/manuals/templates to migrated locations where they are part of operator/review flows (senior-review output path, auditor marker/report paths, branch notebook references)
+- updated test fixtures/smoke assertions to the new canonical paths and legacy-fallback expectations
+- layout state after migration:
+  - canonical layout present under `docs/branches/` and `docs/parallelus/`
+  - legacy notebook dirs (`docs/plans/`, `docs/progress/`) still exist only as migration READMEs (no duplicate active branch notebooks)
+
+**Validation Evidence**
+- syntax/static checks:
+  - `bash -n .agents/bin/agents-doc-paths.sh .agents/bin/agents-detect .agents/bin/agents-ensure-feature .agents/bin/agents-merge .agents/bin/agents-turn-end .agents/bin/subagent_manager.sh .agents/bin/agents-monitor-real.sh .agents/hooks/pre-commit .agents/hooks/pre-merge-commit`
+    - outcome: pass
+  - `python3 -m py_compile .agents/bin/parallelus_docs_paths.py .agents/bin/collect_failures.py .agents/bin/retro-marker .agents/bin/verify-retrospective .agents/bin/branch-queue .agents/bin/extract_codex_rollout.py .agents/bin/fold-progress`
+    - outcome: pass
+- targeted regression/tests:
+  - `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_session_paths.py .agents/tests/test_subagent_manager.py .agents/tests/test_agents_merge_benign.py .agents/tests/monitor_loop.py`
+    - outcome: pass (`26 passed in 16.19s`)
+  - `.agents/tests/smoke.sh`
+    - outcome: pass (`agents smoke test passed`; bootstrap + turn_end smoke assertions now use `docs/branches/<slug>/{PLAN,PROGRESS}.md`)
+- phase-gate checks:
+  - `make read_bootstrap`
+    - outcome: pass; `ORPHANED_NOTEBOOKS=` after notebook migration
+  - `AGENTS_ALLOW_FOLD_WITHOUT_TURN_END=1 .agents/bin/fold-progress apply --target "$(mktemp)" docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+    - outcome: pass
+  - `make ci`
+    - outcome: pass (`All checks passed!`)
+  - merge precheck behavior exercised by updated benign/non-benign merge tests:
+    - `.agents/tests/test_agents_merge_benign.py` included in passing pytest run above
+
+**Phase Gate Check (`PHASE-03`)**
+- bootstrap/turn-end/fold-progress/merge prechecks pass with new docs layout: satisfied
+- canonical logs still fold correctly into `docs/PROGRESS.md`: satisfied (`fold-progress apply` on canonical branch notebook path succeeded)
+
+**Residual Risks**
+- deploy overlay/scaffold paths now target migrated docs layout, but broad deployment/upgrade idempotence across mixed host states remains phase-06 scope
+- legacy fallback reads remain in place across several helpers/hooks by design; full legacy decommission is phase-07 scope
+
+**Next Actions**
+- commit + push phase-03 implementation
+- run required retrospective + Senior Architect review loop on current `HEAD` and iterate findings until approved

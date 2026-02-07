@@ -8,7 +8,7 @@
 
 ## Objectives
 - [ ] Analyse guardrail compliance, git status/diffs, and plan/progress updates since the marker timestamp.
-- [ ] Review `docs/self-improvement/failures/<branch>--<marker>.json` for failed tool calls and extract preventive guidance.
+- [ ] Review `docs/parallelus/self-improvement/failures/<branch>--<marker>.json` for failed tool calls and extract preventive guidance.
 - [ ] Document any issues with clear evidence, remediation, and prevention notes.
 - [ ] Surface follow-up actions the main agent must carry into the branch plan.
 

@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# shellcheck source=./agents-doc-paths.sh
+. "$ROOT/.agents/bin/agents-doc-paths.sh"
 
 RAW_TMUX_BIN=$(command -v tmux || true)
 TMUX_WRAPPER="$ROOT/.agents/bin/tmux-safe"
@@ -121,12 +123,15 @@ is_doc_only_path() {
   local path=$1
   case "$path" in
     docs/guardrails/runs/*|\
+    docs/parallelus/reviews/*|\
     docs/reviews/*|\
     docs/PLAN.md|\
     docs/PROGRESS.md|\
+    docs/branches/*|\
     docs/plans/*|\
     docs/progress/*|\
     docs/agents/*|\
+    docs/parallelus/self-improvement/*|\
     docs/self-improvement/*)
       return 0 ;;
   esac
@@ -138,7 +143,27 @@ ensure_senior_review_needed() {
   branch_slug=${1//\//-}
   head_commit=$2
 
-  latest_review=$(ls -1t "$ROOT/docs/reviews/${branch_slug}-"*.md 2>/dev/null | head -n1 || true)
+  latest_review=$(
+    python3 - "$ROOT" "$branch_slug" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+branch_slug = sys.argv[2]
+candidates = []
+for directory in [root / "docs" / "parallelus" / "reviews", root / "docs" / "reviews"]:
+    if not directory.exists():
+        continue
+    for path in directory.glob(f"{branch_slug}-*.md"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except FileNotFoundError:
+            continue
+if candidates:
+    candidates.sort(reverse=True)
+    print(candidates[0][1])
+PY
+  )
   if [[ -z "$latest_review" ]]; then
     return 0
   fi
@@ -242,7 +267,11 @@ ensure_no_tmux_pane_for_slug() {
 ensure_audit_ready_for_review() {
   local branch="$1"
   local head_commit="$2"
-  local marker_path="$ROOT/docs/self-improvement/markers/${branch//\//-}.json"
+  local marker_path
+  marker_path="$(parallelus_marker_read_path "$ROOT" "${branch//\//-}")"
+  if [[ ! -f "$marker_path" ]]; then
+    marker_path="$(parallelus_marker_write_path "$ROOT" "${branch//\//-}")"
+  fi
   if [[ ! -f "$marker_path" ]]; then
     echo "subagent_manager: run make turn_end to record a marker before the senior review." >&2
     return 1
@@ -280,8 +309,9 @@ if marker_head != head_commit:
     sys.exit(5)
 
 branch_slug = marker_path.stem
-report_path = f"docs/self-improvement/reports/{branch_slug}--{marker_ts}.json"
-failures_path = f"docs/self-improvement/failures/{branch_slug}--{marker_ts}.json"
+root = marker_path.parent.parent
+report_path = root / "reports" / f"{branch_slug}--{marker_ts}.json"
+failures_path = root / "failures" / f"{branch_slug}--{marker_ts}.json"
 print(report_path)
 print(failures_path)
 print(marker_ts)
@@ -903,9 +933,9 @@ PY
     read -r -d '' instructions <<EOF || true
 1. Read AGENTS.md and .agents/prompts/agent_roles/continuous_improvement_auditor.md to confirm guardrails.
 2. Pin context before auditing: ensure branch is '${parent_branch}' and HEAD is '${expected_commit}'. If either differs, run 'git checkout --quiet ${parent_branch}' and 'git reset --quiet --hard ${expected_commit}'.
-3. Review docs/self-improvement/markers/${branch_slug}.json to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
+3. Review docs/parallelus/self-improvement/markers/${branch_slug}.json (or migrated fallback marker path) to capture the marker timestamp and referenced plan/progress files for ${parent_branch}.
 4. Gather evidence without modifying tracked files: inspect git status, git diff, notebooks, and recent command output that reflect the current state of ${parent_branch}.
-5. Review the failures summary at docs/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
+5. Review the failures summary at docs/parallelus/self-improvement/failures/<branch>--<marker>.json when present and include mitigations for each failed tool call.
 6. Emit a JSON object matching the auditor schema (branch, marker_timestamp, summary, issues[], follow_ups[]). Reference concrete evidence for every issue; if no issues exist, return an empty issues array.
 7. Stay read-only—do not run make bootstrap or alter tracked files. If command output is noisy or stalls, prioritize marker + failures + notebook evidence and finish promptly.
 EOF
@@ -913,9 +943,9 @@ EOF
     read -r -d '' instructions <<EOF || true
 1. Read AGENTS.md and the role prompt to confirm constraints.
 2. Pin context before review: ensure branch is '${parent_branch}' and HEAD is '${expected_commit}'. If either differs, run 'git checkout --quiet ${parent_branch}' and 'git reset --quiet --hard ${expected_commit}'.
-3. Stay read-only: do not run make bootstrap or edit code/notebooks; your deliverable lives under docs/reviews/.
+3. Stay read-only: do not run make bootstrap or edit code/notebooks; your deliverable lives under docs/parallelus/reviews/.
 4. Run 'make read_bootstrap' to capture context, then review the branch state (diffs, plan/progress notebooks, logs) for ${parent_branch}.
-5. Draft the review in docs/reviews/ using the provided template; cite concrete evidence for each finding.
+5. Draft the review in docs/parallelus/reviews/ using the provided template; cite concrete evidence for each finding.
 6. Ensure the final review metadata explicitly targets this context: Reviewed-Branch=${parent_branch}, Reviewed-Commit=${expected_commit}.
 7. When the write-up is complete, leave the Codex pane open and wait for the main agent to harvest the review—no cleanup inside the sandbox is required.
 EOF
@@ -1250,16 +1280,20 @@ path = Path(sys.argv[1])
 parent_branch = sys.argv[2]
 current_commit = sys.argv[3]
 marker_branch = parent_branch.replace('/', '-')
-marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
-failures_path = f"docs/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
-review_path = f"docs/reviews/{marker_branch}-<YYYY-MM-DD>.md"
+marker_path = f"docs/parallelus/self-improvement/markers/{marker_branch}.json"
+legacy_marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
+failures_path = f"docs/parallelus/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
+review_path = f"docs/parallelus/reviews/{marker_branch}-<YYYY-MM-DD>.md"
 marker_full = Path(marker_path)
+if not marker_full.exists() and Path(legacy_marker_path).exists():
+    marker_full = Path(legacy_marker_path)
+    marker_path = legacy_marker_path
 if marker_full.exists():
     try:
         data = json.loads(marker_full.read_text(encoding="utf-8"))
         ts = data.get("timestamp")
         if ts:
-            failures_path = f"docs/self-improvement/failures/{marker_branch}--{ts}.json"
+            failures_path = str(marker_full.parent.parent / "failures" / f"{marker_branch}--{ts}.json")
     except Exception:
         pass
 
@@ -1381,7 +1415,7 @@ def fingerprint(path: str) -> str:
 sandbox = sys.argv[1]
 parent_branch = sys.argv[2]
 branch_slug = parent_branch.replace('/', '-')
-pattern = f"docs/reviews/{branch_slug}-*.md"
+pattern = f"docs/parallelus/reviews/{branch_slug}-*.md"
 glob_pattern = os.path.join(sandbox, pattern)
 baseline = []
 baseline_fingerprints = {}

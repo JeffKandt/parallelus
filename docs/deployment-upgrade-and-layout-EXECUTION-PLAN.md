@@ -186,8 +186,11 @@ Each phase should run only the smallest useful checks plus one broader check:
 
 - Keep this execution plan as the implementation source.
 - Track execution state in branch notebooks:
-  - `docs/plans/feature-process-runtime-reorg.md`
-  - `docs/progress/feature-process-runtime-reorg.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+  - (legacy pre-migration paths may still appear in historical entries:
+    `docs/plans/feature-process-runtime-reorg.md` and
+    `docs/progress/feature-process-runtime-reorg.md`)
 - Optional: mirror each phase slice as Beads items if you want queue visibility
   outside notebooks.
 

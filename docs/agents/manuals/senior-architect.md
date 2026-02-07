@@ -15,7 +15,7 @@ isolated tmux pane.
 
 The helper lives under `.agents/bin/`; `make run_senior_review` is a convenient
 wrapper if available. The subagent window will generate the markdown review and
-save it to `docs/reviews/<branch>-<date>.md`.
+save it to `docs/parallelus/reviews/<branch>-<date>.md`.
 
 ## Operator Expectations
 

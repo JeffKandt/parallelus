@@ -19,11 +19,11 @@
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [],
         "status": "harvested",
         "harvested_at": "2026-02-07T14:39:23Z",
-        "target_path": "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+        "target_path": "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
       }
     ],
     "deliverables_status": "harvested",
@@ -49,9 +49,9 @@
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [
-          "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
         ],
         "status": "waiting"
       }
@@ -115,9 +115,9 @@
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [
-          "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
         ],
         "status": "waiting"
       }
@@ -145,9 +145,9 @@
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [
-          "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
         ],
         "status": "waiting"
       }
@@ -175,9 +175,9 @@
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [
-          "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md"
         ],
         "status": "waiting"
       }

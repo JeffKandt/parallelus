@@ -22,7 +22,7 @@ def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subpro
 def _init_repo(tmp: Path, branch: str = "feature/demo") -> None:
     shutil.copytree(REPO_ROOT / ".agents", tmp / ".agents")
     (tmp / "docs" / "agents").mkdir(parents=True, exist_ok=True)
-    (tmp / "docs" / "reviews").mkdir(parents=True, exist_ok=True)
+    (tmp / "docs" / "parallelus" / "reviews").mkdir(parents=True, exist_ok=True)
 
     _run(["git", "init", "-q"], cwd=tmp)
     _run(["git", "config", "user.name", "Subagent Tests"], cwd=tmp)
@@ -54,7 +54,7 @@ def test_harvest_detects_changed_baseline_review_file() -> None:
         assert head
 
         sandbox = repo / ".parallelus" / "subagents" / "sandboxes" / "senior-review-test"
-        review_rel = f"docs/reviews/{branch_slug}-2026-02-07.md"
+        review_rel = f"docs/parallelus/reviews/{branch_slug}-2026-02-07.md"
         review_file = sandbox / review_rel
         review_file.parent.mkdir(parents=True, exist_ok=True)
         review_file.write_text(
@@ -89,7 +89,7 @@ def test_harvest_detects_changed_baseline_review_file() -> None:
                             {
                                 "id": "senior-review-report",
                                 "kind": "review_markdown",
-                                "source_glob": f"docs/reviews/{branch_slug}-*.md",
+                                "source_glob": f"docs/parallelus/reviews/{branch_slug}-*.md",
                                 "baseline": [review_rel],
                                 "baseline_fingerprints": {review_rel: "file:old-fingerprint"},
                                 "status": "waiting",
@@ -147,7 +147,7 @@ def test_cleanup_blocks_unharvested_deliverables_without_force() -> None:
                         "deliverables": [
                             {
                                 "id": "senior-review-report",
-                                "source_glob": "docs/reviews/feature-cleanup-*.md",
+                                "source_glob": "docs/parallelus/reviews/feature-cleanup-*.md",
                                 "status": "waiting",
                             }
                         ],
@@ -245,9 +245,9 @@ def test_senior_review_launch_fails_when_marker_head_mismatches() -> None:
 
         slug = branch.replace("/", "-")
         marker_ts = "2026-02-07T17:40:00Z"
-        marker_dir = repo / "docs" / "self-improvement" / "markers"
-        reports_dir = repo / "docs" / "self-improvement" / "reports"
-        failures_dir = repo / "docs" / "self-improvement" / "failures"
+        marker_dir = repo / "docs" / "parallelus" / "self-improvement" / "markers"
+        reports_dir = repo / "docs" / "parallelus" / "self-improvement" / "reports"
+        failures_dir = repo / "docs" / "parallelus" / "self-improvement" / "failures"
         marker_dir.mkdir(parents=True, exist_ok=True)
         reports_dir.mkdir(parents=True, exist_ok=True)
         failures_dir.mkdir(parents=True, exist_ok=True)

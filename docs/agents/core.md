@@ -9,7 +9,7 @@ progress log when you consult it for open questions or training.
 
 ### Recon & Planning (read-only)
 - Start every session with `eval "$(make start_session)"`, which enables logging and runs `make read_bootstrap`. Relay the branch/phase status to the maintainer before proceeding.
-- Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
+- Immediately open the active branch plan and progress notebooks (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
 - List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." eval "$(make start_session)"` before leaving Recon & Planning.
 - Inspect repo state, answer questions, plan next moves.
 - Do **not** modify code, docs, or plans, and skip bootstrap helpers.
@@ -34,7 +34,7 @@ Skipping these steps causes inconsistent state, missing logs, and fragile merge 
 
 ## Recon & Planning (read-only)
 - Run `make read_bootstrap` immediately to detect repo mode, current branch, and outstanding notebooks; relay the branch/phase status to the maintainer before proceeding.
-- Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
+- Immediately open the active branch plan and progress notebooks (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
 - List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
 - Inspect repo state, answer questions, plan next moves.
 - Do **not** modify code, docs, or plans, and skip bootstrap helpers.
@@ -68,8 +68,7 @@ Run the quick audit before touching anything:
 ```bash
 git status --short --branch
 ls -1 sessions/ | tail -5
-ls docs/progress/ | tail -5
-ls docs/plans/ | tail -5
+ls docs/branches/ | tail -5
 ```
 Use the output to determine whether you are resuming an existing feature or
 starting fresh (Recon & Planning), then open the branch plan/progress notebooks
@@ -138,7 +137,7 @@ understand the outcome.
 ### Merge-Time Retrospective Audit
 - Before merging, run `make collect_failures`, then launch the Continuous
   Improvement Auditor (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`)
-  and save its JSON report under `docs/self-improvement/reports/<branch>--<marker>.json`.
+  and save its JSON report under `docs/parallelus/self-improvement/reports/<branch>--<marker>.json`.
 
 ### Session Wrap (feature complete)
 - Add end timestamp & duration to `meta.json`.
@@ -155,8 +154,8 @@ Checklist markers (➜ checkpoint) are treated as mandatory commit points.
 
 ## 7. Planning & Progress Conventions
 - `docs/PLAN.md` remains the canonical roadmap; refresh only after merges.
-- Each feature branch owns `docs/plans/<branch>.md` and
-  `docs/progress/<branch>.md` while active.
+- Each feature branch owns `docs/branches/<slug>/PLAN.md` and
+  `docs/branches/<slug>/PROGRESS.md` while active.
 - Merge branch notebooks into canonical docs before deleting them.
 - Inline answers (code comments, spec updates) are preferred over new ad-hoc docs
   unless a lasting reference is needed.

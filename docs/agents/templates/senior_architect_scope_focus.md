@@ -27,10 +27,10 @@
 - `docs/agents/git-workflow.md`
 - `docs/PLAN.md`
 - `docs/PROGRESS.md`
-- Previous review: `docs/reviews/feature-publish-repo-2025-10-13.md`
+- Previous review: `docs/parallelus/reviews/feature-publish-repo-2025-10-13.md`
 
 ## Review Deliverable
-- Update `docs/reviews/feature-publish-repo-2025-10-13.md` with the new commit hash and decision.
+- Update `docs/parallelus/reviews/feature-publish-repo-2025-10-13.md` with the new commit hash and decision.
 - Call out any issues found in the focused diff (or explicitly note "no findings").
 
 _Work read-only except for the review file described above._

@@ -26,6 +26,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
@@ -85,17 +87,23 @@ else
   fi
 fi
 
-for kind in plan progress; do
-  if [[ "$kind" == "plan" ]]; then
-    dir="$PLAN_DIR"
-  else
-    dir="$PROGRESS_DIR"
-  fi
-  mkdir -p "$dir"
-  file="$dir/${feature_branch//\//-}.md"
-  if [[ ! -f "$file" ]]; then
-    if [[ "$kind" == "plan" ]]; then
-      cat <<EOF_PLAN >"$file"
+slugged_branch="${feature_branch//\//-}"
+plan_file="$(parallelus_branch_plan_write_path "$repo_root" "$slugged_branch")"
+progress_file="$(parallelus_branch_progress_write_path "$repo_root" "$slugged_branch")"
+legacy_plan_file="$(parallelus_branch_plan_legacy_path "$repo_root" "$slugged_branch")"
+legacy_progress_file="$(parallelus_branch_progress_legacy_path "$repo_root" "$slugged_branch")"
+
+mkdir -p "$(dirname "$plan_file")" "$(dirname "$progress_file")"
+
+if [[ -f "$legacy_plan_file" && ! -f "$plan_file" ]]; then
+  mv "$legacy_plan_file" "$plan_file"
+fi
+if [[ -f "$legacy_progress_file" && ! -f "$progress_file" ]]; then
+  mv "$legacy_progress_file" "$progress_file"
+fi
+
+if [[ ! -f "$plan_file" ]]; then
+  cat <<EOF_PLAN >"$plan_file"
 # Branch Plan — ${feature_branch}
 
 ## Objectives
@@ -107,9 +115,11 @@ for kind in plan progress; do
 ## Next Actions
 - TODO: capture immediate steps.
 EOF_PLAN
-    else
-      ts=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-      cat <<EOF_PROGRESS >"$file"
+fi
+
+if [[ ! -f "$progress_file" ]]; then
+  ts=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+  cat <<EOF_PROGRESS >"$progress_file"
 # Branch Progress — ${feature_branch}
 
 ## ${ts}
@@ -125,10 +135,10 @@ EOF_PLAN
 **Next Actions**
 - TODO: capture follow-ups.
 EOF_PROGRESS
-    fi
-  fi
-  printf '[agents-ensure-feature] Ensured %s\n' "$file" >&2
-done
+fi
+
+printf '[agents-ensure-feature] Ensured %s\n' "$plan_file" >&2
+printf '[agents-ensure-feature] Ensured %s\n' "$progress_file" >&2
 
 session_marker="$repo_root/.agents/session-required.${feature_branch//\//-}"
 printf '%s\n' "branch=$feature_branch" "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$session_marker"

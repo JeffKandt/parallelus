@@ -31,7 +31,7 @@ Outputs include:
   merged into the base (excluding `archive/**`, `dependabot/**`, `renovate/**`).
 - `ORPHANED_NOTEBOOKS` — plan/progress files lingering outside active work.
 
-Immediately open the active branch plan and progress notebooks (`docs/plans/<branch>.md`, `docs/progress/<branch>.md`) so your status summary reflects the latest objectives, TODOs, and blockers noted by previous turns. List the most recent session directories (`ls -1 sessions/ | tail -5`) and seed a fresh `eval "$(make start_session)"` if the top entry predates today.
+Immediately open the active branch plan and progress notebooks (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) so your status summary reflects the latest objectives, TODOs, and blockers noted by previous turns. List the most recent session directories (`ls -1 .parallelus/sessions/ | tail -5`) and seed a fresh `eval "$(make start_session)"` if the top entry predates today.
 
 If the repository includes `.agents/custom/README.md`, read it now and incorporate any project-specific expectations (extra checks, restricted paths, custom adapters) into your plan. Treat those instructions as an extension of this manual.
 
@@ -43,8 +43,8 @@ Use `make bootstrap slug=<slug>` (wraps `.agents/bin/agents-ensure-feature`).
 The helper:
 - Refuses to run with a dirty working tree.
 - Creates or switches to `feature/<slug>`.
-- Scaffolds matching plan/progress notebooks under `docs/plans/` and
-  `docs/progress/`.
+- Scaffolds matching plan/progress notebooks under
+  `docs/branches/<slug>/{PLAN,PROGRESS}.md`.
 - Requires a `make start_session` on the new branch before `make turn_end`
   (enforced via a session-required marker).
 - Prints status to stderr so the calling shell remains quiet unless there is an
@@ -77,7 +77,7 @@ ask whether to merge or archive. Two main flows:
   branch. The helper also exports `AGENTS_MERGE_SKIP_HOOK_CI=1` so the
   `pre-merge-commit` hook knows tests already passed.
 - Merge requests now require a senior-architect review stored in
-  `docs/reviews/feature-<slug>-<date>.md`. The report must include
+  `docs/parallelus/reviews/feature-<slug>-<date>.md`. The report must include
   `Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`, and `Decision: approved`;
   any finding marked `Severity: Blocker` or `Severity: High` blocks the merge
   until addressed, and remaining findings must be acknowledged via
@@ -93,9 +93,9 @@ ask whether to merge or archive. Two main flows:
   emergency (document the reason in the progress log), and optionally specify a
   different review path via `AGENTS_MERGE_REVIEW_FILE=...`.
 - The helper refuses to run when any branch notebooks are still present (for
-  example `docs/plans/feature-*.md` or `docs/progress/feature-*.md`). Before
+  example `docs/branches/*/PLAN.md` or `docs/branches/*/PROGRESS.md`). Before
   deleting them, run `make turn_end m="summary"` (or similar) so the latest
-  marker is recorded under `docs/self-improvement/markers/`, then execute
+  marker is recorded under `docs/parallelus/self-improvement/markers/`, then execute
   `.agents/bin/fold-progress apply` to fold entries verbatim into the canonical
   log—summaries or rewritten blurbs are not allowed. The helper also blocks on a
   dirty working tree.
@@ -124,7 +124,7 @@ Consider merging when:
   and optionally `AGENTS_MERGE_REVIEW_FILE=...`; acknowledge lower-severity
   findings with `AGENTS_MERGE_ACK_REVIEW=1`), or the latest retrospective report
   for the branch marker has not been committed. The merge helper also runs a
-  review secret scan to prevent sensitive strings from landing in `docs/reviews/`.
+  review secret scan to prevent sensitive strings from landing in `docs/parallelus/reviews/`.
 - `post-merge` emits a reminder to rerun `make read_bootstrap` and return to the
   Recon phase on the base branch.
 - Overlay deployments prepend an **Overlay Notice** to `AGENTS.md`; audit every
@@ -198,10 +198,10 @@ Run this checklist whenever the user requests a merge (even casually):
    check`, `black --check`).
 4. Align local branch name with PR slug before merging exported work.
 5. Run the retrospective workflow **before** the senior architect review: consult
-   `docs/self-improvement/markers/` to confirm the latest marker, run
+   `docs/parallelus/self-improvement/markers/` to confirm the latest marker, run
    `make collect_failures` to capture failed tool calls, launch the Retrospective
    Auditor, and commit the resulting JSON report under
-   `docs/self-improvement/reports/` before running the senior review.
+   `docs/parallelus/self-improvement/reports/` before running the senior review.
 6. Merge or archive per maintainer guidance; delete notebooks/sessions after
    their content lands.
 7. Treat the workspace as back in Recon & Planning once cleanup completes.
@@ -211,9 +211,9 @@ merge guardrail now allows additional post-review commits so long as **every**
 changed file lives under these benign paths:
 
 - `docs/guardrails/runs/`
-- `docs/reviews/`
+- `docs/parallelus/reviews/`
 - `docs/PLAN.md`, `docs/PROGRESS.md`
-- `docs/plans/` and `docs/progress/`
+- `docs/branches/`
 - `docs/agents/`
 
 Any other modifications still require rerunning the senior architect review on

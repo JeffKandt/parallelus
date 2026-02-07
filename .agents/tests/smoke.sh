@@ -36,9 +36,9 @@ MAKE
 
   # Create feature branch and ensure plan/progress notebooks are scaffolded
   .agents/bin/agents-ensure-feature smoke
-  test -d docs/plans
-  test -f docs/plans/feature-smoke.md
-  test -f docs/progress/feature-smoke.md
+  test -d docs/branches/feature-smoke
+  test -f docs/branches/feature-smoke/PLAN.md
+  test -f docs/branches/feature-smoke/PROGRESS.md
 
   # Start a session and capture exports
   eval "$(.agents/bin/agents-session-start)"
@@ -56,7 +56,7 @@ MAKE
 
   # Record a checkpoint
   AGENTS_RETRO_SKIP_VALIDATE=1 .agents/bin/agents-turn-end "smoke checkpoint"
-  grep -q "smoke checkpoint" docs/progress/feature-smoke.md
+  grep -q "smoke checkpoint" docs/branches/feature-smoke/PROGRESS.md
 
   # Archive the branch and ensure ref renamed locally
   .agents/bin/agents-archive-branch feature/smoke | grep -q "archive/smoke"

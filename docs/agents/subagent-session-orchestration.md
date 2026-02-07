@@ -34,7 +34,8 @@ report progress or decisions back in plain language.
 > header in `.agents/prompts/agent_roles/senior_architect.md` (defaults in
 > the YAML front matter at the top of
 > `.agents/prompts/agent_roles/senior_architect.md`) before launch. The subagent operates
-> read-only and may write only `docs/reviews/feature-<slug>-<date>.md`.
+> read-only and may write only
+> `docs/parallelus/reviews/feature-<slug>-<date>.md`.
 >
 > The launcher now enforces that the Continuous Improvement audit (including the
 > failures summary) has been completed before the senior review is launched.
@@ -42,10 +43,10 @@ report progress or decisions back in plain language.
 > **Retrospective audits:** Before the senior architect review, run `make collect_failures`, then launch the
 > Continuous Improvement Auditor prompt (`.agents/prompts/agent_roles/continuous_improvement_auditor.md`). The auditor
 > works read-only, analyses evidence starting from the marker recorded in
-> `docs/self-improvement/markers/<branch>.json` (and the failures summary in
-> `docs/self-improvement/failures/<branch>--<marker>.json` when present), and
+> `docs/parallelus/self-improvement/markers/<branch>.json` (and the failures summary in
+> `docs/parallelus/self-improvement/failures/<branch>--<marker>.json` when present), and
 > returns a JSON report to be saved under
-> `docs/self-improvement/reports/<branch>--<marker-timestamp>.json`.
+> `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`.
 
 ## 1. Overview
 
@@ -316,7 +317,7 @@ record the outcome.
 Follow this worktree verification checklist before accepting or merging subagent output:
 
 - [ ] Run `eval "$(make start_session)"` inside the worktree to confirm branch context, notebooks, and orphaned artifacts.
-- [ ] Re-read the scope (if still present) and compare it against `docs/plans/<branch>.md` plus `docs/progress/<branch>.md`; flag outstanding tasks or questions.
+- [ ] Re-read the scope (if still present) and compare it against `docs/branches/<slug>/PLAN.md` plus `docs/branches/<slug>/PROGRESS.md`; flag outstanding tasks or questions.
 - [ ] Inspect the diff with `git status --short --branch` and `git diff`; ensure only expected files changed and review each hunk for correctness.
 - [ ] Execute the documented lint/tests (`make ci`, `make lint`, `make test`, or commands called out in the progress log) and capture the results in your notes.
 - [ ] Review subagent logs (`subagent.log`, session summaries, console transcripts) for warnings, skipped steps, or TODOs that require follow-up.

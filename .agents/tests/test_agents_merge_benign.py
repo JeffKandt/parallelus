@@ -11,6 +11,7 @@ from pathlib import Path
 
 THIS_REPO = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = THIS_REPO / ".agents" / "bin" / "agents-merge"
+DOC_PATHS_SCRIPT = THIS_REPO / ".agents" / "bin" / "agents-doc-paths.sh"
 AGENTRC = THIS_REPO / ".agents" / "agentrc"
 
 
@@ -35,6 +36,8 @@ def _setup_repo() -> Path:
     (tmpdir / ".agents" / "bin").mkdir(parents=True)
     shutil.copy2(MERGE_SCRIPT, tmpdir / ".agents" / "bin" / "agents-merge")
     os.chmod(tmpdir / ".agents" / "bin" / "agents-merge", 0o755)
+    shutil.copy2(DOC_PATHS_SCRIPT, tmpdir / ".agents" / "bin" / "agents-doc-paths.sh")
+    os.chmod(tmpdir / ".agents" / "bin" / "agents-doc-paths.sh", 0o755)
     detect_stub = tmpdir / ".agents" / "bin" / "agents-detect"
     detect_stub.write_text(
         "echo 'REPO_MODE=remote-connected'\n"
@@ -64,13 +67,37 @@ def _prepare_benign_repo(tmpdir: Path) -> str:
     code_file.write_text("base change\n", encoding="utf-8")
     _run(["git", "add", "src.txt"], cwd=tmpdir)
     _run(["git", "commit", "-qm", "feature work"], cwd=tmpdir)
+
+    marker_timestamp = "2025-11-02T00:00:00Z"
+    markers_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "markers"
+    reports_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "reports"
+    failures_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "failures"
+    markers_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    failures_dir.mkdir(parents=True, exist_ok=True)
+    slugged = "feature-test"
+    (markers_dir / f"{slugged}.json").write_text(
+        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/test", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (failures_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/test", "marker_timestamp": marker_timestamp, "failures": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    _run(["git", "add", "docs/parallelus/self-improvement"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "add audit artifacts"], cwd=tmpdir)
     review_commit = _run(["git", "rev-parse", "HEAD"], cwd=tmpdir).stdout.strip()
 
     # Allowed doc-only follow-up (multiple commits)
     doc_dir = tmpdir / "docs" / "guardrails" / "runs" / "test"
     doc_dir.mkdir(parents=True, exist_ok=True)
     (doc_dir / "summary.md").write_text("benign\n", encoding="utf-8")
-    review_file = tmpdir / "docs" / "reviews" / "feature-test-2025-10-27.md"
+    review_file = tmpdir / "docs" / "parallelus" / "reviews" / "feature-test-2025-10-27.md"
     review_file.parent.mkdir(parents=True, exist_ok=True)
     review_file.write_text(
         "\n".join(
@@ -86,24 +113,11 @@ def _prepare_benign_repo(tmpdir: Path) -> str:
         + "\n",
         encoding="utf-8",
     )
-    _run(["git", "add", "docs"], cwd=tmpdir)
+    _run(["git", "add", "docs/parallelus/reviews", "docs/guardrails"], cwd=tmpdir)
     _run(["git", "commit", "-qm", "doc follow-up"], cwd=tmpdir)
+
     (tmpdir / "docs" / "PROGRESS.md").write_text("# Progress\nupdated\n", encoding="utf-8")
-    marker_timestamp = "2025-11-02T00:00:00Z"
-    markers_dir = tmpdir / "docs" / "self-improvement" / "markers"
-    reports_dir = tmpdir / "docs" / "self-improvement" / "reports"
-    markers_dir.mkdir(parents=True, exist_ok=True)
-    reports_dir.mkdir(parents=True, exist_ok=True)
-    slugged = "feature-test"
-    (markers_dir / f"{slugged}.json").write_text(
-        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
-        json.dumps({"branch": "feature/test", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    _run(["git", "add", "docs/PROGRESS.md", "docs/self-improvement"], cwd=tmpdir)
+    _run(["git", "add", "docs/PROGRESS.md"], cwd=tmpdir)
     _run(["git", "commit", "-qm", "progress update"], cwd=tmpdir)
     return "test"
 
@@ -114,11 +128,35 @@ def _prepare_non_benign_repo(tmpdir: Path) -> str:
     code_file.write_text("base change\n", encoding="utf-8")
     _run(["git", "add", "src.txt"], cwd=tmpdir)
     _run(["git", "commit", "-qm", "feature work"], cwd=tmpdir)
+
+    marker_timestamp = "2025-11-02T00:00:00Z"
+    markers_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "markers"
+    reports_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "reports"
+    failures_dir = tmpdir / "docs" / "parallelus" / "self-improvement" / "failures"
+    markers_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    failures_dir.mkdir(parents=True, exist_ok=True)
+    slugged = "feature-fail"
+    (markers_dir / f"{slugged}.json").write_text(
+        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/fail", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (failures_dir / f"{slugged}--{marker_timestamp}.json").write_text(
+        json.dumps({"branch": "feature/fail", "marker_timestamp": marker_timestamp, "failures": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    _run(["git", "add", "docs/parallelus/self-improvement"], cwd=tmpdir)
+    _run(["git", "commit", "-qm", "add audit artifacts"], cwd=tmpdir)
     review_commit = _run(["git", "rev-parse", "HEAD"], cwd=tmpdir).stdout.strip()
 
     # Follow-up touches code (not allowed)
     (tmpdir / "extra.py").write_text("print('hi')\n", encoding="utf-8")
-    review_file = tmpdir / "docs" / "reviews" / "feature-fail-2025-10-27.md"
+    review_file = tmpdir / "docs" / "parallelus" / "reviews" / "feature-fail-2025-10-27.md"
     review_file.parent.mkdir(parents=True, exist_ok=True)
     review_file.write_text(
         "\n".join(
@@ -132,20 +170,6 @@ def _prepare_non_benign_repo(tmpdir: Path) -> str:
             ]
         )
         + "\n",
-        encoding="utf-8",
-    )
-    marker_timestamp = "2025-11-02T00:00:00Z"
-    markers_dir = tmpdir / "docs" / "self-improvement" / "markers"
-    reports_dir = tmpdir / "docs" / "self-improvement" / "reports"
-    markers_dir.mkdir(parents=True, exist_ok=True)
-    reports_dir.mkdir(parents=True, exist_ok=True)
-    slugged = "feature-fail"
-    (markers_dir / f"{slugged}.json").write_text(
-        json.dumps({"timestamp": marker_timestamp}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    (reports_dir / f"{slugged}--{marker_timestamp}.json").write_text(
-        json.dumps({"branch": "feature/fail", "marker_timestamp": marker_timestamp}, indent=2) + "\n",
         encoding="utf-8",
     )
     _run(["git", "add", "."], cwd=tmpdir)

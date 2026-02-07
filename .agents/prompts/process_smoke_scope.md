@@ -22,4 +22,4 @@
 
 ## Notes
 - Work autonomously—no manual "proceed" prompts should be needed.
-- Leave a detailed summary in `docs/progress/feature-process-smoke.md` before exiting.
+- Leave a detailed summary in `docs/branches/feature-process-smoke/PROGRESS.md` before exiting.

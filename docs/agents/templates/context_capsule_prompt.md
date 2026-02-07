@@ -54,7 +54,7 @@ version: 0.1
 - **<Topic or idea>** — <why it matters>; next step: <follow-up trigger>.
 
 # Consistency Checklist
-- [ ] Capsule aligns with docs/plans/<branch>.md latest entry.
-- [ ] Capsule aligns with docs/progress/<branch>.md latest entry.
+- [ ] Capsule aligns with `docs/branches/<slug>/PLAN.md` latest entry.
+- [ ] Capsule aligns with `docs/branches/<slug>/PROGRESS.md` latest entry.
 - [ ] Referenced commits/PRs are included in current branch history.
 - [ ] Sensitive data (tokens, credentials) redacted or omitted.

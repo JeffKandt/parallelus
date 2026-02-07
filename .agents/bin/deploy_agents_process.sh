@@ -478,7 +478,7 @@ warn_overlay_overwrites() {
     fi
     local collisions=()
     local path
-    for path in AGENTS.md .agents docs/agents docs/reviews Makefile .gitignore; do
+    for path in AGENTS.md .agents docs/agents docs/parallelus/reviews docs/reviews Makefile .gitignore; do
         if diff_exists "$SOURCE_REPO/$path" "$TARGET_DIR/$path"; then
             collisions+=("$path")
         fi
@@ -623,7 +623,7 @@ EOF
 }
 
 ensure_self_improvement_scaffold() {
-    local base="$TARGET_DIR/docs/self-improvement"
+    local base="$TARGET_DIR/docs/parallelus/self-improvement"
     mkdir -p "$base/markers" "$base/reports" "$base/failures"
     local readme="$base/README.md"
     if [[ ! -f "$readme" ]]; then
@@ -666,14 +666,19 @@ copy_base_assets() {
     else
         rsync_copy "$SOURCE_REPO/docs/agents/" "$TARGET_DIR/docs/agents/"
     fi
+    local source_reviews_dir="$SOURCE_REPO/docs/parallelus/reviews"
+    local source_reviews_readme="$source_reviews_dir/README.md"
+    if [[ ! -d "$source_reviews_dir" ]]; then
+        source_reviews_dir="$SOURCE_REPO/docs/reviews"
+        source_reviews_readme="$source_reviews_dir/README.md"
+    fi
     if [[ "$MODE" == "overlay" ]]; then
-        rsync_copy "$SOURCE_REPO/docs/reviews/README.md" "$TARGET_DIR/docs/reviews/README.md"
+        rsync_copy "$source_reviews_readme" "$TARGET_DIR/docs/parallelus/reviews/README.md"
     else
-        rsync_copy "$SOURCE_REPO/docs/reviews/" "$TARGET_DIR/docs/reviews/"
+        rsync_copy "$source_reviews_dir/" "$TARGET_DIR/docs/parallelus/reviews/"
     fi
     mkdir -p "$TARGET_DIR/sessions"
-    ensure_dir_with_readme "$TARGET_DIR/docs/plans" "Branch Plans" "feature/my-feature.md" "plan"
-    ensure_dir_with_readme "$TARGET_DIR/docs/progress" "Branch Progress" "feature/my-feature.md" "progress"
+    ensure_dir_with_readme "$TARGET_DIR/docs/branches" "Branch Notebooks" "feature-my-feature/{PLAN,PROGRESS}.md" "branch notebook"
     ensure_canonical_docs
     ensure_self_improvement_scaffold
 
@@ -1049,7 +1054,7 @@ run_verification() {
     make agents-smoke >/dev/null
     make archive b="feature/$slug" >/dev/null
     git branch -D "archive/feature/$slug" >/dev/null 2>&1 || true
-    rm -f "docs/plans/feature-$slug.md" "docs/progress/feature-$slug.md"
+    rm -rf "docs/branches/feature-$slug" "docs/plans/feature-$slug.md" "docs/progress/feature-$slug.md"
     local after_sessions
     after_sessions=$(ls sessions 2>/dev/null || true)
     for session in $after_sessions; do

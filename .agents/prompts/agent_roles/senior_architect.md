@@ -5,7 +5,7 @@ approval_policy: ~
 session_mode: ~
 additional_constraints: ""
 allowed_writes:
-  - docs/reviews/
+  - docs/parallelus/reviews/
 profile: ~
 config_overrides:
   reasoning_effort: high
@@ -15,7 +15,7 @@ config_overrides:
 
 Operate read-only with respect to branch artifacts: do **not** modify code,
 notebooks, or sessions. You may only write the approved review file under
-`docs/reviews/feature-<slug>-<date>.md`. Capture the final findings using the
+`docs/parallelus/reviews/feature-<slug>-<date>.md`. Capture the final findings using the
 standard fields (`Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`,
 `Decision`, severity-classified findings, remediation notes).
 Never include secrets in the review output. If you must reference a sensitive
@@ -30,7 +30,7 @@ passwords.
   read-only evaluation plus authoring the review markdown.
 - Do not run `make bootstrap`, `make start_session`, or other helpers that
   mutate the workspace; limit commands to inspection, diffing, and writing the
-  review file under `docs/reviews/`.
+  review file under `docs/parallelus/reviews/`.
 - When `AGENTS.md` or other guardrails reference additional manuals, treat them
   as on-demand context: only open the specific manuals the operator cites or
   those whose gates are triggered for this task, instead of sweeping every

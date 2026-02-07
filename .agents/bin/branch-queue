@@ -65,10 +65,15 @@ def plan_path_for_branch(branch: str) -> pathlib.Path:
     if not branch.startswith("feature/"):
         raise SystemExit("branch-queue pull: must be on a feature/* branch before pulling the queue.")
     slug = branch.replace("/", "-")
-    path = REPO_ROOT / "docs" / "plans" / f"{slug}.md"
-    if not path.exists():
-        raise SystemExit(f"branch-queue pull: expected plan file {path} to exist.")
-    return path
+    canonical = REPO_ROOT / "docs" / "branches" / slug / "PLAN.md"
+    legacy = REPO_ROOT / "docs" / "plans" / f"{slug}.md"
+    if canonical.exists():
+        return canonical
+    if legacy.exists():
+        return legacy
+    raise SystemExit(
+        f"branch-queue pull: expected plan file {canonical} (or legacy {legacy}) to exist."
+    )
 
 
 def read_queue(strip: bool = False) -> str:

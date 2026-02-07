@@ -148,7 +148,7 @@ plan entries for traceability.
   (e.g., data to gather, stakeholder to ask) so successors can pick up the
   thread without rereading the whole transcript.
 - **Compression techniques:**
-  - Use referencing: link to plan entries (`docs/plans/...`) or code paths
+  - Use referencing: link to plan entries (`docs/branches/...`) or code paths
     instead of re-explaining them.
   - Summarise repetitive exchanges as a single bullet.
   - Group related TODOs under one workstream.

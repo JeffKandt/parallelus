@@ -8,7 +8,7 @@
 
 ## Preconditions
 - Working tree is clean and matches the pushed commit.
-- `make ci` has passed (see latest run in docs/progress).
+- `make ci` has passed (see latest run in branch progress + `docs/PROGRESS.md`).
 - No additional changes will be added while the review is in progress.
 
 ## Objectives
@@ -25,10 +25,10 @@
 - `AGENTS.md`
 - `docs/guardrails/runs/20251027-194902-real-interactive-success/`
 - `docs/PLAN.md`, `docs/PROGRESS.md` (post-folding state)
-- Prior review baseline: `docs/reviews/feature-claude-review-2025-10-20.md` (if present) or latest approved commit on this branch.
+- Prior review baseline: `docs/parallelus/reviews/feature-claude-review-2025-10-20.md` (if present) or latest approved commit on this branch.
 
 ## Deliverable
-- New review report at `docs/reviews/feature-claude-review-2025-10-27.md` capturing:
+- New review report at `docs/parallelus/reviews/feature-claude-review-2025-10-27.md` capturing:
   - `Reviewed-Branch: feature/claude-review`
   - `Reviewed-Commit: $(git rev-parse HEAD)`
   - Decision and severity-labelled findings (if any)

@@ -46,8 +46,10 @@ every session if it exists and record that acknowledgement in the progress log.
   orphaned notebooks before continuing. Echo the complete branch snapshot table
   (names plus action guidance) back to the user—do not elide or summarise the
   entries.
-- Open the active plan and progress notebooks (`docs/plans/<branch>.md`,
-  `docs/progress/<branch>.md`) or confirm they do not exist yet.
+- Open the active plan and progress notebooks
+  (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) or
+  confirm they do not exist yet (legacy pre-migration notebooks may still exist
+  under `docs/plans/<branch>.md` and `docs/progress/<branch>.md`).
 - If the tmux environment changed (new machine, updated launcher), reread
   `docs/agents/manuals/tmux-setup.md` before continuing to confirm sockets and
   binaries align with Parallelus expectations.
@@ -63,8 +65,8 @@ every session if it exists and record that acknowledgement in the progress log.
    edit directly on `main`.
 3. Export `SESSION_PROMPT` (optional) and run `eval "$(make start_session)"` to capture
    turn context. Session logs are mandatory; `make start_session` enables
-   `sessions/<ID>/console.log` logging by default and `make turn_end` will fail
-   if the log is empty.
+   `./.parallelus/sessions/<ID>/console.log` logging by default and
+   `make turn_end` will fail if the log is empty.
 4. Update the branch plan/progress notebooks with current objectives before
    editing code or docs.
 5. Run required environment diagnostics (see Operational Gates for details) and
@@ -92,7 +94,8 @@ every session if it exists and record that acknowledgement in the progress log.
 - When subagents are active, maintain the monitor loop per the Subagent manual.
 - Stay within the requested scope; defer speculative refactors unless directed.
 - Senior architect review is mandatory before merging: capture the signed-off
-  report under `docs/reviews/<branch>-<date>.md` (`Reviewed-Branch`,
+  report under `docs/parallelus/reviews/<branch>-<date>.md`
+  (`Reviewed-Branch`,
   `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
   Blocker/High`, and acknowledge other findings via
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
@@ -126,8 +129,9 @@ every session if it exists and record that acknowledgement in the progress log.
   reinstate the guardrail.
 - Before folding branch notebooks into canonical logs, run
   `make turn_end m="summary"` (or another checkpoint note) so the latest marker
-  lands in `docs/self-improvement/markers/`; the folding helper now enforces
-  this requirement.
+  lands in `docs/parallelus/self-improvement/markers/` (legacy
+  `docs/self-improvement/markers/` is still read during migration); the folding
+  helper now enforces this requirement.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
@@ -135,9 +139,9 @@ every session if it exists and record that acknowledgement in the progress log.
 - Before the senior architect review, launch the Continuous Improvement Auditor
   prompt (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the latest
   marker. The auditor responds with JSON; save it to
-  `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
-  TODOs into the branch plan. Run `make collect_failures` before the audit so
-  failed tool calls are reviewed and mitigations are documented.
+  `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`
+  and carry TODOs into the branch plan. Run `make collect_failures` before the
+  audit so failed tool calls are reviewed and mitigations are documented.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
@@ -159,10 +163,11 @@ every session if it exists and record that acknowledgement in the progress log.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`,
   `make archive`, or evaluating unmerged branches, revisit
   `docs/agents/git-workflow.md`. Merge requests now require an approved senior
-  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
-  committed retrospective report covering the latest marker; overrides use
-  `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
-  must be documented in the progress log.
+  architect review staged under
+  `docs/parallelus/reviews/<branch>-<date>.md` *and* a committed retrospective
+  report covering the latest marker; overrides use `AGENTS_MERGE_FORCE=1` (and
+  `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and must be documented in the
+  progress log.
 - **Environment & Platform diagnostics:** If environment parity is in question
   (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
   run the diagnostics described there.

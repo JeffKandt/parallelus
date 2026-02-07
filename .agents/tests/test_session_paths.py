@@ -29,11 +29,11 @@ def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subpro
 
 def _init_repo(tmp: Path, branch: str = "feature/demo") -> None:
     shutil.copytree(REPO_ROOT / ".agents", tmp / ".agents")
-    (tmp / "docs" / "plans").mkdir(parents=True, exist_ok=True)
-    (tmp / "docs" / "progress").mkdir(parents=True, exist_ok=True)
     slug = branch.replace("/", "-")
-    (tmp / "docs" / "plans" / f"{slug}.md").write_text(f"# Branch Plan — {branch}\n", encoding="utf-8")
-    (tmp / "docs" / "progress" / f"{slug}.md").write_text(f"# Branch Progress — {branch}\n", encoding="utf-8")
+    notebook_dir = tmp / "docs" / "branches" / slug
+    notebook_dir.mkdir(parents=True, exist_ok=True)
+    (notebook_dir / "PLAN.md").write_text(f"# Branch Plan — {branch}\n", encoding="utf-8")
+    (notebook_dir / "PROGRESS.md").write_text(f"# Branch Progress — {branch}\n", encoding="utf-8")
 
     _run(["git", "init", "-q"], cwd=tmp)
     _run(["git", "config", "user.name", "Session Paths"], cwd=tmp)
@@ -129,7 +129,7 @@ def test_turn_end_reads_legacy_session_directory() -> None:
         )
         assert result.returncode == 0, result.stderr
         assert "legacy checkpoint" in (legacy_session / "summary.md").read_text(encoding="utf-8")
-        progress = repo / "docs" / "progress" / "feature-legacy-turn-end.md"
+        progress = repo / "docs" / "branches" / "feature-legacy-turn-end" / "PROGRESS.md"
         assert "legacy checkpoint" in progress.read_text(encoding="utf-8")
 
 
@@ -161,11 +161,11 @@ def test_turn_end_uses_runtime_session_pointer_without_env_session_id() -> None:
         )
         assert result.returncode == 0, result.stderr
 
-        progress = repo / "docs" / "progress" / f"{slug}.md"
+        progress = repo / "docs" / "branches" / slug / "PROGRESS.md"
         assert "pointer checkpoint" in progress.read_text(encoding="utf-8")
         assert "pointer checkpoint" in (session_dir / "summary.md").read_text(encoding="utf-8")
 
-        marker_path = repo / "docs" / "self-improvement" / "markers" / f"{slug}.json"
+        marker_path = repo / "docs" / "parallelus" / "self-improvement" / "markers" / f"{slug}.json"
         marker_data = json.loads(marker_path.read_text(encoding="utf-8"))
         assert marker_data.get("session_id") == session_id
         assert marker_data.get("session_console", "").startswith(".parallelus/sessions/")
@@ -178,7 +178,7 @@ def test_collect_failures_scans_new_and_legacy_session_logs() -> None:
         slug = branch.replace("/", "-")
         _init_repo(repo, branch=branch)
 
-        marker_dir = repo / "docs" / "self-improvement" / "markers"
+        marker_dir = repo / "docs" / "parallelus" / "self-improvement" / "markers"
         marker_dir.mkdir(parents=True, exist_ok=True)
         marker = marker_dir / f"{slug}.json"
         marker_ts = "2026-02-07T15:00:00Z"
@@ -227,7 +227,7 @@ def test_collect_failures_dedupes_overlapping_parallelus_globs() -> None:
         slug = branch.replace("/", "-")
         _init_repo(repo, branch=branch)
 
-        marker_dir = repo / "docs" / "self-improvement" / "markers"
+        marker_dir = repo / "docs" / "parallelus" / "self-improvement" / "markers"
         marker_dir.mkdir(parents=True, exist_ok=True)
         marker_ts = "2026-02-07T16:00:00Z"
         (marker_dir / f"{slug}.json").write_text(json.dumps({"timestamp": marker_ts}, indent=2) + "\n", encoding="utf-8")

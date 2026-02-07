@@ -26,6 +26,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
 
 repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$repo_root" ]]; then
@@ -61,6 +63,17 @@ fi
 feature_branch="feature/$slug"
 slugged_branch="${feature_branch//\//-}"
 
+resolve_marker_file() {
+  local slugged="$1"
+  local marker_path
+  marker_path="$(parallelus_marker_read_path "$repo_root" "$slugged")"
+  if [[ -f "$marker_path" ]]; then
+    printf '%s\n' "$marker_path"
+    return
+  fi
+  parallelus_marker_write_path "$repo_root" "$slugged"
+}
+
 if ! git show-ref --verify --quiet "refs/heads/$feature_branch"; then
   echo "agents-merge: branch '$feature_branch' not found" >&2
   exit 1
@@ -91,31 +104,37 @@ fi
 resolve_review_file() {
   local branch="$1"
   local override="$2"
+  local review_dirs_json
   if [[ -n "$override" ]]; then
     printf '%s' "$override"
     return
   fi
-  python3 - "$branch" <<'PY'
+  review_dirs_json=$(
+    parallelus_reviews_read_dirs "$repo_root" | python3 -c 'import json, sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))'
+  )
+  python3 - "$branch" "$review_dirs_json" <<'PY'
+import json
 import sys
 from pathlib import Path
 
 branch = sys.argv[1]
+review_dirs = json.loads(sys.argv[2])
 base = branch.replace('/', '-')
-reviews_dir = Path('docs/reviews')
-if not reviews_dir.exists():
-    sys.exit(0)
-
-direct = reviews_dir / f"{base}.md"
-if direct.exists():
-    print(direct)
-    sys.exit(0)
-
 candidates = []
-for path in reviews_dir.glob(f"{base}-*.md"):
-    try:
-        candidates.append((path.stat().st_mtime, path))
-    except FileNotFoundError:
+
+for raw_dir in review_dirs:
+    reviews_dir = Path(raw_dir)
+    if not reviews_dir.exists():
         continue
+    direct = reviews_dir / f"{base}.md"
+    if direct.exists():
+        print(direct)
+        sys.exit(0)
+    for path in reviews_dir.glob(f"{base}-*.md"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except FileNotFoundError:
+            continue
 
 if candidates:
     candidates.sort(reverse=True)
@@ -151,7 +170,8 @@ check_review() {
     echo "agents-merge: review $file must include Reviewed-Commit: <commit hash>." >&2
     exit 1
   fi
-  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
+  local marker_file
+  marker_file="$(resolve_marker_file "$slugged_branch")"
   if [[ ! -f "$marker_file" ]]; then
     echo "agents-merge: run make turn_end to record a marker before the senior review." >&2
     exit 1
@@ -176,8 +196,9 @@ if not marker_ts:
     print(f"agents-merge: marker {marker_path} missing timestamp", file=sys.stderr)
     sys.exit(3)
 
-report_path = f"docs/self-improvement/reports/{slugged}--{marker_ts}.json"
-failures_path = f"docs/self-improvement/failures/{slugged}--{marker_ts}.json"
+root = marker_path.parent.parent
+report_path = root / "reports" / f"{slugged}--{marker_ts}.json"
+failures_path = root / "failures" / f"{slugged}--{marker_ts}.json"
 print(report_path)
 print(failures_path)
 PY
@@ -188,6 +209,12 @@ PY
   local report_path failures_path
   report_path=$(printf '%s\n' "$audit_paths" | sed -n '1p')
   failures_path=$(printf '%s\n' "$audit_paths" | sed -n '2p')
+  if [[ "$report_path" == "$repo_root/"* ]]; then
+    report_path="${report_path#$repo_root/}"
+  fi
+  if [[ "$failures_path" == "$repo_root/"* ]]; then
+    failures_path="${failures_path#$repo_root/}"
+  fi
   if ! git cat-file -e "${review_commit}:${report_path}" 2>/dev/null; then
     echo "agents-merge: senior review must be run after the audit report is committed." >&2
     echo "Missing ${report_path} in review commit ${review_commit}." >&2
@@ -205,7 +232,7 @@ PY
       while IFS= read -r path; do
         [[ -z "$path" ]] && continue
         case "$path" in
-          docs/guardrails/runs/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/plans/*|docs/progress/*|docs/agents/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
+          docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|docs/plans/*|docs/progress/*|docs/agents/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
             ;;
           *)
             allow_doc_only=0
@@ -238,8 +265,9 @@ PY
 }
 
 check_retrospective() {
-  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
-  local reports_dir="$repo_root/docs/self-improvement/reports"
+  local marker_file reports_dir
+  marker_file="$(resolve_marker_file "$slugged_branch")"
+  reports_dir="$(dirname "$(dirname "$marker_file")")/reports"
   if [[ ! -f "$marker_file" ]]; then
     echo "agents-merge: run make turn_end to record a retrospective marker before merging." >&2
     exit 1
@@ -297,8 +325,9 @@ PY
 }
 
 check_failures_summary() {
-  local marker_file="$repo_root/docs/self-improvement/markers/$slugged_branch.json"
-  local failures_dir="$repo_root/docs/self-improvement/failures"
+  local marker_file failures_dir
+  marker_file="$(resolve_marker_file "$slugged_branch")"
+  failures_dir="$(dirname "$(dirname "$marker_file")")/failures"
   if [[ ! -f "$marker_file" ]]; then
     echo "agents-merge: run make turn_end to record a marker before collecting failures." >&2
     exit 1
@@ -400,14 +429,14 @@ fi
 
 # Ensure branch notebooks are already folded into canonical docs.
 shopt -s nullglob
-plan_files=("docs/plans/feature-"*.md)
-progress_files=("docs/progress/feature-"*.md)
+plan_files=("$repo_root"/docs/branches/*/PLAN.md "$repo_root"/docs/plans/feature-*.md)
+progress_files=("$repo_root"/docs/branches/*/PROGRESS.md "$repo_root"/docs/progress/feature-*.md)
 shopt -u nullglob
 
 if ((${#plan_files[@]} > 0)); then
   echo "agents-merge: branch plan notebooks still present:" >&2
   for f in "${plan_files[@]}"; do
-    echo "  - $f" >&2
+    echo "  - ${f#$repo_root/}" >&2
   done
   echo "Fold plan updates into docs/PLAN.md (or the canonical plan) and remove branch notebooks before merging." >&2
   exit 1
@@ -416,7 +445,7 @@ fi
 if ((${#progress_files[@]} > 0)); then
   echo "agents-merge: branch progress logs still present:" >&2
   for f in "${progress_files[@]}"; do
-    echo "  - $f" >&2
+    echo "  - ${f#$repo_root/}" >&2
   done
   echo "Stitch progress notes into docs/PROGRESS.md and delete branch notebooks before merging." >&2
   exit 1

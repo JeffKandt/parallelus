@@ -125,7 +125,7 @@ abandoned work by combining `bd stale` with branch-label checks.
    docs; link to this file and/or `bd prime`).
 5. Run a one-branch pilot:
    - create a handful of backlog issues in Beads
-   - link them in `docs/plans/<branch>.md`
+   - link them in `docs/branches/<slug>/PLAN.md`
    - update/close them through the branch lifecycle
    - confirm the merge flow remains low-friction
 

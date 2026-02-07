@@ -5,6 +5,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from parallelus_docs_paths import failures_write_dir, marker_read_path
 from parallelus_paths import sessions_read_roots
 
 
@@ -22,7 +23,7 @@ def current_branch() -> str:
 
 
 def load_marker(repo: Path, slugged: str) -> dict:
-    marker_path = repo / "docs" / "self-improvement" / "markers" / f"{slugged}.json"
+    marker_path = marker_read_path(repo, slugged)
     if not marker_path.exists():
         raise SystemExit(
             "collect_failures: marker not found; run make turn_end before collecting failures"
@@ -155,7 +156,7 @@ def main() -> None:
     if not marker_ts:
         raise SystemExit("collect_failures: marker missing timestamp")
 
-    failures_dir = repo / "docs" / "self-improvement" / "failures"
+    failures_dir = failures_write_dir(repo)
     failures_dir.mkdir(parents=True, exist_ok=True)
     out_path = failures_dir / f"{slugged}--{marker_ts}.json"
 
