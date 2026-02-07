@@ -76,6 +76,35 @@ def test_session_start_writes_to_parallelus_sessions_root() -> None:
         assert global_pointer.read_text(encoding="utf-8").strip() == session_id
 
 
+def test_session_logging_active_accepts_pointer_without_env() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-log-active-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/log-active"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        session_id = "20260207-log-active"
+        session_root = sessions_write_root(repo)
+        session_dir = session_root / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        (session_dir / "console.log").write_text("active log\n", encoding="utf-8")
+        (session_root / f".current-{slug}").write_text(session_id + "\n", encoding="utf-8")
+
+        result = _run([str(repo / ".agents" / "bin" / "agents-session-logging-active"), "--quiet"], cwd=repo)
+        assert result.returncode == 0, result.stderr
+
+
+def test_session_logging_active_fails_without_context() -> None:
+    with tempfile.TemporaryDirectory(prefix="session-path-log-missing-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/log-missing"
+        _init_repo(repo, branch=branch)
+
+        result = _run([str(repo / ".agents" / "bin" / "agents-session-logging-active"), "--quiet"], cwd=repo)
+        assert result.returncode != 0
+        assert "unbound variable" not in result.stderr
+
+
 def test_turn_end_reads_legacy_session_directory() -> None:
     with tempfile.TemporaryDirectory(prefix="session-path-turn-end-") as tmpdir:
         repo = Path(tmpdir)

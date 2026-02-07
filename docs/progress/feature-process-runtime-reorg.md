@@ -892,3 +892,55 @@
 
 **Next Actions**
 - commit and push stateless-shell compatibility hardening
+
+## 2026-02-07 18:28:53 UTC
+**Objectives**
+- make `read_bootstrap` session-logging enforcement compatible with stateless-shell execution (Codex.app default)
+
+**Work Performed**
+- added new helper script: `.agents/bin/agents-session-logging-active`
+  - validates active logging context via either:
+    - shell env (`AGENTS_SESSION_LOGGING`), or
+    - runtime session pointers (`.parallelus/sessions/.current*`) + resolvable `console.log`
+- updated `.agents/make/agents.mk`:
+  - `read_bootstrap` now calls `agents-session-logging-active --quiet` instead of relying solely on shell env presence
+- expanded stateless-session hardening already in progress:
+  - `.agents/bin/agents-session-start` persists branch/global runtime pointers
+  - `.agents/bin/agents-turn-end` and `.agents/bin/retro-marker` use fallback pointer resolution when `SESSION_ID` env is absent
+- extended tests in `.agents/tests/test_session_paths.py`:
+  - `test_session_logging_active_accepts_pointer_without_env`
+  - `test_session_logging_active_fails_without_context`
+
+**Validation Evidence**
+- `bash -n .agents/bin/agents-session-logging-active .agents/bin/agents-session-start .agents/bin/agents-turn-end .agents/bin/retro-marker`
+  - outcome: pass
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_session_paths.py .agents/tests/test_subagent_manager.py .agents/tests/monitor_loop.py`
+  - outcome: pass (`23 passed in 13.49s`)
+
+**Residual Risks**
+- runtime pointer files are best-effort hints; if manually edited/corrupted they can misdirect lookup, though explicit `make start_session` refreshes them immediately
+
+**Next Actions**
+- commit and push `read_bootstrap` stateless-shell compatibility hardening
+
+## 2026-02-07 18:31:54 UTC
+**Objectives**
+- close validation gap in new `agents-session-logging-active` helper discovered during smoke run on macOS bash 3.2 (`set -u` + empty array)
+
+**Work Performed**
+- patched `.agents/bin/agents-session-logging-active` to iterate with `${candidate_ids[@]-}` so empty candidate arrays do not raise `unbound variable`
+- tightened `.agents/tests/test_session_paths.py::test_session_logging_active_fails_without_context` to assert stderr does not contain `unbound variable`
+
+**Validation Evidence**
+- `bash -n .agents/bin/agents-session-logging-active`
+  - outcome: pass
+- `.agents/bin/agents-session-logging-active --quiet; echo EXIT:$?`
+  - outcome: `EXIT:1` (clean failure when no active context; no shell exception)
+- `.agents/adapters/python/env.sh >/dev/null && . .venv/bin/activate && pytest -q .agents/tests/test_session_paths.py .agents/tests/test_subagent_manager.py .agents/tests/monitor_loop.py`
+  - outcome: pass (`23 passed in 13.65s`)
+
+**Residual Risks**
+- helper still intentionally fails when no pointer/env exists; this is expected and keeps `read_bootstrap` gated until `make start_session` establishes a valid logging context
+
+**Next Actions**
+- commit and push stateless-shell hardening updates

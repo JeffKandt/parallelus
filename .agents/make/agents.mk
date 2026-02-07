@@ -10,7 +10,7 @@ SESSION_DIR ?= .parallelus/sessions
 .PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures
 
 read_bootstrap:
-	@if [ "$${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ] && [ -z "$${AGENTS_SESSION_LOGGING:-}" ]; then \
+	@if [ "$${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ] && ! $(AGENTS_BIN)/agents-session-logging-active --quiet; then \
 		echo "read_bootstrap: session logging is not active. Run: eval \"\$$\(make start_session\)\"" >&2; \
 		exit 1; \
 	fi

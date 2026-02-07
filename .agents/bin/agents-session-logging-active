@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-session-logging-active [--quiet]
+
+Exit 0 when session logging is considered active for the current branch.
+Accepts either:
+  - AGENTS_SESSION_LOGGING in the current shell, or
+  - a recoverable session id via SESSION_ID / .parallelus/sessions/.current*
+    with a resolvable console.log path.
+HELP
+}
+
+quiet=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --quiet)
+      quiet=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "agents-session-logging-active: unknown option $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+log() {
+  if (( quiet == 0 )); then
+    echo "$@" >&2
+  fi
+}
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  log "agents-session-logging-active: not inside a git repository"
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-paths.sh
+. "${SCRIPT_DIR}/agents-paths.sh"
+
+if [[ "${AGENTS_SESSION_LOG_REQUIRED:-1}" == "0" ]]; then
+  exit 0
+fi
+
+if [[ -n "${AGENTS_SESSION_LOGGING:-}" ]]; then
+  exit 0
+fi
+
+branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+if [[ -z "$branch" || "$branch" == "HEAD" ]]; then
+  log "agents-session-logging-active: detached HEAD or unknown branch"
+  exit 1
+fi
+slugged_branch="${branch//\//-}"
+write_root="$(parallelus_sessions_write_root "$repo_root")"
+
+declare -a candidate_ids=()
+if [[ -n "${SESSION_ID:-}" ]]; then
+  candidate_ids+=("$SESSION_ID")
+fi
+for pointer in "$write_root/.current-${slugged_branch}" "$write_root/.current"; do
+  if [[ -f "$pointer" ]]; then
+    sid="$(head -n 1 "$pointer" | tr -d '\r' | xargs || true)"
+    if [[ -n "$sid" ]]; then
+      candidate_ids+=("$sid")
+    fi
+  fi
+done
+
+seen=$'\n'
+for sid in "${candidate_ids[@]-}"; do
+  [[ -z "$sid" ]] && continue
+  if [[ "$seen" == *$'\n'"$sid"$'\n'* ]]; then
+    continue
+  fi
+  seen+="$sid"$'\n'
+  session_dir="$(parallelus_resolve_session_dir "$repo_root" "$sid" "${SESSION_DIR:-}")"
+  if [[ -f "$session_dir/console.log" ]]; then
+    exit 0
+  fi
+done
+
+session_marker="$repo_root/.agents/session-required.${slugged_branch}"
+if [[ -f "$session_marker" ]]; then
+  log "agents-session-logging-active: session marker indicates start_session is still required for $branch"
+else
+  log "agents-session-logging-active: no active session logging context found for $branch"
+fi
+exit 1

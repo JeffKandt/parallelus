@@ -19,6 +19,7 @@
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
+- [x] harden `make read_bootstrap` logging gate for stateless-shell environments (session context helper + pointer fallback)
 
 ## Next Actions
 - execute `PHASE-03` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` only (docs namespace migration + tracked artifact relocation for notebooks/reviews/self-improvement paths)
