@@ -27,6 +27,17 @@ VERIFY=0
 FORCE=0
 OVERLAY_BACKUP=1
 OVERLAY_UPGRADE=0
+DETECT_NAMESPACE_ONLY=0
+
+NAMESPACE_DECISION=""
+NAMESPACE_REASON=""
+NAMESPACE_OVERRIDE_USED=0
+NAMESPACE_PARALLELUS_SENTINEL="missing"
+NAMESPACE_VENDOR_SENTINEL="missing"
+NAMESPACE_STRONG_COUNT=0
+NAMESPACE_CONTEXT_COUNT=0
+declare -a NAMESPACE_STRONG_MATCHES=()
+declare -a NAMESPACE_CONTEXT_MATCHES=()
 
 usage() {
     cat <<'USAGE'
@@ -43,12 +54,15 @@ Options:
       --overlay-no-backup
                          Skip creating .bak backups during overlay (use with caution)
       --overlay-upgrade  Overlay shortcut: implies --mode overlay, enforces clean target, and disables .bak backups
+      --detect-namespace
+                         Print namespace detection decision for TARGET_DIRECTORY and exit
   -h, --help             Show this message
 
 Examples:
   .agents/bin/deploy_agents_process.sh ./new-repo
   .agents/bin/deploy_agents_process.sh --name my-app --lang swift ./swift-repo
   .agents/bin/deploy_agents_process.sh --mode overlay --lang python ../existing
+  .agents/bin/deploy_agents_process.sh --detect-namespace ../existing
 USAGE
 }
 
@@ -92,6 +106,22 @@ absolute_path() {
         name="$(basename "$path")"
         printf '%s/%s\n' "$dir" "$name"
     fi
+}
+
+is_truthy() {
+    case "${1:-}" in
+        1|true|TRUE|yes|YES|on|ON) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+join_csv() {
+    if [[ $# -eq 0 ]]; then
+        printf '%s\n' "-"
+        return
+    fi
+    local IFS=','
+    printf '%s\n' "$*"
 }
 
 parse_args() {
@@ -142,6 +172,10 @@ parse_args() {
                 OVERLAY_BACKUP=0
                 OVERLAY_UPGRADE=1
                 FORCE=1
+                shift
+                ;;
+            --detect-namespace)
+                DETECT_NAMESPACE_ONLY=1
                 shift
                 ;;
             -h|--help)
@@ -199,6 +233,188 @@ ensure_source_repo() {
     if [[ ! -f "$SOURCE_REPO/AGENTS.md" || ! -d "$SOURCE_REPO/.agents" ]]; then
         fail "Run this script from within the interruptus repository"
     fi
+}
+
+validate_bundle_manifest() {
+    local sentinel_path="$1"
+    if [[ ! -f "$sentinel_path" ]]; then
+        printf '%s\n' "missing"
+        return 0
+    fi
+
+    local output
+    if output="$(python3 - "$sentinel_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception as exc:  # noqa: BLE001
+    print(f"invalid:unparseable_json:{exc.__class__.__name__}")
+    sys.exit(1)
+
+errors = []
+
+if payload.get("bundle_id") != "parallelus.bundle.v1":
+    errors.append("bundle_id")
+
+if not isinstance(payload.get("layout_version"), int):
+    errors.append("layout_version")
+
+upstream_repo = payload.get("upstream_repo")
+if not isinstance(upstream_repo, str) or not upstream_repo.strip():
+    errors.append("upstream_repo")
+
+bundle_version = payload.get("bundle_version")
+if not isinstance(bundle_version, str) or not bundle_version.strip():
+    errors.append("bundle_version")
+
+installed_on = payload.get("installed_on")
+if not isinstance(installed_on, str) or not installed_on.strip():
+    errors.append("installed_on")
+
+managed_paths = payload.get("managed_paths")
+if not isinstance(managed_paths, list) or any(not isinstance(item, str) for item in managed_paths):
+    errors.append("managed_paths")
+else:
+    managed = set(managed_paths)
+    if "engine" not in managed or "manuals" not in managed:
+        errors.append("managed_paths_required")
+
+if errors:
+    print("invalid:" + ",".join(errors))
+    sys.exit(1)
+
+print("valid")
+PY
+ )"; then
+        printf '%s\n' "$output"
+    else
+        printf '%s\n' "$output"
+    fi
+}
+
+detect_legacy_parallelus_signals() {
+    NAMESPACE_STRONG_COUNT=0
+    NAMESPACE_CONTEXT_COUNT=0
+    NAMESPACE_STRONG_MATCHES=()
+    NAMESPACE_CONTEXT_MATCHES=()
+
+    local strong_path
+    local strong_paths=(
+        ".agents/bin/agents-session-start"
+        ".agents/bin/agents-ensure-feature"
+        ".agents/hooks/pre-commit"
+        ".agents/prompts/agent_roles/senior_architect.md"
+    )
+    for strong_path in "${strong_paths[@]}"; do
+        if [[ -f "$TARGET_DIR/$strong_path" ]]; then
+            NAMESPACE_STRONG_MATCHES+=("$strong_path")
+            NAMESPACE_STRONG_COUNT=$((NAMESPACE_STRONG_COUNT + 1))
+        fi
+    done
+
+    if [[ -f "$TARGET_DIR/AGENTS.md" ]] && grep -q "Parallelus Agent Core Guardrails" "$TARGET_DIR/AGENTS.md"; then
+        NAMESPACE_CONTEXT_MATCHES+=("AGENTS.md:Parallelus Agent Core Guardrails")
+        NAMESPACE_CONTEXT_COUNT=$((NAMESPACE_CONTEXT_COUNT + 1))
+    fi
+
+    if [[ -f "$TARGET_DIR/Makefile" ]] && \
+       (grep -q "make start_session" "$TARGET_DIR/Makefile" || grep -q "\.agents/bin/" "$TARGET_DIR/Makefile"); then
+        NAMESPACE_CONTEXT_MATCHES+=("Makefile:make start_session|.agents/bin/")
+        NAMESPACE_CONTEXT_COUNT=$((NAMESPACE_CONTEXT_COUNT + 1))
+    fi
+}
+
+detect_bundle_namespace() {
+    local force_in_place=0
+    local force_vendor=0
+
+    NAMESPACE_OVERRIDE_USED=0
+    NAMESPACE_PARALLELUS_SENTINEL="$(validate_bundle_manifest "$TARGET_DIR/parallelus/.parallelus-bundle.json")"
+    NAMESPACE_VENDOR_SENTINEL="$(validate_bundle_manifest "$TARGET_DIR/vendor/parallelus/.parallelus-bundle.json")"
+    detect_legacy_parallelus_signals
+
+    if is_truthy "${PARALLELUS_UPGRADE_FORCE_IN_PLACE:-}"; then
+        force_in_place=1
+    fi
+    if is_truthy "${PARALLELUS_UPGRADE_FORCE_VENDOR:-}"; then
+        force_vendor=1
+    fi
+
+    if [[ $force_in_place -eq 1 && $force_vendor -eq 1 ]]; then
+        fail "PARALLELUS_UPGRADE_FORCE_IN_PLACE and PARALLELUS_UPGRADE_FORCE_VENDOR cannot both be set"
+    fi
+
+    if [[ $force_in_place -eq 1 ]]; then
+        NAMESPACE_DECISION="parallelus"
+        NAMESPACE_REASON="override_force_in_place"
+        NAMESPACE_OVERRIDE_USED=1
+        return
+    fi
+    if [[ $force_vendor -eq 1 ]]; then
+        NAMESPACE_DECISION="vendor/parallelus"
+        NAMESPACE_REASON="override_force_vendor"
+        NAMESPACE_OVERRIDE_USED=1
+        return
+    fi
+
+    if [[ "$NAMESPACE_PARALLELUS_SENTINEL" == "valid" && "$NAMESPACE_VENDOR_SENTINEL" == "valid" ]]; then
+        warn "Detected valid sentinels in both parallelus/ and vendor/parallelus; preferring parallelus/"
+        NAMESPACE_DECISION="parallelus"
+        NAMESPACE_REASON="sentinel_parallelus_preferred_dual"
+        return
+    fi
+    if [[ "$NAMESPACE_PARALLELUS_SENTINEL" == "valid" ]]; then
+        NAMESPACE_DECISION="parallelus"
+        NAMESPACE_REASON="sentinel_parallelus"
+        return
+    fi
+    if [[ "$NAMESPACE_VENDOR_SENTINEL" == "valid" ]]; then
+        NAMESPACE_DECISION="vendor/parallelus"
+        NAMESPACE_REASON="sentinel_vendor"
+        return
+    fi
+
+    if [[ $NAMESPACE_STRONG_COUNT -ge 2 && $NAMESPACE_CONTEXT_COUNT -ge 1 ]]; then
+        NAMESPACE_DECISION="parallelus"
+        NAMESPACE_REASON="legacy_parallelus"
+    else
+        NAMESPACE_DECISION="vendor/parallelus"
+        NAMESPACE_REASON="ambiguous_or_unrelated"
+    fi
+
+    if [[ "$NAMESPACE_DECISION" == "parallelus" && "$NAMESPACE_PARALLELUS_SENTINEL" == invalid:* ]]; then
+        if [[ "$NAMESPACE_VENDOR_SENTINEL" == invalid:* ]]; then
+            fail "Malformed sentinels found in both namespaces; set exactly one PARALLELUS_UPGRADE_FORCE_* override"
+        fi
+        warn "parallelus/.parallelus-bundle.json is malformed; refusing in-place overwrite without explicit override"
+        NAMESPACE_DECISION="vendor/parallelus"
+        NAMESPACE_REASON="parallelus_malformed_fallback_vendor"
+    fi
+
+    if [[ "$NAMESPACE_DECISION" == "vendor/parallelus" && "$NAMESPACE_VENDOR_SENTINEL" == invalid:* ]]; then
+        if [[ "$NAMESPACE_PARALLELUS_SENTINEL" == invalid:* ]]; then
+            fail "Malformed sentinels found in both namespaces; set exactly one PARALLELUS_UPGRADE_FORCE_* override"
+        fi
+        warn "vendor/parallelus/.parallelus-bundle.json is malformed; refusing vendor overwrite without explicit override"
+        NAMESPACE_DECISION="parallelus"
+        NAMESPACE_REASON="vendor_malformed_fallback_parallelus"
+    fi
+}
+
+print_bundle_namespace_detection() {
+    echo "NAMESPACE_DECISION=$NAMESPACE_DECISION"
+    echo "NAMESPACE_REASON=$NAMESPACE_REASON"
+    echo "NAMESPACE_OVERRIDE_USED=$NAMESPACE_OVERRIDE_USED"
+    echo "PARALLELUS_SENTINEL_STATUS=$NAMESPACE_PARALLELUS_SENTINEL"
+    echo "VENDOR_SENTINEL_STATUS=$NAMESPACE_VENDOR_SENTINEL"
+    echo "LEGACY_STRONG_COUNT=$NAMESPACE_STRONG_COUNT"
+    echo "LEGACY_CONTEXT_COUNT=$NAMESPACE_CONTEXT_COUNT"
+    echo "LEGACY_STRONG_MATCHES=$(join_csv "${NAMESPACE_STRONG_MATCHES[@]}")"
+    echo "LEGACY_CONTEXT_MATCHES=$(join_csv "${NAMESPACE_CONTEXT_MATCHES[@]}")"
 }
 
 prepare_destination() {
@@ -863,6 +1079,14 @@ create_initial_commit() {
 main() {
     parse_args "$@"
     ensure_source_repo
+    if [[ $DETECT_NAMESPACE_ONLY -eq 1 ]]; then
+        if [[ ! -d "$TARGET_DIR" ]]; then
+            fail "--detect-namespace requires TARGET_DIRECTORY to exist"
+        fi
+        detect_bundle_namespace
+        print_bundle_namespace_detection
+        return
+    fi
     info "Deploying agent process"
     echo " Mode: $MODE"
     echo " Target: $TARGET_DIR"
@@ -871,6 +1095,11 @@ main() {
         echo " Overlay upgrade: true (backups disabled)"
     fi
     prepare_destination
+    if [[ "$MODE" == "overlay" ]]; then
+        detect_bundle_namespace
+        info "Namespace detection:"
+        print_bundle_namespace_detection
+    fi
     warn_overlay_overwrites
     copy_base_assets
     install_hooks_into_repo

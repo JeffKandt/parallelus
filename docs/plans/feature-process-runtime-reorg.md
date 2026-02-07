@@ -13,9 +13,10 @@
 - [x] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
 - [x] create detailed implementation slicing in `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
 - [x] expand open questions in the layout plan (pros/cons/recommendations; terminology; naming collision notes)
-- [ ] update branch plan/progress notebooks with outcomes + follow-ups
+- [x] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
-- start `PHASE-01` from the execution plan (sentinel schema + namespace detection + tests)
+- execute `PHASE-01` from the execution plan (sentinel schema + namespace detection + tests) and stop after that phase
+- capture `PHASE-01` gate evidence in branch progress (detection precedence, override conflict failure, malformed-sentinel fallback)
 - decide whether to mirror phase slices as Beads items for queue visibility
 - keep implementation strictly phased (no broad file moves before PHASE-01/PHASE-02 gates pass)

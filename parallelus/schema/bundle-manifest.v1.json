@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://parallelus.dev/schema/bundle-manifest.v1.json",
+  "title": "Parallelus Bundle Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_id",
+    "layout_version",
+    "upstream_repo",
+    "bundle_version",
+    "installed_on",
+    "managed_paths"
+  ],
+  "properties": {
+    "bundle_id": {
+      "type": "string",
+      "const": "parallelus.bundle.v1"
+    },
+    "layout_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "upstream_repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundle_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "installed_on": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "managed_paths": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "engine"
+          },
+          "minContains": 1
+        },
+        {
+          "contains": {
+            "const": "manuals"
+          },
+          "minContains": 1
+        }
+      ]
+    }
+  }
+}

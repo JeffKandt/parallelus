@@ -269,3 +269,74 @@
 
 **Artifacts**
 - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+
+## 2026-02-07 14:23:20 UTC
+**Objectives**
+- continue layout reorg execution by implementing only `PHASE-01`
+- determine the next incomplete phase from the execution plan + active notebooks
+- acknowledge required startup guardrails before code edits
+
+**Work Performed**
+- reviewed `AGENTS.md`, `PROJECT_AGENTS.md`, and `.agents/custom/README.md`
+- ran `eval "$(make start_session)"` and captured session `20251054-20260207142153-5d4004`
+- read:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/plans/feature-process-runtime-reorg.md`
+  - `docs/progress/feature-process-runtime-reorg.md`
+- confirmed only pre-migration notebook layout exists (`docs/plans|docs/progress`); no `docs/branches/...` canonical files yet
+- determined next incomplete phase is `PHASE-01` (sentinel + namespace detection infrastructure)
+
+**Next Actions**
+- implement `PHASE-01` scope only:
+  - add sentinel schema artifact
+  - add namespace detection/override conflict handling in deploy tooling
+  - add targeted tests for precedence + fallback paths
+- run targeted validations and capture concrete gate evidence
+- commit + push, then run Senior Architect review for this phase and iterate until approved
+
+## 2026-02-07 14:27:41 UTC
+**Objectives**
+- complete `PHASE-01` implementation and gather acceptance-gate evidence
+
+**Work Performed**
+- added sentinel schema artifact at:
+  - `parallelus/schema/bundle-manifest.v1.json`
+- implemented namespace detection infrastructure in:
+  - `.agents/bin/deploy_agents_process.sh`
+  - new `--detect-namespace` mode for auditable decision output
+  - sentinel validation for `parallelus/.parallelus-bundle.json` and `vendor/parallelus/.parallelus-bundle.json`
+  - fallback legacy heuristic (`strong_count` + `context_count`)
+  - explicit overrides:
+    - `PARALLELUS_UPGRADE_FORCE_IN_PLACE=1`
+    - `PARALLELUS_UPGRADE_FORCE_VENDOR=1`
+    - conflict fail-fast when both are set
+- added targeted tests:
+  - `.agents/tests/test_bundle_namespace_detection.py`
+  - covers: managed `parallelus`, managed `vendor/parallelus`, no-sentinel fallback, malformed sentinel handling, override behavior, conflict error path
+
+**Validation Evidence**
+- `bash -n .agents/bin/deploy_agents_process.sh`
+  - outcome: pass (no syntax errors)
+- `.agents/adapters/python/env.sh >/dev/null && ./.venv/bin/pytest -q .agents/tests/test_bundle_namespace_detection.py`
+  - outcome: pass (`7 passed in 0.48s`)
+- `.agents/bin/deploy_agents_process.sh --detect-namespace .`
+  - outcome: `NAMESPACE_DECISION=parallelus`, `NAMESPACE_REASON=legacy_parallelus`, `LEGACY_STRONG_COUNT=4`, `LEGACY_CONTEXT_COUNT=2`
+- `PARALLELUS_UPGRADE_FORCE_IN_PLACE=1 PARALLELUS_UPGRADE_FORCE_VENDOR=1 .agents/bin/deploy_agents_process.sh --detect-namespace .`
+  - outcome: exit `1` with `Error: PARALLELUS_UPGRADE_FORCE_IN_PLACE and PARALLELUS_UPGRADE_FORCE_VENDOR cannot both be set`
+- `python3 - <<'PY' ... json.loads('parallelus/schema/bundle-manifest.v1.json') ... PY`
+  - outcome: `schema-json-ok`
+
+**Phase Gate Check (`PHASE-01`)**
+- managed `parallelus/` sentinel detection precedence: satisfied (`test_detection_prefers_parallelus_when_both_manifests_are_valid`)
+- managed `vendor/parallelus/` sentinel detection: satisfied (`test_detection_uses_vendor_manifest_when_parallelus_manifest_missing`)
+- no-sentinel legacy heuristic fallback: satisfied (`test_detection_legacy_fallback_without_manifests`)
+- malformed sentinel handling: satisfied (`test_detection_skips_malformed_parallelus_manifest`)
+- overrides + conflict fail-fast: satisfied (`test_detection_override_force_in_place`, `test_detection_override_force_vendor`, `test_detection_conflicting_overrides_fail_fast`)
+
+**Residual Risks**
+- detection is wired for audit/reporting and overlay invocation, but phase-1 does not yet migrate copy/write paths to namespace-specific bundle roots (planned for later phases)
+- sentinel validation currently checks required fields/types but does not enforce URI/date-time semantics beyond non-empty strings in deploy script runtime checks
+
+**Next Actions**
+- commit and push `PHASE-01` changes
+- launch Senior Architect review for current `HEAD` and confirm explicit gate evaluation in the review artifact
