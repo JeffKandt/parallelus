@@ -136,11 +136,13 @@ understand the outcome.
 
 ### Merge-Time Retrospective Audit
 - Do not run `retro-marker`, `collect_failures`, and the auditor in parallel.
-- Preferred path: run `make senior_review_preflight` to execute the serialized
+- Preferred path: run `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight` to execute the serialized
   retrospective pipeline and launch senior review.
 - Manual fallback: run `retro-marker` -> `collect_failures` -> auditor in that
   exact order, then save the JSON report under
   `docs/parallelus/self-improvement/reports/<branch>--<marker>.json`.
+- If launch status is `awaiting_manual_launch`, run the generated sandbox
+  launcher script and continue with monitor/harvest/cleanup.
 
 ### Session Wrap (feature complete)
 - Add end timestamp & duration to `meta.json`.

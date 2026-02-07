@@ -17,11 +17,13 @@
 - [ ] Evaluate required acceptance criteria/gates with explicit `yes/no` status and supporting evidence.
 - [ ] Identify remaining risks, regressions, or missing validation.
 - [ ] Confirm the review metadata targets `{{PARENT_BRANCH}}` + `{{TARGET_COMMIT}}`.
+- [ ] If phase gates are defined in an execution-plan document, quote each in-scope gate verbatim and evaluate it individually.
 
 ## Acceptance Criteria
 - Review file includes `Reviewed-Branch`, `Reviewed-Commit`, `Reviewed-On`, `Decision`.
 - Each required gate/criterion has: satisfaction status, evidence (paths + command outputs), and residual risks.
 - Findings are severity-classified and include actionable remediation notes.
+- Gate evaluation uses the exact in-scope acceptance-gate wording from the cited execution plan (when present).
 
 ## Notes
 - Operate read-only except for writing the review markdown deliverable.

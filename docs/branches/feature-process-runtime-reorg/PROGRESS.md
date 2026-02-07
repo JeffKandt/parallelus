@@ -1587,3 +1587,50 @@
 **Next Actions**
 - commit/push final PHASE-04 artifacts (review + marker/failure/report + notebooks)
 - stop after PHASE-04 completion; do not begin `PHASE-05` without maintainer instruction
+
+## 2026-02-07 20:52:19 UTC
+**Objectives**
+- implement the three agreed process/prompt improvements from the PHASE-04 handoff follow-up
+- document the senior-review launch warning behavior observed in earlier manual subagent runs
+
+**Work Performed**
+- updated senior-review operator/runbook docs to standardize env + fallback behavior:
+  - `parallelus/manuals/manuals/senior-architect.md`
+    - `PATH="$PWD/.venv/bin:$PATH"` prefix for `make senior_review_preflight` and manual launch command examples
+    - explicit `awaiting_manual_launch` fallback instruction to run `<sandbox>/.parallelus_run_subagent.sh`
+  - `parallelus/manuals/subagent-session-orchestration.md`
+    - preflight command now documented with venv-prefixed PATH
+    - explicit `awaiting_manual_launch` operational note in the retrospective/senior-review guidance block
+  - `parallelus/manuals/core.md`
+    - merge-time retrospective section now uses venv-prefixed preflight command and notes manual-launch fallback
+- updated reviewer prompt/scope constraints so gate evaluation quality is enforced in the subagent itself:
+  - `parallelus/engine/prompts/agent_roles/senior_architect.md`
+    - phase-scoped reviews must quote in-scope acceptance gates exactly
+    - gate evaluation must include `yes/no`, evidence, and remaining risks per gate
+  - `parallelus/manuals/templates/senior_architect_scope.md`
+    - added objective + acceptance criterion requiring verbatim in-scope gate wording from the cited execution plan
+- updated the phase-neutral kickoff prompt in:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+    - validation/preflight commands now explicitly require `PATH="$PWD/.venv/bin:$PATH"`
+    - review loop now names preferred preflight command, `awaiting_manual_launch` fallback, and exact acceptance-gate wording requirement
+
+**Validation Evidence**
+- `rg -n "awaiting_manual_launch|PATH=\"\$PWD/.venv/bin:\$PATH\"|exact acceptance-gate wording|quote each in-scope gate|gate satisfied\?" docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md parallelus/manuals/manuals/senior-architect.md parallelus/manuals/subagent-session-orchestration.md parallelus/manuals/core.md parallelus/engine/prompts/agent_roles/senior_architect.md parallelus/manuals/templates/senior_architect_scope.md`
+  - outcome: expected strings present in all target files
+
+**Warning Investigation (from earlier first senior-review launch)**
+- confirmed warnings are emitted by Codex internals during startup/replay, not by repo scripts:
+  - `/tmp/ci-audit-20260207-185934.log` contains repeated lines:
+    - `WARN codex_core::rollout::recorder: failed to parse rollout line: missing field \`settings\``
+  - same log also shows:
+    - `warning: Under-development features enabled: sqlite...`
+- interpretation:
+  - this indicates older/mismatched rollout JSONL entries in the local Codex history stream being replayed by the runtime recorder; warnings are noisy but not repo-code failures.
+  - they can degrade responsiveness during startup-heavy runs, which is why manual fallback/monitor instructions were strengthened.
+
+**Residual Risks**
+- rollout-recorder parse warnings originate outside repository code (Codex local runtime/history state), so repo changes can only improve operator fallback handling, not fully suppress external warning emission
+
+**Next Actions**
+- commit and push these documentation/prompt hardening changes
+- keep PHASE execution paused until maintainer authorizes starting `PHASE-05`

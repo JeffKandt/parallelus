@@ -224,6 +224,9 @@ Execution requirements:
 2) Keep diff scoped; do not start later phases.
 3) Run targeted validations for changed files/scripts; run broader checks when
    the phase gate requires.
+   - Prefix validation and preflight commands with
+     `PATH="$PWD/.venv/bin:$PATH"` so Python-backed helpers/tests run against
+     the project environment consistently.
 4) Update:
    - the active branch notebooks for the current layout
      (`docs/plans|docs/progress` before migration, or
@@ -234,10 +237,16 @@ Execution requirements:
 Review loop (required before declaring phase complete):
 6) Launch Senior Architect review for the current phase scope on current HEAD.
    - Default review scope rule: Senior review defaults to full branch diff unless this prompt explicitly bounds scope to the current phase.
+   - Preferred command:
+     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
+   - If preflight reports `awaiting_manual_launch`, run the generated sandbox
+     launcher (`<sandbox>/.parallelus_run_subagent.sh`) and continue
+     monitor/harvest/cleanup for that review id.
 7) Reviewer must explicitly evaluate all phase exit gates:
    - gate satisfied? (yes/no)
    - evidence (file paths + command outputs)
    - remaining risks
+   - use the exact acceptance-gate wording for the active phase from this plan
 8) If review is not approved, fix findings, commit, and re-run Senior Architect
    review.
 9) Repeat until approved.

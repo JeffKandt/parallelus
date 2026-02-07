@@ -7,7 +7,7 @@ isolated tmux pane.
 ## Launch Command
 
 ```bash
-make senior_review_preflight
+PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight
 ```
 
 `make senior_review_preflight` runs the serialized preflight pipeline
@@ -16,7 +16,7 @@ make senior_review_preflight
 manual launch-only fallback, use:
 
 ```bash
-parallelus/engine/bin/subagent_manager.sh launch --type throwaway --slug senior-review --role senior_architect
+PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/subagent_manager.sh launch --type throwaway --slug senior-review --role senior_architect
 ```
 
 The subagent window will generate the markdown review and save it to
@@ -54,3 +54,7 @@ The subagent window will generate the markdown review and save it to
 11. If the progress log still contains placeholder text ("pending update", TODOs,
    etc.), halt the review and ask the main agent to update the summary before
    proceeding.
+12. If `review-preflight` reports `awaiting_manual_launch`, run the generated
+   sandbox launcher (`<sandbox>/.parallelus_run_subagent.sh`) and then continue
+   with monitor/harvest/cleanup as normal. Treat this as an expected fallback,
+   not an automatic failure.

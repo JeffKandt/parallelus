@@ -41,7 +41,8 @@ report progress or decisions back in plain language.
 > failures summary) has been completed before the senior review is launched.
 
 > **Retrospective audits:** Do not run marker/failures/auditor steps in
-> parallel. Use `make senior_review_preflight` (recommended) to run the
+> parallel. Use `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
+> (recommended) to run the
 > serialized pipeline (`retro-marker` -> `collect_failures` -> local
 > commit-aware auditor -> `verify-retrospective`) and launch the senior review.
 > If you run the steps manually, keep the same strict order. The auditor
@@ -50,6 +51,9 @@ report progress or decisions back in plain language.
 > `docs/parallelus/self-improvement/failures/<branch>--<marker>.json` when present), and
 > returns a JSON report to be saved under
 > `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`.
+> In headless/manual-launch environments, `review-preflight` may set status to
+> `awaiting_manual_launch`; in that case run `<sandbox>/.parallelus_run_subagent.sh`
+> and continue the normal monitor/harvest/cleanup flow.
 
 ## 1. Overview
 
