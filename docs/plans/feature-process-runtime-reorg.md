@@ -10,11 +10,12 @@
 - [x] implement the agreed “process vs runtime” reorg (docs + scripts) and keep compatibility where possible
 - [x] update Beads docs (`docs/agents/integrations/beads.md`) based on current discussion (branch/worktree semantics, optional usage strategy, pilot flow)
 - [x] run `make ci` and record results in the progress log
-- [ ] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
+- [x] draft and iterate on `docs/deployment-upgrade-and-layout-PLAN.md` until the layout plan is final (no file moves yet)
+- [x] create detailed implementation slicing in `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
 - [x] expand open questions in the layout plan (pros/cons/recommendations; terminology; naming collision notes)
 - [ ] update branch plan/progress notebooks with outcomes + follow-ups
 
 ## Next Actions
-- finalize `docs/deployment-upgrade-and-layout-PLAN.md` for implementation readiness
-- confirm which resulting tasks are in-scope for this branch vs later rollout phases
-- define implementation ordering and acceptance checks for the first executable reorg PR
+- start `PR-01` from the execution plan (sentinel schema + namespace detection + tests)
+- decide whether to mirror PR slices as Beads items for queue visibility
+- keep implementation strictly phased (no broad file moves before PR-01/PR-02 gates pass)

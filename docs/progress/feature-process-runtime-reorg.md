@@ -220,3 +220,21 @@
 **Artifacts**
 - `docs/deployment-upgrade-and-layout-PLAN.md`
 - `docs/plans/feature-process-runtime-reorg.md`
+
+## 2026-02-07 13:43:29 UTC
+**Objectives**
+- produce a detailed execution plan now that design questions are resolved
+
+**Work Performed**
+- created `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md` with:
+  - phased PR slices (`PR-01` through `PR-07`)
+  - per-slice goals, primary file areas, and acceptance gates
+  - validation matrix and rollback/recovery policy
+- added a cross-reference from `docs/deployment-upgrade-and-layout-PLAN.md` to
+  the new execution plan
+- updated branch plan checklist/next actions to start with `PR-01` execution
+
+**Artifacts**
+- `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+- `docs/deployment-upgrade-and-layout-PLAN.md`
+- `docs/plans/feature-process-runtime-reorg.md`

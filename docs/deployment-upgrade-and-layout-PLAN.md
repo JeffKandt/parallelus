@@ -468,6 +468,9 @@ reorg. Mitigations to reduce breakage:
 
 ## Implementation Sequence (High Level)
 
+Detailed executable slicing, gates, and rollback criteria are tracked in:
+`docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`.
+
 1. Land this plan + open questions resolved.
 2. Add `parallelus/` tracked structure and update docs references.
 3. Add `docs/parallelus/` tracked structure for instance artifacts and update
