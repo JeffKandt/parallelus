@@ -1720,3 +1720,50 @@
 **Next Actions**
 - run `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
 - if status is `awaiting_manual_launch`, execute `<sandbox>/.parallelus_run_subagent.sh` then harvest/cleanup
+
+## 2026-02-07 22:31:32 UTC
+**Objectives**
+- complete required Senior Architect review loop for `PHASE-05` on current `HEAD`
+- capture explicit gate evaluation evidence and review artifact provenance
+
+**Work Performed**
+- ran serialized preflight + launch on commit `950f2d2f19874486fa681a08917ad216feb44ca2`:
+  - `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
+  - marker: `docs/parallelus/self-improvement/markers/feature-process-runtime-reorg.json` timestamp `2026-02-07T22:24:27.308891+00:00`
+  - failures summary: `docs/parallelus/self-improvement/failures/feature-process-runtime-reorg--2026-02-07T22:24:27.308891+00:00.json`
+  - audit report: `docs/parallelus/self-improvement/reports/feature-process-runtime-reorg--2026-02-07T22:24:27.308891+00:00.json`
+  - review id: `20260207-222429-senior-review` (status `awaiting_manual_launch`)
+- executed manual-launch fallback:
+  - `PATH="$PWD/.venv/bin:$PATH" /Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-jRteQN/.parallelus_run_subagent.sh`
+- harvested and cleaned subagent run:
+  - `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/subagent_manager.sh harvest --id 20260207-222429-senior-review`
+  - `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/subagent_manager.sh cleanup --id 20260207-222429-senior-review --force`
+- captured updated review artifact:
+  - `docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md`
+  - `Reviewed-Commit: 950f2d2f19874486fa681a08917ad216feb44ca2`
+  - `Decision: approved`
+
+**Reviewer Exit-Gate Evaluation (`PHASE-05`)**
+- Gate: Hooks execute at documented lifecycle events. — **Yes**
+  - evidence: review section cites wiring in `parallelus/engine/bin/agents-ensure-feature`, `parallelus/engine/bin/agents-session-start`, `parallelus/engine/bin/agents-turn-end` plus `parallelus/engine/tests/test_custom_hooks.py`
+  - remaining risks: host-provided hook scripts can still introduce runtime variability; mitigated by timeout policy
+- Gate: `pre_*` failure behavior blocks as configured; `post_*` failure behavior warns. — **Yes**
+  - evidence: reviewer validated policy logic in `parallelus/engine/bin/agents-custom-hook` and targeted tests in `parallelus/engine/tests/test_custom_hooks.py`
+  - remaining risks: none beyond operator-provided hook quality
+- Gate: Disabled/custom-missing modes are no-op and safe. — **Yes**
+  - evidence: reviewer validated no-op paths in `parallelus/engine/bin/agents-custom-hook` and `test_custom_hooks_disabled_and_missing_are_safe_noops`
+  - remaining risks: invalid `config.yaml` for `pre_*` hooks fails closed by design
+
+**Validation Evidence (review loop)**
+- `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight` -> pass (marker/failures/report generated; review entry created)
+- manual launcher script -> pass (review completed in sandbox)
+- `subagent_manager.sh harvest` -> pass (review artifact harvested)
+- `subagent_manager.sh cleanup --force` -> pass (sandbox cleaned)
+
+**Residual Risks**
+- medium follow-up carried by approved review: `review-preflight` still depends on `python3` + `PyYAML` availability in non-venv shells (`parallelus/engine/bin/subagent_manager.sh` role-config parsing path)
+- low follow-up carried by approved review: runtime bundle-manifest validator is less strict than schema constraints in `parallelus/schema/bundle-manifest.v1.json`
+
+**Next Actions**
+- commit and push review-loop artifacts (review markdown, marker/failures/report, registry, progress updates)
+- stop after `PHASE-05` completion and await maintainer direction before `PHASE-06`
