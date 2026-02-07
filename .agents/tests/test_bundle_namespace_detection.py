@@ -15,6 +15,9 @@ SCRIPT = REPO_ROOT / ".agents" / "bin" / "deploy_agents_process.sh"
 
 def _run_detect(target_dir: Path, env: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess[str], dict[str, str]]:
     run_env = os.environ.copy()
+    # Keep tests deterministic even when parent shells export override knobs.
+    for key in ("PARALLELUS_UPGRADE_FORCE_IN_PLACE", "PARALLELUS_UPGRADE_FORCE_VENDOR"):
+        run_env.pop(key, None)
     if env:
         run_env.update(env)
 

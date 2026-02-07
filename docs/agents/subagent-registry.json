@@ -1,76 +1,32 @@
 [
   {
-    "id": "20260123-053350-senior-review",
+    "id": "20260207-143540-senior-review",
     "type": "throwaway",
     "slug": "senior-review",
-    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-aoRm9y",
-    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-aoRm9y/SUBAGENT_SCOPE.md",
-    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-aoRm9y/SUBAGENT_PROMPT.txt",
-    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-aoRm9y/subagent.log",
-    "launcher": "tmux",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-K2HX2v",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-K2HX2v/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-K2HX2v/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-K2HX2v/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-K2HX2v/subagent.progress.md",
+    "launcher": "manual",
     "status": "cleaned",
-    "launched_at": "20260123-053350",
-    "window_title": "20260123-053350-senior-review",
-    "launcher_kind": "tmux-pane",
-    "launcher_handle": {
-      "launcher": "tmux-pane",
-      "title": "20260123-053350-senior-review",
-      "window_id": "@0",
-      "pane_id": "%46"
-    },
+    "launched_at": "20260207-143540",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
     "role_prompt": "senior_architect.md",
     "deliverables": [
       {
         "id": "senior-review-report",
         "kind": "review_markdown",
-        "source_glob": "docs/reviews/feature-subagent-exec-monitoring-*.md",
+        "source_glob": "docs/reviews/feature-process-runtime-reorg-*.md",
         "baseline": [],
         "status": "harvested",
-        "harvested_at": "2026-01-23T05:37:10Z",
-        "target_path": "docs/reviews/feature-subagent-exec-monitoring-2026-01-23.md"
+        "harvested_at": "2026-02-07T14:39:23Z",
+        "target_path": "docs/reviews/feature-process-runtime-reorg-2026-02-07.md"
       }
     ],
     "deliverables_status": "harvested",
-    "source_commit": "54ea40ad8a15640b2e6b7dc2a88b5daea938ea44"
-  },
-  {
-    "id": "20260123-055644-checkpoint-demo",
-    "type": "throwaway",
-    "slug": "checkpoint-demo",
-    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf",
-    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/SUBAGENT_SCOPE.md",
-    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/SUBAGENT_PROMPT.txt",
-    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/subagent.log",
-    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/checkpoint-demo-abOyaf/subagent.progress.md",
-    "launcher": "tmux",
-    "status": "cleaned",
-    "launched_at": "20260123-055644",
-    "window_title": "20260123-055644-checkpoint-demo",
-    "launcher_kind": "tmux-pane",
-    "launcher_handle": {
-      "launcher": "tmux-pane",
-      "title": "20260123-055644-checkpoint-demo",
-      "window_id": "@0",
-      "pane_id": "%48"
-    },
-    "source_commit": "00013fec7ad299e998e5645a660b6483fd745727"
-  },
-  {
-    "id": "20260207-143050-ci-audit",
-    "type": "throwaway",
-    "slug": "ci-audit",
-    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL",
-    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/SUBAGENT_SCOPE.md",
-    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/SUBAGENT_PROMPT.txt",
-    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/subagent.log",
-    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/ci-audit-UVqGyL/subagent.progress.md",
-    "launcher": "manual",
-    "status": "cleaned",
-    "launched_at": "20260207-143050",
-    "window_title": "",
-    "launcher_kind": "",
-    "launcher_handle": null,
-    "role_prompt": "continuous_improvement_auditor.md",
-    "source_commit": "6a34fdc0c3c9824b5b04096e95afac09ce4ed687"
+    "source_commit": "fead9ea8e7360b2d85e7150590bf3ea5a7de31fe"
   }
 ]
