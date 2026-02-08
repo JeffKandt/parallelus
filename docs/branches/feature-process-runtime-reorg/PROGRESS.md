@@ -2258,3 +2258,51 @@
 **Next Actions**
 - commit/push refreshed review artifact and registry/progress updates
 - prepare phase-complete handoff and stop before any follow-on work
+
+## 2026-02-08 03:34:28 UTC
+**Objectives**
+- implement requested remediations from the `PHASE-07` handoff discussion:
+  - explicit stale-marker launch semantics when `AGENTS_REQUIRE_RETRO=0`
+  - managed hook drift detection + auto-sync for `make read_bootstrap` / `make start_session`
+
+**Work Performed**
+- implemented explicit review-preflight stale-audit behavior in:
+  - `parallelus/engine/bin/subagent_manager.sh`
+  - when `AGENTS_REQUIRE_RETRO=0` and launch is requested, preflight now explicitly validates marker/audit freshness before launch unless override is set
+  - added explicit emergency override gate:
+    - `AGENTS_REVIEW_ALLOW_STALE_AUDIT=1`
+    - bypasses marker/audit freshness checks with explicit stderr warnings in both preflight and launch paths
+- added managed hook drift helper:
+  - `parallelus/engine/bin/ensure-hooks-synced` (new)
+  - detects drift between `parallelus/engine/hooks/*` and `.git/hooks/*`
+  - auto-syncs via `parallelus/engine/bin/install-hooks --quiet` by default
+  - warning-only mode available via `AGENTS_HOOK_AUTO_SYNC=0`
+- integrated hook drift detection into bootstrap detection/session flows:
+  - `parallelus/engine/bin/agents-detect`
+  - `parallelus/engine/bin/agents-session-start`
+- added regression coverage:
+  - `parallelus/engine/tests/test_review_preflight.py`
+    - `test_review_preflight_launch_blocks_stale_marker_when_retro_disabled`
+    - `test_review_preflight_launch_allows_stale_marker_with_override`
+  - `parallelus/engine/tests/test_hook_sync.py` (new)
+    - `test_agents_detect_auto_syncs_drifted_hooks`
+    - `test_agents_detect_reports_hook_drift_when_auto_sync_disabled`
+- documented new hook drift behavior and override in:
+  - `AGENTS.md`
+  - `parallelus/manuals/git-workflow.md`
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/ensure-hooks-synced parallelus/engine/bin/agents-detect parallelus/engine/bin/agents-session-start parallelus/engine/bin/subagent_manager.sh`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_hook_sync.py parallelus/engine/tests/test_review_preflight.py`
+  - outcome: pass (`10 passed in 16.10s`)
+- manual behavior confirmation:
+  - `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/subagent_manager.sh review-preflight --launcher manual`
+  - outcome: fails fast on stale marker/head mismatch when `AGENTS_REQUIRE_RETRO=0` and no override
+
+**Residual Risks**
+- override envs (`AGENTS_REVIEW_ALLOW_STALE_AUDIT`, `AGENTS_HOOK_AUTO_SYNC=0`) intentionally allow bypass behavior and should be used only for controlled/manual recovery scenarios
+
+**Next Actions**
+- commit and push remediation patch + tests/docs updates
+- include this in final handoff summary as an implemented post-phase hardening follow-up

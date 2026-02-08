@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: ensure-hooks-synced [--quiet]
+
+Detects drift between managed hooks under parallelus/engine/hooks and the
+installed hooks in .git/hooks. By default, drift is auto-synced via
+parallelus/engine/bin/install-hooks unless AGENTS_HOOK_AUTO_SYNC=0.
+HELP
+}
+
+quiet=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --quiet)
+      quiet=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ensure-hooks-synced: unknown option $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+log() {
+  if (( quiet == 0 )); then
+    echo "$@" >&2
+  fi
+}
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  exit 0
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+hooks_src="$ENGINE_ROOT/hooks"
+hooks_dst=$(git -C "$repo_root" rev-parse --git-path hooks 2>/dev/null || true)
+
+if [[ ! -d "$hooks_src" || -z "$hooks_dst" ]]; then
+  exit 0
+fi
+
+mkdir -p "$hooks_dst"
+
+drift=0
+shopt -s nullglob
+for hook in "$hooks_src"/*; do
+  [[ -f "$hook" ]] || continue
+  hook_name="$(basename "$hook")"
+  installed="$hooks_dst/$hook_name"
+  if [[ ! -f "$installed" ]]; then
+    drift=1
+    break
+  fi
+  if ! cmp -s "$hook" "$installed"; then
+    drift=1
+    break
+  fi
+done
+shopt -u nullglob
+
+if (( drift == 0 )); then
+  exit 0
+fi
+
+if [[ "${AGENTS_HOOK_AUTO_SYNC:-1}" == "0" ]]; then
+  log "ensure-hooks-synced: managed hook drift detected; auto-sync disabled (AGENTS_HOOK_AUTO_SYNC=0)."
+  return 0 2>/dev/null || exit 0
+fi
+
+install_hooks="$ENGINE_ROOT/bin/install-hooks"
+if [[ ! -x "$install_hooks" ]]; then
+  log "ensure-hooks-synced: managed hook drift detected, but install-hooks helper is missing: $install_hooks"
+  return 0 2>/dev/null || exit 0
+fi
+
+log "ensure-hooks-synced: managed hook drift detected; auto-syncing hooks."
+"$install_hooks" --quiet || true
+
+exit 0

@@ -113,6 +113,9 @@ Consider merging when:
 ### Managed hooks
 - `install-hooks` (invoked by `make bootstrap`, `make merge`, and the deploy
   script) syncs every file in `parallelus/engine/hooks/` into `.git/hooks/`.
+- `make read_bootstrap` / `make start_session` now detect managed-hook drift and
+  auto-sync via `install-hooks`; set `AGENTS_HOOK_AUTO_SYNC=0` to keep warning-only
+  detection without auto-sync.
 - Existing `.git/hooks/*` are preserved as `parallelus/engine/hooks/<name>.predeploy.<ts>.bak`
   during overlay, and `install-hooks` creates `.git/hooks/<name>.predeploy.<ts>.bak`
   before rewriting a hook so local customisations can be merged.

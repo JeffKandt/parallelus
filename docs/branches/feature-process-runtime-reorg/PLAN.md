@@ -21,6 +21,7 @@
 - [x] execute `PHASE-05` (customization contract implementation + acceptance gate + approved senior review)
 - [x] execute `PHASE-06` (pre-reorg upgrade command + idempotent migration + acceptance gate + approved senior review)
 - [x] execute `PHASE-07` (remove legacy runtime fallbacks, retire transitional notes, run full phase gates, and capture approved senior review)
+- [x] harden post-`PHASE-07` review launch semantics for stale markers when retrospective preflight is disabled, and add managed hook drift auto-sync detection in `read_bootstrap`/`start_session`
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)

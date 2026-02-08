@@ -290,6 +290,92 @@ exit 0
         assert not Path(entry["path"]).exists()
 
 
+def test_review_preflight_launch_blocks_stale_marker_when_retro_disabled() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-stale-marker-block-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-stale-marker-block"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        marker_path = repo / "docs" / "parallelus" / "self-improvement" / "markers" / f"{slug}.json"
+        marker_path.parent.mkdir(parents=True, exist_ok=True)
+        marker_path.write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-02-08T02:00:00Z",
+                    "branch": branch,
+                    "head": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        cmd = _run(
+            [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight", "--launcher", "manual"],
+            cwd=repo,
+            env={"AGENTS_REQUIRE_RETRO": "0"},
+        )
+        assert cmd.returncode != 0
+        assert "review-preflight: validating existing marker/audit freshness" in cmd.stderr
+        assert "marker head does not match current HEAD for senior review launch" in cmd.stderr
+
+
+def test_review_preflight_launch_allows_stale_marker_with_override() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-stale-marker-override-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-stale-marker-override"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+        for name in ("markers", "reports", "failures"):
+            leaf = repo / "docs" / "parallelus" / "self-improvement" / name
+            leaf.mkdir(parents=True, exist_ok=True)
+            (leaf / ".gitkeep").write_text("", encoding="utf-8")
+        manuals_dir = repo / "parallelus" / "manuals"
+        manuals_dir.mkdir(parents=True, exist_ok=True)
+        (manuals_dir / "subagent-registry.json").write_text("[]\n", encoding="utf-8")
+        _run(["git", "add", "docs/parallelus/self-improvement"], cwd=repo)
+        _run(["git", "add", "parallelus/manuals/subagent-registry.json"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "seed review-preflight scaffold"], cwd=repo)
+        (repo / ".gitignore").write_text(".parallelus/\nparallelus/engine/bin/__pycache__/\n", encoding="utf-8")
+        _run(["git", "add", ".gitignore"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "ignore runtime workspace"], cwd=repo)
+
+        marker_path = repo / "docs" / "parallelus" / "self-improvement" / "markers" / f"{slug}.json"
+        marker_path.write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-02-08T02:00:00Z",
+                    "branch": branch,
+                    "head": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        launcher_stub_dir = Path(tempfile.mkdtemp(prefix="review-preflight-stale-marker-launcher-stub-"))
+        launcher_stub = launcher_stub_dir / "launcher-stub.sh"
+        launcher_stub.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        launcher_stub.chmod(0o755)
+
+        cmd = _run(
+            [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight"],
+            cwd=repo,
+            env={
+                "SUBAGENT_LAUNCH_HELPER": str(launcher_stub),
+                "AGENTS_REQUIRE_RETRO": "0",
+                "AGENTS_REVIEW_ALLOW_STALE_AUDIT": "1",
+            },
+        )
+        assert cmd.returncode == 0, cmd.stderr
+        assert "AGENTS_REVIEW_ALLOW_STALE_AUDIT=1; skipping marker/audit freshness gate for this launch" in cmd.stderr
+        assert "AGENTS_REVIEW_ALLOW_STALE_AUDIT=1; bypassing marker/audit freshness checks for senior review launch" in cmd.stderr
+        assert "awaiting_manual_launch" in cmd.stderr
+
+
 def test_review_preflight_no_launch_skips_retro_pipeline_when_disabled() -> None:
     with tempfile.TemporaryDirectory(prefix="review-preflight-skip-retro-") as tmpdir:
         repo = Path(tmpdir)

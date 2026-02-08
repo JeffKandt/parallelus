@@ -46,6 +46,8 @@ every session if it exists and record that acknowledgement in the progress log.
   orphaned notebooks before continuing. Echo the complete branch snapshot table
   (names plus action guidance) back to the user—do not elide or summarise the
   entries.
+- Managed hook drift is auto-synced during `make read_bootstrap` / `make start_session`
+  (set `AGENTS_HOOK_AUTO_SYNC=0` to disable auto-sync and receive warning-only detection).
 - Open the active plan and progress notebooks
   (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) or
   confirm they do not exist yet.

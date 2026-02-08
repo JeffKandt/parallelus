@@ -15,6 +15,11 @@ fi
 
 cd "$repo_root"
 
+hook_sync="$SCRIPT_DIR/ensure-hooks-synced"
+if [[ -x "$hook_sync" ]]; then
+  "$hook_sync" || true
+fi
+
 current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
 sanitized_branch=${current_branch//\//-}
 expected_plan="$(parallelus_branch_plan_read_path "$repo_root" "$sanitized_branch")"

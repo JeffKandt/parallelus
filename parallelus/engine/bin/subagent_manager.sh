@@ -138,6 +138,10 @@ retro_required() {
   return 0
 }
 
+allow_stale_review_audit() {
+  is_enabled "${AGENTS_REVIEW_ALLOW_STALE_AUDIT:-0}"
+}
+
 current_branch() {
   git rev-parse --abbrev-ref HEAD
 }
@@ -1286,6 +1290,11 @@ By default it then launches the senior architect review subagent.
 Use --no-launch to stop after preflight artifact generation.
 Use --auto-clean-stale to clean stale awaiting_manual_launch entries for slug
 senior-review when no sandbox process appears active.
+
+Env overrides:
+  AGENTS_REVIEW_ALLOW_STALE_AUDIT=1
+      Allow senior-review launch when AGENTS_REQUIRE_RETRO=0 and marker/audit
+      artifacts do not match current HEAD.
 USAGE
         return 0 ;;
       *)
@@ -1321,6 +1330,14 @@ USAGE
     "$ROOT/parallelus/engine/bin/verify-retrospective"
   else
     echo "review-preflight: AGENTS_REQUIRE_RETRO=0; skipping retrospective preflight pipeline." >&2
+    if (( skip_launch == 0 )); then
+      if allow_stale_review_audit; then
+        echo "review-preflight: AGENTS_REVIEW_ALLOW_STALE_AUDIT=1; skipping marker/audit freshness gate for this launch." >&2
+      else
+        echo "review-preflight: validating existing marker/audit freshness for $branch@$head." >&2
+        ensure_audit_ready_for_review "$branch" "$head"
+      fi
+    fi
   fi
 
   if (( skip_launch == 1 )); then
@@ -1457,7 +1474,11 @@ USAGE
   entry_id="${timestamp}-${slug}"
 
   if [[ "$normalized_role" == "senior_architect.md" || "$slug" == "senior-review" ]]; then
-    ensure_audit_ready_for_review "$current_branch" "$current_commit"
+    if allow_stale_review_audit; then
+      echo "subagent_manager: AGENTS_REVIEW_ALLOW_STALE_AUDIT=1; bypassing marker/audit freshness checks for senior review launch." >&2
+    else
+      ensure_audit_ready_for_review "$current_branch" "$current_commit"
+    fi
     ensure_clean_worktree
     ensure_senior_review_needed "$current_branch" "$current_commit"
   fi
