@@ -2058,6 +2058,56 @@
 - commit/push approved review artifact + marker/failures/report updates
 - hand off `PHASE-06` completion summary and stop before `PHASE-07`
 
+## 2026-02-08 02:08:45 UTC
+**Objectives**
+- implement all approved process/prompt suggestions from the `PHASE-06` handoff:
+  - enforce serialized retrospective refresh ordering in the phase prompt
+  - add stale `awaiting_manual_launch` auto-clean option to review preflight
+  - make `senior_review_preflight_run` the default guidance for headless/manual-launch flows
+
+**Work Performed**
+- reviewed startup guardrails and started session:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `eval "$(make start_session)"` -> session `20251063-20260208020242-0d5edc`
+- implemented stale-review auto-clean option in:
+  - `parallelus/engine/bin/subagent_manager.sh`
+    - added `review-preflight --auto-clean-stale`
+    - added stale-entry detection/cleanup path for `awaiting_manual_launch` entries when no sandbox process appears active
+    - wired `SUBAGENT_AUTOCLEAN_STALE` through launch slug cleanliness checks
+    - updated clean-worktree allowlist to permit `parallelus/manuals/subagent-registry.json` operational deltas during review launch
+- added regression coverage:
+  - `parallelus/engine/tests/test_review_preflight.py`
+  - new test: `test_review_preflight_auto_cleans_stale_awaiting_entries_before_launch`
+- updated phase prompt/process docs and manuals:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+    - added explicit serialized post-commit refresh order (`retro-marker` -> `collect_failures.py` -> `retro_audit_local.py`)
+    - switched headless preferred command to `make senior_review_preflight_run ARGS="--auto-clean-stale"`
+  - `parallelus/manuals/manuals/senior-architect.md`
+    - set headless default launch guidance to `senior_review_preflight_run` with `--auto-clean-stale`
+    - added explicit ordering note after final code commit before notebook-only checkpoint commits
+  - `parallelus/manuals/subagent-session-orchestration.md`
+    - aligned headless recommended command and stale auto-clean guidance
+  - `AGENTS.md`
+    - updated review-preflight guidance and quick reference to include `senior_review_preflight_run`
+- updated branch checklist to capture this improvement slice:
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/subagent_manager.sh`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py`
+  - outcome: pass (`6 passed in 14.53s`)
+- `rg -n "senior_review_preflight_run|--auto-clean-stale|retro-marker.*collect_failures.*retro_audit_local|headless/manual-launch" docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md parallelus/manuals/manuals/senior-architect.md parallelus/manuals/subagent-session-orchestration.md AGENTS.md parallelus/engine/bin/subagent_manager.sh`
+  - outcome: expected guidance strings present in all target files
+
+**Residual Risks**
+- stale-entry process detection is heuristic (`ps` command-line matching); unusual process wrappers may require manual cleanup fallback
+
+**Next Actions**
+- commit and push the process hardening updates
+- wait for maintainer direction before starting `PHASE-07`
+
 ## 2026-02-08 00:52:12 UTC
 **Summary**
 - PHASE-06 checkpoint before senior review

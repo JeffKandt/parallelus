@@ -28,9 +28,8 @@
 - [x] codify post-`PHASE-04` review-loop improvements (manual-launch fallback note, exact phase-gate wording requirement, venv PATH command prefix guidance)
 - [x] add non-tmux senior-review wrapper flow (`review-preflight-run`) to auto-handle manual launch + harvest + cleanup
 - [x] temporarily bypass retrospective audits in preflight (`AGENTS_REQUIRE_RETRO=0`) and backlog reactivation work once signal quality improves
+- [x] implement post-`PHASE-06` process hardening suggestions (serialized artifact-refresh ordering in phase prompt, stale-review auto-clean option, and headless default `senior_review_preflight_run` guidance)
 
 ## Next Actions
 - hold here after `PHASE-06` completion and wait for maintainer direction before starting `PHASE-07`
 - if authorized to continue, execute only `PHASE-07` cleanup/decommission scope with fresh phase-specific gate evidence
-
-- [ ] PHASE-06 checkpoint before senior review

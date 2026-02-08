@@ -158,6 +158,72 @@ def test_review_preflight_default_launch_marks_awaiting_when_not_started() -> No
         assert entry["status"] == "awaiting_manual_launch"
 
 
+def test_review_preflight_auto_cleans_stale_awaiting_entries_before_launch() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-autoclean-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-autoclean"
+        _init_repo(repo, branch=branch)
+        for name in ("markers", "reports", "failures"):
+            leaf = repo / "docs" / "parallelus" / "self-improvement" / name
+            leaf.mkdir(parents=True, exist_ok=True)
+            (leaf / ".gitkeep").write_text("", encoding="utf-8")
+        manuals_dir = repo / "parallelus" / "manuals"
+        manuals_dir.mkdir(parents=True, exist_ok=True)
+        registry_path = manuals_dir / "subagent-registry.json"
+        stale_id = "20250101-000000-senior-review"
+        stale_path = repo / ".parallelus" / "subagents" / "sandboxes" / "stale-senior-review"
+        stale_path.mkdir(parents=True, exist_ok=True)
+        registry_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": stale_id,
+                        "slug": "senior-review",
+                        "status": "awaiting_manual_launch",
+                        "path": str(stale_path),
+                        "type": "throwaway",
+                        "deliverables": [],
+                    }
+                ],
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        _run(["git", "add", "docs/parallelus/self-improvement"], cwd=repo)
+        _run(["git", "add", "parallelus/manuals/subagent-registry.json"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "seed stale registry entry"], cwd=repo)
+        (repo / ".gitignore").write_text(".parallelus/\nparallelus/engine/bin/__pycache__/\n", encoding="utf-8")
+        _run(["git", "add", ".gitignore"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "ignore runtime workspace"], cwd=repo)
+
+        launcher_stub_dir = Path(tempfile.mkdtemp(prefix="review-preflight-autoclean-launcher-stub-"))
+        launcher_stub = launcher_stub_dir / "launcher-stub.sh"
+        launcher_stub.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        launcher_stub.chmod(0o755)
+
+        cmd = _run(
+            [
+                str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"),
+                "review-preflight",
+                "--auto-clean-stale",
+            ],
+            cwd=repo,
+            env={"SUBAGENT_LAUNCH_HELPER": str(launcher_stub), "AGENTS_REQUIRE_RETRO": "1"},
+        )
+        assert cmd.returncode == 0, cmd.stderr
+        assert "auto-cleaning stale awaiting_manual_launch entry" in cmd.stderr
+        assert "awaiting_manual_launch" in cmd.stderr
+
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+        stale = next(row for row in data if row.get("id") == stale_id)
+        assert stale["status"] == "cleaned"
+        newest = data[-1]
+        assert newest["id"] != stale_id
+        assert newest["slug"] == "senior-review"
+        assert newest["status"] == "awaiting_manual_launch"
+
+
 def test_review_preflight_run_executes_manual_fallback_and_cleans_up() -> None:
     with tempfile.TemporaryDirectory(prefix="review-preflight-run-wrapper-") as tmpdir:
         repo = Path(tmpdir)

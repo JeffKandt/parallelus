@@ -167,7 +167,7 @@ ensure_clean_worktree() {
     [[ -z "$line" ]] && continue
     path="${line:3}"
     case "$path" in
-      docs/parallelus|docs/parallelus/|docs/parallelus/self-improvement|docs/parallelus/self-improvement/*|docs/self-improvement|docs/self-improvement/|docs/self-improvement/*)
+      docs/parallelus|docs/parallelus/|docs/parallelus/self-improvement|docs/parallelus/self-improvement/*|docs/self-improvement|docs/self-improvement/|docs/self-improvement/*|parallelus/manuals/subagent-registry.json)
         ;;
       *)
         allowlist_only=0
@@ -273,10 +273,52 @@ PY
 
 ensure_slug_clean() {
   local slug=$1
+  local auto_clean_stale=${2:-0}
   ensure_registry
   if [[ ! -f "$REGISTRY_FILE" ]]; then
     return
   fi
+
+  if [[ "$auto_clean_stale" == "1" ]]; then
+    local stale_entries entry_id entry_status entry_path cleaned_count
+    cleaned_count=0
+    stale_entries=$(python3 - "$REGISTRY_FILE" "$slug" <<'PY'
+import json
+import sys
+
+registry_path, slug = sys.argv[1:3]
+try:
+    with open(registry_path, "r", encoding="utf-8") as fh:
+        entries = json.load(fh)
+except FileNotFoundError:
+    sys.exit(0)
+
+for row in entries:
+    if row.get("slug") != slug:
+        continue
+    status = (row.get("status") or "").lower()
+    if status != "awaiting_manual_launch":
+        continue
+    entry_id = row.get("id", "")
+    path = row.get("path", "")
+    print(f"{entry_id}\t{status}\t{path}")
+PY
+)
+    while IFS=$'\t' read -r entry_id entry_status entry_path; do
+      [[ -z "$entry_id" ]] && continue
+      if subagent_process_active "$entry_path"; then
+        echo "subagent_manager: keeping $entry_id ($entry_status); sandbox process appears active." >&2
+        continue
+      fi
+      echo "subagent_manager: auto-cleaning stale $entry_status entry $entry_id for slug '$slug'." >&2
+      cmd_cleanup --id "$entry_id" --force >/dev/null 2>&1 || true
+      cleaned_count=$((cleaned_count + 1))
+    done <<<"$stale_entries"
+    if (( cleaned_count > 0 )); then
+      echo "subagent_manager: auto-cleaned $cleaned_count stale awaiting_manual_launch entr$( [[ $cleaned_count -eq 1 ]] && echo "y" || echo "ies" )." >&2
+    fi
+  fi
+
   python3 - "$REGISTRY_FILE" "$slug" <<'PY'
 import json, sys
 registry_path, slug = sys.argv[1:3]
@@ -308,6 +350,18 @@ if blocked:
     )
     sys.exit(1)
 PY
+}
+
+subagent_process_active() {
+  local sandbox_path=${1:-}
+  if [[ -z "$sandbox_path" ]]; then
+    return 1
+  fi
+
+  ps -Ao command= 2>/dev/null | awk -v path="$sandbox_path" '
+    index($0, path) > 0 && ($0 ~ /codex|\.parallelus_run_subagent|script -qa/) { found=1; exit 0 }
+    END { exit found ? 0 : 1 }
+  '
 }
 
 ensure_no_tmux_pane_for_slug() {
@@ -1207,10 +1261,11 @@ PY
 }
 
 cmd_review_preflight() {
-  local launcher auditor_mode skip_launch
+  local launcher auditor_mode skip_launch auto_clean_stale
   launcher="auto"
   auditor_mode="local"
   skip_launch=0
+  auto_clean_stale=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --launcher)
@@ -1219,9 +1274,11 @@ cmd_review_preflight() {
         auditor_mode=$2; shift 2 ;;
       --no-launch)
         skip_launch=1; shift ;;
+      --auto-clean-stale)
+        auto_clean_stale=1; shift ;;
       --help)
         cat <<'USAGE'
-Usage: subagent_manager.sh review-preflight [--launcher MODE] [--auditor-mode local] [--no-launch]
+Usage: subagent_manager.sh review-preflight [--launcher MODE] [--auditor-mode local] [--no-launch] [--auto-clean-stale]
 
 Runs a serialized retrospective preflight:
   1) parallelus/engine/bin/retro-marker
@@ -1231,6 +1288,8 @@ Runs a serialized retrospective preflight:
 
 By default it then launches the senior architect review subagent.
 Use --no-launch to stop after preflight artifact generation.
+Use --auto-clean-stale to clean stale awaiting_manual_launch entries for slug
+senior-review when no sandbox process appears active.
 USAGE
         return 0 ;;
       *)
@@ -1273,7 +1332,11 @@ USAGE
     return 0
   fi
 
-  cmd_launch --type throwaway --slug senior-review --role senior_architect --launcher "$launcher"
+  if (( auto_clean_stale == 1 )); then
+    SUBAGENT_AUTOCLEAN_STALE=1 cmd_launch --type throwaway --slug senior-review --role senior_architect --launcher "$launcher"
+  else
+    cmd_launch --type throwaway --slug senior-review --role senior_architect --launcher "$launcher"
+  fi
 }
 
 cmd_review_preflight_run() {
@@ -1378,7 +1441,7 @@ USAGE
 
   ensure_not_main
   ensure_registry
-  ensure_slug_clean "$slug"
+  ensure_slug_clean "$slug" "${SUBAGENT_AUTOCLEAN_STALE:-0}"
   ensure_tmux_ready "$launcher"
   ensure_no_tmux_pane_for_slug "$slug"
 

@@ -7,21 +7,20 @@ isolated tmux pane.
 ## Launch Command
 
 ```bash
-PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight
+PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run ARGS="--auto-clean-stale"
 ```
 
-`make senior_review_preflight` runs the serialized preflight pipeline
-(`retro-marker` -> `collect_failures` -> local commit-aware auditor ->
-`verify-retrospective`) and then launches the senior-review subagent. For
-non-tmux/headless runs where launch often falls back to manual, use:
+For non-tmux/headless runs, `make senior_review_preflight_run` is the default:
+it runs preflight, auto-cleans stale `awaiting_manual_launch` review entries
+when no sandbox process appears active (`--auto-clean-stale`), executes the
+generated sandbox launcher when status is `awaiting_manual_launch`, then
+harvests and cleans up automatically.
+
+If you want launch-only behavior (without wrapper harvest/cleanup), use:
 
 ```bash
-PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run
+PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight ARGS="--auto-clean-stale"
 ```
-
-`make senior_review_preflight_run` executes preflight, runs the generated
-sandbox launcher when status is `awaiting_manual_launch`, then harvests and
-cleans up automatically.
 
 For
 manual launch-only fallback, use:
@@ -40,32 +39,36 @@ The subagent window will generate the markdown review and save it to
    `PATH`); keep the tmux pane open until the agent says the
    review is complete.
 3. Inspect the generated review, ensure findings are addressed, and commit it.
-4. The launcher now registers the review file as a deliverable and the monitor
+4. After the final code commit under review (and before any extra notebook-only
+   checkpoint commit), refresh retrospective artifacts in strict order on that
+   same `HEAD`: `retro-marker` -> `collect_failures.py` -> `retro_audit_local.py`.
+   Do not parallelize these commands.
+5. The launcher now registers the review file as a deliverable and the monitor
    exits once it detects the pending harvest; as soon as the loop stands down,
    run `parallelus/engine/bin/subagent_manager.sh harvest --id <id>` followed by `cleanup`
    so the pane never lingers between runs.
-5. Never parallelize `retro-marker` and `collect_failures`; timestamp races
+6. Never parallelize `retro-marker` and `collect_failures`; timestamp races
    produce stale retrospective artifacts. Use `make senior_review_preflight` to
    keep ordering deterministic.
-6. Senior-review launch now enforces retrospective freshness: the current marker
+7. Senior-review launch now enforces retrospective freshness: the current marker
    `head` must match branch `HEAD`, and the marker-matched audit report must
    reference the same branch/timestamp. If this fails, refresh marker + auditor
    artifacts for the current commit before relaunching.
-7. Do not hand-write review markdowns; merges will be blocked unless the review
+8. Do not hand-write review markdowns; merges will be blocked unless the review
    provenance indicates a subagent run.
-8. The helper refuses to send new instructions to a stale review sandbox once
+9. The helper refuses to send new instructions to a stale review sandbox once
    the feature branch `HEAD` moves; launch a fresh subagent for each follow-up
    commit instead of reusing the previous pane.
-9. Remind the reviewer that their session is read-only apart from the review
+10. Remind the reviewer that their session is read-only apart from the review
    file—no plan/progress edits, `make bootstrap`, or other helpers that change
    the workspace are permitted during the review run.
-10. Start monitoring with `make monitor_subagents ARGS="--id <id>"` (rather than
+11. Start monitoring with `make monitor_subagents ARGS="--id <id>"` (rather than
    calling `agents-monitor-loop.sh` directly); the make target keeps the loop
    running with the standard thresholds so you do not have to babysit it.
-11. If the progress log still contains placeholder text ("pending update", TODOs,
+12. If the progress log still contains placeholder text ("pending update", TODOs,
    etc.), halt the review and ask the main agent to update the summary before
    proceeding.
-12. If `review-preflight` reports `awaiting_manual_launch`, run the generated
+13. If `review-preflight` reports `awaiting_manual_launch`, run the generated
    sandbox launcher (`<sandbox>/.parallelus_run_subagent.sh`) and then continue
    with monitor/harvest/cleanup as normal. Treat this as an expected fallback,
    not an automatic failure.

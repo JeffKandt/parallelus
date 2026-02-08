@@ -41,14 +41,15 @@ report progress or decisions back in plain language.
 > failures summary) has been completed before the senior review is launched.
 
 > **Retrospective audits:** Do not run marker/failures/auditor steps in
-> parallel. Use `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
-> (recommended) to run the
+> parallel. For headless/manual-launch environments, use
+> `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run ARGS="--auto-clean-stale"`
+> (recommended) to run preflight, auto-clean stale `awaiting_manual_launch`
+> entries when no sandbox process appears active, execute manual fallback, and
+> harvest/cleanup in one flow.
+> For launch-only behavior, use
+> `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight ARGS="--auto-clean-stale"` to run the
 > serialized pipeline (`retro-marker` -> `collect_failures` -> local
 > commit-aware auditor -> `verify-retrospective`) and launch the senior review.
-> For non-tmux/headless environments, use
-> `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run` to run the
-> same preflight, execute manual-launch fallback automatically, and then
-> harvest/cleanup in one flow.
 > If you run the steps manually, keep the same strict order. The auditor
 > analyses evidence starting from the marker recorded in
 > `docs/parallelus/self-improvement/markers/<branch>.json` (and the failures summary in

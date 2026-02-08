@@ -233,12 +233,21 @@ Execution requirements:
      `docs/branches/<slug>/{PLAN,PROGRESS}.md` after migration)
    with concrete evidence (commands run, outcomes, residual risks).
 5) Commit phase work and push branch.
+   - Immediately after the final phase code commit (and before any extra
+     notebook-only checkpoint commit), refresh review artifacts in strict order
+     on the same `HEAD`:
+     1. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/retro-marker`
+     2. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/collect_failures.py`
+     3. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/retro_audit_local.py`
+   - Do not parallelize these commands.
 
 Review loop (required before declaring phase complete):
 6) Launch Senior Architect review for the current phase scope on current HEAD.
    - Default review scope rule: Senior review defaults to full branch diff unless this prompt explicitly bounds scope to the current phase.
-   - Preferred command:
-     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight`
+   - Preferred command for headless/manual-launch environments:
+     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run ARGS="--auto-clean-stale"`
+   - Alternative command when you want launch-only preflight:
+     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight ARGS="--auto-clean-stale"`
    - If preflight reports `awaiting_manual_launch`, run the generated sandbox
      launcher (`<sandbox>/.parallelus_run_subagent.sh`) and continue
      monitor/harvest/cleanup for that review id.

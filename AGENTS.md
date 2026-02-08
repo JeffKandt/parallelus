@@ -141,8 +141,11 @@ every session if it exists and record that acknowledgement in the progress log.
   marker. The auditor responds with JSON; save it to
   `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`
   and carry TODOs into the branch plan. Marker + failures + audit must run
-  sequentially (never in parallel). Use `make senior_review_preflight` to
-  enforce the serialized pipeline and launch the senior review from one command.
+  sequentially (never in parallel). For headless/manual-launch environments,
+  prefer `make senior_review_preflight_run ARGS="--auto-clean-stale"` so
+  stale `awaiting_manual_launch` review entries are auto-cleaned when no
+  sandbox process appears active; use `make senior_review_preflight
+  ARGS="--auto-clean-stale"` for launch-only behavior.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
@@ -151,6 +154,7 @@ every session if it exists and record that acknowledgement in the progress log.
 - `make turn_end m="summary"` – checkpoint plan/progress + session meta.
 - `make ci` – run lint, tests, and smoke suite inside the configured adapters.
 - `make senior_review_preflight` – run serialized retrospective preflight and launch senior review.
+- `make senior_review_preflight_run` – run preflight + manual-launch fallback + harvest/cleanup wrapper (preferred for headless/manual-launch setups).
 - `parallelus/engine/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.
 
 ## 4. Operational Gates (Read-on-Trigger Manuals)
