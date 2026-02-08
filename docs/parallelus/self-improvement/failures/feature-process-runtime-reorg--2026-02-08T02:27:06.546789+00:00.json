@@ -1,0 +1,24 @@
+{
+  "branch": "feature/process-runtime-reorg",
+  "marker_timestamp": "2026-02-08T02:27:06.546789+00:00",
+  "generated_at": "2026-02-08T02:27:11.562802+00:00",
+  "sources": [
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251061-20260207221510-12389a/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251062-20260208004119-e59c98/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251063-20260208020242-0d5edc/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251059-20260207200509-36187c/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251060-20260207201633-a9e87b/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251058-20260207183507-d87e2c/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251057-20260207180919-0296a9/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251064-20260208021425-6989c0/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/sessions/20251056-20260207160344-74fb0b/console.log",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/feature-sa-review-subagent-guardrail-ciaudit-0zjGmj/subagent.session.jsonl",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/sa-review-subagent-guardrail-r6tJst/subagent.session.jsonl",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/sa-review-subagent-guardrail-w4k86H/subagent.session.jsonl",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/sa-review-subagent-guardrail-Jt70RS/subagent.session.jsonl",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/sa-review-subagent-guardrail-A9Ixto/subagent.session.jsonl",
+    "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/sa-review-subagent-guardrail-y9YAmK/subagent.session.jsonl"
+  ],
+  "failures": [],
+  "warnings": []
+}
