@@ -459,7 +459,7 @@
     "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-cVKBxM/subagent.log",
     "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-cVKBxM/subagent.progress.md",
     "launcher": "auto",
-    "status": "awaiting_manual_launch",
+    "status": "cleaned",
     "launched_at": "20260208-010630",
     "window_title": "",
     "launcher_kind": "",
