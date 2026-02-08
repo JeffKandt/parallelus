@@ -484,5 +484,43 @@
     "deliverables_status": "waiting",
     "source_commit": "164a05b9d434bc1bff9bf2cd37bcdca2e8244f9b",
     "source_branch": "feature/process-runtime-reorg"
+  },
+  {
+    "id": "20260208-011810-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kTYHqI",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kTYHqI/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kTYHqI/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kTYHqI/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-kTYHqI/subagent.progress.md",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20260208-011810",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "id": "senior-review-report",
+        "kind": "review_markdown",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
+        "baseline": [
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md",
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md"
+        ],
+        "baseline_fingerprints": {
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md": "file:d71566838ca7f44e28415a6e8ad3ab5cd5143f63f1bdd314b21ddc1622f34085",
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md": "file:b8f5a70a48b8d818e0ccff058c131d11cefe3401db840eac3c47aae2b1d5c908"
+        },
+        "status": "harvested",
+        "harvested_at": "2026-02-08T01:24:04Z",
+        "target_path": "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md"
+      }
+    ],
+    "deliverables_status": "harvested",
+    "source_commit": "142c97a9123c66f29599394f2c74f5c4e299d04c",
+    "source_branch": "feature/process-runtime-reorg"
   }
 ]
