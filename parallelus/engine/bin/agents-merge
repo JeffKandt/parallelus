@@ -233,7 +233,7 @@ PY
       while IFS= read -r path; do
         [[ -z "$path" ]] && continue
         case "$path" in
-          docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|docs/plans/*|docs/progress/*|parallelus/manuals/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*)
+          docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|parallelus/manuals/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*)
             ;;
           *)
             allow_doc_only=0
@@ -430,8 +430,8 @@ fi
 
 # Ensure branch notebooks are already folded into canonical docs.
 shopt -s nullglob
-plan_files=("$repo_root"/docs/branches/*/PLAN.md "$repo_root"/docs/plans/feature-*.md)
-progress_files=("$repo_root"/docs/branches/*/PROGRESS.md "$repo_root"/docs/progress/feature-*.md)
+plan_files=("$repo_root"/docs/branches/*/PLAN.md)
+progress_files=("$repo_root"/docs/branches/*/PROGRESS.md)
 shopt -u nullglob
 
 if ((${#plan_files[@]} > 0)); then

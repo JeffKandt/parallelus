@@ -167,7 +167,7 @@ ensure_clean_worktree() {
     [[ -z "$line" ]] && continue
     path="${line:3}"
     case "$path" in
-      docs/parallelus|docs/parallelus/|docs/parallelus/self-improvement|docs/parallelus/self-improvement/*|docs/self-improvement|docs/self-improvement/|docs/self-improvement/*|parallelus/manuals/subagent-registry.json)
+      docs/parallelus|docs/parallelus/|docs/parallelus/self-improvement|docs/parallelus/self-improvement/*|parallelus/manuals/subagent-registry.json)
         ;;
       *)
         allowlist_only=0
@@ -190,15 +190,11 @@ is_doc_only_path() {
   case "$path" in
     docs/guardrails/runs/*|\
     docs/parallelus/reviews/*|\
-    docs/reviews/*|\
     docs/PLAN.md|\
     docs/PROGRESS.md|\
     docs/branches/*|\
-    docs/plans/*|\
-    docs/progress/*|\
     parallelus/manuals/*|\
-    docs/parallelus/self-improvement/*|\
-    docs/self-improvement/*)
+    docs/parallelus/self-improvement/*)
       return 0 ;;
   esac
   return 1
@@ -1535,13 +1531,9 @@ parent_branch = sys.argv[2]
 current_commit = sys.argv[3]
 marker_branch = parent_branch.replace('/', '-')
 marker_path = f"docs/parallelus/self-improvement/markers/{marker_branch}.json"
-legacy_marker_path = f"docs/self-improvement/markers/{marker_branch}.json"
 failures_path = f"docs/parallelus/self-improvement/failures/{marker_branch}--<marker-timestamp>.json"
 review_path = f"docs/parallelus/reviews/{marker_branch}-<YYYY-MM-DD>.md"
 marker_full = Path(marker_path)
-if not marker_full.exists() and Path(legacy_marker_path).exists():
-    marker_full = Path(legacy_marker_path)
-    marker_path = legacy_marker_path
 if marker_full.exists():
     try:
         data = json.loads(marker_full.read_text(encoding="utf-8"))

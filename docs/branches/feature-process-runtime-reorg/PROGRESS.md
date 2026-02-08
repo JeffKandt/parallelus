@@ -2108,12 +2108,90 @@
 - commit and push the process hardening updates
 - wait for maintainer direction before starting `PHASE-07`
 
-## 2026-02-08 00:52:12 UTC
-**Summary**
-- PHASE-06 checkpoint before senior review
+## 2026-02-08 02:24:52 UTC
+**Objectives**
+- continue execution and complete only `PHASE-07` (`Cleanup + Legacy Decommission`)
+- remove runtime compatibility fallbacks while preserving pre-reorg migration support in deploy tooling
 
-**Artifacts**
-- TODO: list touched files.
+**Work Performed**
+- reviewed startup guardrails and project overrides:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `parallelus/engine/custom/README.md`
+- ran `eval "$(make start_session)"` and captured session `20251064-20260208021425-6989c0`
+- captured bootstrap snapshot:
+  - `REPO_MODE=remote-connected`
+  - `CURRENT_BRANCH=feature/process-runtime-reorg`
+  - `BASE_REMOTE=origin`
+  - `ORPHANED_NOTEBOOKS=` (none)
+  - branch snapshot table rows:
+    - `feature/multi-agentic-tool-guidance` (`remote & local`) action `decide: merge/archive/delete`
+    - `feature/process-runtime-reorg` (`remote & local`) action `decide: merge/archive/delete`
+- read phase + notebook sources:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+- confirmed notebook layout state:
+  - canonical exists: `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md`
+  - legacy duplicates absent: `docs/plans/feature-process-runtime-reorg.md` and `docs/progress/feature-process-runtime-reorg.md` not present (no cleanup required)
+- determined next incomplete phase: `PHASE-07`
+- implemented `PHASE-07` cleanup/decommission scope:
+  - removed legacy runtime/read fallbacks from shared path helpers and consumers:
+    - `parallelus/engine/bin/agents-doc-paths.sh`
+    - `parallelus/engine/bin/parallelus_docs_paths.py`
+    - `parallelus/engine/bin/agents-paths.sh`
+    - `parallelus/engine/bin/parallelus_paths.py`
+    - `parallelus/engine/bin/agents-ensure-feature`
+    - `parallelus/engine/bin/agents-detect`
+    - `parallelus/engine/bin/agents-merge`
+    - `parallelus/engine/bin/subagent_manager.sh`
+    - `parallelus/engine/bin/agents-monitor-real.sh`
+    - `parallelus/engine/bin/branch-queue`
+    - `parallelus/engine/hooks/pre-commit`
+    - `parallelus/engine/hooks/pre-merge-commit`
+    - `parallelus/engine/bin/collect_failures.py`
+  - updated phase tests to enforce decommissioned legacy session fallbacks:
+    - `parallelus/engine/tests/test_session_paths.py`
+  - finalized docs to canonical layout-only references:
+    - `AGENTS.md`
+    - `parallelus/manuals/core.md`
+    - `parallelus/manuals/git-workflow.md`
+    - `parallelus/manuals/integrations/codex.md`
+    - `parallelus/manuals/prototypes/synchronous-subagents.md`
+    - `parallelus/manuals/subagent-session-orchestration.md`
+    - `docs/parallelus/reviews/README.md`
+    - `docs/deployment-upgrade-and-layout-PLAN.md`
+  - retired transitional planning draft file:
+    - deleted `docs/deployment-upgrade-and-layout-notes.md`
+- left `parallelus/engine/bin/deploy_agents_process.sh` legacy detection/migration logic intact for pre-reorg host upgrade support (phase-06 contract)
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/agents-detect parallelus/engine/bin/agents-doc-paths.sh parallelus/engine/bin/agents-ensure-feature parallelus/engine/bin/agents-merge parallelus/engine/bin/agents-monitor-real.sh parallelus/engine/bin/agents-paths.sh parallelus/engine/bin/subagent_manager.sh parallelus/engine/hooks/pre-commit parallelus/engine/hooks/pre-merge-commit`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" python -m py_compile parallelus/engine/bin/branch-queue parallelus/engine/bin/collect_failures.py parallelus/engine/bin/parallelus_docs_paths.py parallelus/engine/bin/parallelus_paths.py`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_session_paths.py parallelus/engine/tests/test_review_preflight.py parallelus/engine/tests/test_subagent_manager.py`
+  - outcome: pass (`19 passed in 19.21s`)
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py`
+  - outcome: pass (`5 passed in 5.63s`)
+- `PATH="$PWD/.venv/bin:$PATH" make ci`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/tests/smoke.sh`
+  - outcome: pass (`agents smoke test passed`)
+
+**Phase Gate Check (`PHASE-07`)**
+- `Full make ci passes.` — **Yes (pre-review)**
+  - evidence: `PATH="$PWD/.venv/bin:$PATH" make ci` (pass)
+- `Manual smoke of core workflow passes on clean clone/worktree.` — **Yes (pre-review)**
+  - evidence: `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/tests/smoke.sh` (pass on fresh temp repo/worktree)
+- `Pre-reorg upgrade simulation passes end-to-end.` — **Yes (pre-review)**
+  - evidence: `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py` (includes legacy/mixed/reorg migration simulations)
+
+**Residual Risks**
+- deployment/upgrade tooling intentionally retains legacy-path migration logic to support pre-reorg host repos; this is expected and validated in upgrade tests
+- historical progress/review artifacts in this repository still contain legacy path text for past events; active manuals and runtime tooling now enforce canonical paths only
 
 **Next Actions**
-- [ ] TODO: follow-up
+- commit and push `PHASE-07` implementation and notebook updates
+- run serialized post-commit retrospective refresh on `HEAD` (`retro-marker` -> `collect_failures.py` -> `retro_audit_local.py`)
+- run Senior Architect review loop on current `HEAD` until `Decision: approved` with explicit `PHASE-07` gate evaluation

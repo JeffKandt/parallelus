@@ -654,7 +654,7 @@ for row in data:
     if row.get("id") == entry_id:
         for deliverable in row.get("deliverables") or []:
             target = deliverable.get("target_path") or deliverable.get("target") or ""
-            if target.startswith("docs/parallelus/reviews/") or target.startswith("docs/reviews/"):
+            if target.startswith("docs/parallelus/reviews/"):
                 print(target)
         break
 PY

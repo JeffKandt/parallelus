@@ -39,7 +39,7 @@ that flow without abandoning existing guardrails.
 2. Main agent remains in the original pane, ready to provide clarifications through tmux
    messages or shared notes, but avoids editing files to prevent conflicts.
 3. All shell command output stays visible in the subagent pane; optional tee to
-   `sessions/<ID>/console.log` continues capturing logs.
+   `.parallelus/sessions/<ID>/console.log` continues capturing logs.
 4. If the monitor loop flags a heartbeat lapse, the main agent pauses the subagent,
    investigates immediately, and documents the intervention in the plan/progress docs.
 

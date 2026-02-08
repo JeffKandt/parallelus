@@ -234,7 +234,8 @@ the final commit before merging.
   orphaned state.
 - Optional: Codex rollout transcripts can be extracted with
   `parallelus/engine/bin/extract_codex_rollout.py`. The default output goes to
-  `sessions/<id>/artifacts/` (gitignored) or `sessions/extracted/`. If running
+  `.parallelus/sessions/<id>/artifacts/` (gitignored) or
+  `.parallelus/guardrails/runs/extracted/`. If running
   inside a sandbox that cannot access `~/.codex/sessions`, pass `--sessions-root`
   pointing at a mounted path or copy the rollout JSONL into an accessible
   directory first.

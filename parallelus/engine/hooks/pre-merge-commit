@@ -12,8 +12,8 @@ if [[ -n "${AGENTS_MERGE_FORCE:-}" ]]; then
 fi
 
 shopt -s nullglob
-plan_files=("docs/branches/"*/PLAN.md "docs/plans/feature-"*.md)
-progress_files=("docs/branches/"*/PROGRESS.md "docs/progress/feature-"*.md)
+plan_files=("docs/branches/"*/PLAN.md)
+progress_files=("docs/branches/"*/PROGRESS.md)
 shopt -u nullglob
 
 if ((${#plan_files[@]} > 0)); then
@@ -63,7 +63,7 @@ from pathlib import Path
 branch = sys.argv[1]
 base = branch.replace('/', '-')
 candidates = []
-for reviews_dir in [Path('docs/parallelus/reviews'), Path('docs/reviews')]:
+for reviews_dir in [Path('docs/parallelus/reviews')]:
     if not reviews_dir.exists():
         continue
     direct = reviews_dir / f"{base}.md"
@@ -83,7 +83,7 @@ PY
     return
   fi
   local staged=()
-  mapfile -t staged < <(git diff --cached --name-only -- 'docs/parallelus/reviews/*.md' 'docs/reviews/*.md')
+  mapfile -t staged < <(git diff --cached --name-only -- 'docs/parallelus/reviews/*.md')
   if [[ ${#staged[@]} -eq 1 ]]; then
     printf '%s' "${staged[0]}"
     return
@@ -95,7 +95,7 @@ review_file=$(resolved_review_file "$merge_branch" "${AGENTS_MERGE_REVIEW_FILE:-
 
 if [[ -z "$review_file" || ! -f "$review_file" ]]; then
   echo "pre-merge-commit: senior architect review missing." >&2
-  echo "Expected docs/parallelus/reviews/<branch>.md (or legacy docs/reviews/<branch>.md) with Decision: approved." >&2
+  echo "Expected docs/parallelus/reviews/<branch>.md with Decision: approved." >&2
   echo "Set AGENTS_MERGE_REVIEW_FILE=/path/to/review.md or AGENTS_MERGE_FORCE=1 to override." >&2
   exit 1
 fi
@@ -134,7 +134,7 @@ if [[ -n "$expected_commit" && "$review_commit" != "$expected_commit" ]]; then
     while IFS= read -r path; do
       [[ -z "$path" ]] && continue
       case "$path" in
-        docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|docs/plans/*|docs/progress/*|parallelus/manuals/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*|docs/self-improvement/markers/*|docs/self-improvement/reports/*|sessions/*|.parallelus/sessions/*)
+        docs/guardrails/runs/*|docs/parallelus/reviews/*|docs/PLAN.md|docs/PROGRESS.md|docs/branches/*|parallelus/manuals/*|docs/parallelus/self-improvement/markers/*|docs/parallelus/self-improvement/reports/*|.parallelus/sessions/*)
           ;;
         *)
           allow_doc_only=0

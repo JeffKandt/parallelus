@@ -308,7 +308,7 @@ record the outcome.
 - **Throwaway verification**
   1. `eval "$(make start_session)"`
   2. Confirm plan/progress notebooks indicate completion.
-  3. Inspect `sessions/<id>/summary.md` & `meta.json`.
+  3. Inspect `.parallelus/sessions/<id>/summary.md` & `meta.json`.
   4. Ensure recorded deliverables were harvested and landed in the main repo.
   5. Ensure `git status` is clean; no notebooks remain.
   6. Log results in the main branch progress doc.

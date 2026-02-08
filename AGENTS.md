@@ -48,12 +48,11 @@ every session if it exists and record that acknowledgement in the progress log.
   entries.
 - Open the active plan and progress notebooks
   (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) or
-  confirm they do not exist yet (legacy pre-migration notebooks may still exist
-  under `docs/plans/<branch>.md` and `docs/progress/<branch>.md`).
+  confirm they do not exist yet.
 - If the tmux environment changed (new machine, updated launcher), reread
   `parallelus/manuals/manuals/tmux-setup.md` before continuing to confirm sockets and
   binaries align with Parallelus expectations.
-- List recent `sessions/` entries. If none match today (2025-10-12), seed a new
+- List recent `.parallelus/sessions/` entries. If none match today, seed a new
   session with `SESSION_PROMPT="..." eval "$(make start_session)"` **before** leaving
   Recon & Planning.
 - Inspect repo state, answer questions, plan next moves. Do not edit tracked
@@ -129,8 +128,7 @@ every session if it exists and record that acknowledgement in the progress log.
   reinstate the guardrail.
 - Before folding branch notebooks into canonical logs, run
   `make turn_end m="summary"` (or another checkpoint note) so the latest marker
-  lands in `docs/parallelus/self-improvement/markers/` (legacy
-  `docs/self-improvement/markers/` is still read during migration); the folding
+  lands in `docs/parallelus/self-improvement/markers/`; the folding
   helper now enforces this requirement.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted

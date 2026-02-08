@@ -83,9 +83,7 @@ shopt -s nullglob
 declare -a orphan_paths=()
 for path in \
   "$repo_root"/docs/branches/*/PLAN.md \
-  "$repo_root"/docs/branches/*/PROGRESS.md \
-  "$repo_root"/docs/plans/feature-*.md \
-  "$repo_root"/docs/progress/feature-*.md; do
+  "$repo_root"/docs/branches/*/PROGRESS.md; do
   [[ $(basename "$path") == "README.md" ]] && continue
   if [[ "$path" == "$expected_plan" || "$path" == "$expected_progress" ]]; then
     continue

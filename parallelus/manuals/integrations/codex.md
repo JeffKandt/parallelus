@@ -10,12 +10,12 @@ Codex environments follow the same guardrails as local shells with a few extras.
 
 ## Session Management
 - Start sessions with `eval "$(make start_session)"` so the exports and logging
-  redirect apply to the current shell. This writes artifacts under `sessions/<ID>/`
+  redirect apply to the current shell. This writes artifacts under `.parallelus/sessions/<ID>/`
   and enables console logging by default (it wires `console.log` via `tee` for the current shell).
   If you need to disable auto-logging for a constrained environment, set
   `AGENTS_SESSION_LOG_AUTO=0` before `make start_session` and ensure logging is
   captured by other means.
-- Update the session summary (`sessions/<ID>/summary.md`) every turn and keep
+- Update the session summary (`.parallelus/sessions/<ID>/summary.md`) every turn and keep
   `meta.json` in sync with timestamps.
 
 ## Sandboxed Environments

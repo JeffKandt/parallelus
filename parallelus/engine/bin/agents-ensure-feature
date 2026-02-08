@@ -127,17 +127,8 @@ fi
 slugged_branch="${feature_branch//\//-}"
 plan_file="$(parallelus_branch_plan_write_path "$repo_root" "$slugged_branch")"
 progress_file="$(parallelus_branch_progress_write_path "$repo_root" "$slugged_branch")"
-legacy_plan_file="$(parallelus_branch_plan_legacy_path "$repo_root" "$slugged_branch")"
-legacy_progress_file="$(parallelus_branch_progress_legacy_path "$repo_root" "$slugged_branch")"
 
 mkdir -p "$(dirname "$plan_file")" "$(dirname "$progress_file")"
-
-if [[ -f "$legacy_plan_file" && ! -f "$plan_file" ]]; then
-  mv "$legacy_plan_file" "$plan_file"
-fi
-if [[ -f "$legacy_progress_file" && ! -f "$progress_file" ]]; then
-  mv "$legacy_progress_file" "$progress_file"
-fi
 
 if [[ ! -f "$plan_file" ]]; then
   cat <<EOF_PLAN >"$plan_file"

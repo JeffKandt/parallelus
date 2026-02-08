@@ -105,7 +105,7 @@ def test_session_logging_active_fails_without_context() -> None:
         assert "unbound variable" not in result.stderr
 
 
-def test_turn_end_reads_legacy_session_directory() -> None:
+def test_turn_end_rejects_legacy_session_directory() -> None:
     with tempfile.TemporaryDirectory(prefix="session-path-turn-end-") as tmpdir:
         repo = Path(tmpdir)
         branch = "feature/legacy-turn-end"
@@ -127,10 +127,10 @@ def test_turn_end_reads_legacy_session_directory() -> None:
             cwd=repo,
             env={"SESSION_ID": session_id, "AGENTS_RETRO_SKIP_VALIDATE": "1"},
         )
-        assert result.returncode == 0, result.stderr
-        assert "legacy checkpoint" in (legacy_session / "summary.md").read_text(encoding="utf-8")
+        assert result.returncode != 0
+        assert "session console log missing at" in result.stderr
         progress = repo / "docs" / "branches" / "feature-legacy-turn-end" / "PROGRESS.md"
-        assert "legacy checkpoint" in progress.read_text(encoding="utf-8")
+        assert "legacy checkpoint" not in progress.read_text(encoding="utf-8")
 
 
 def test_turn_end_uses_runtime_session_pointer_without_env_session_id() -> None:
@@ -171,7 +171,7 @@ def test_turn_end_uses_runtime_session_pointer_without_env_session_id() -> None:
         assert marker_data.get("session_console", "").startswith(".parallelus/sessions/")
 
 
-def test_collect_failures_scans_new_and_legacy_session_logs() -> None:
+def test_collect_failures_scans_parallelus_session_logs_only() -> None:
     with tempfile.TemporaryDirectory(prefix="session-path-failures-") as tmpdir:
         repo = Path(tmpdir)
         branch = "feature/failure-scan"
@@ -201,10 +201,10 @@ def test_collect_failures_scans_new_and_legacy_session_logs() -> None:
             str(Path(item.get("source", "")).resolve()) for item in report.get("failures", []) if item.get("source")
         }
         assert str(new_log.resolve()) in failure_sources
-        assert str(legacy_log.resolve()) in failure_sources
+        assert str(legacy_log.resolve()) not in failure_sources
 
 
-def test_default_output_dir_uses_legacy_session_when_env_dir_not_set(monkeypatch) -> None:
+def test_default_output_dir_uses_parallelus_extracted_dir_when_only_legacy_session_exists(monkeypatch) -> None:
     with tempfile.TemporaryDirectory(prefix="session-path-output-dir-") as tmpdir:
         repo = Path(tmpdir)
         _init_repo(repo)
@@ -217,7 +217,9 @@ def test_default_output_dir_uses_legacy_session_when_env_dir_not_set(monkeypatch
         monkeypatch.delenv("SESSION_DIR", raising=False)
         monkeypatch.setenv("SESSION_ID", session_id)
 
-        assert rollout_extractor.default_output_dir(repo).resolve() == (legacy_session / "artifacts").resolve()
+        assert rollout_extractor.default_output_dir(repo).resolve() == (
+            repo / ".parallelus" / "guardrails" / "runs" / "extracted"
+        ).resolve()
 
 
 def test_collect_failures_dedupes_overlapping_parallelus_globs() -> None:

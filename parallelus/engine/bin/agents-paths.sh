@@ -7,11 +7,6 @@ parallelus_sessions_write_root() {
   printf '%s/.parallelus/sessions\n' "${repo_root%/}"
 }
 
-parallelus_sessions_legacy_root() {
-  local repo_root="$1"
-  printf '%s/sessions\n' "${repo_root%/}"
-}
-
 parallelus_normalize_repo_path() {
   local repo_root="$1"
   local value="$2"
@@ -40,8 +35,6 @@ parallelus_sessions_read_roots() {
   if [[ -n "$configured_root" ]]; then
     candidates+=("$(parallelus_normalize_repo_path "$repo_root" "$configured_root")")
   fi
-
-  candidates+=("$(parallelus_sessions_legacy_root "$repo_root")")
 
   for candidate in "${candidates[@]}"; do
     candidate="${candidate%/}"

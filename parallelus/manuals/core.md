@@ -10,7 +10,7 @@ progress log when you consult it for open questions or training.
 ### Recon & Planning (read-only)
 - Start every session with `eval "$(make start_session)"`, which enables logging and runs `make read_bootstrap`. Relay the branch/phase status to the maintainer before proceeding.
 - Immediately open the active branch plan and progress notebooks (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
-- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." eval "$(make start_session)"` before leaving Recon & Planning.
+- List recent session directories (`ls -1 .parallelus/sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." eval "$(make start_session)"` before leaving Recon & Planning.
 - Inspect repo state, answer questions, plan next moves.
 - Do **not** modify code, docs, or plans, and skip bootstrap helpers.
 
@@ -35,7 +35,7 @@ Skipping these steps causes inconsistent state, missing logs, and fragile merge 
 ## Recon & Planning (read-only)
 - Run `make read_bootstrap` immediately to detect repo mode, current branch, and outstanding notebooks; relay the branch/phase status to the maintainer before proceeding.
 - Immediately open the active branch plan and progress notebooks (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) so next steps and status updates reflect the latest objectives, TODOs, and follow-ups.
-- List recent session directories (`ls -1 sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
+- List recent session directories (`ls -1 .parallelus/sessions/ | tail -5`). If the newest entry predates the current turn, run `SESSION_PROMPT="..." make start_session` before leaving Recon & Planning.
 - Inspect repo state, answer questions, plan next moves.
 - Do **not** modify code, docs, or plans, and skip bootstrap helpers.
 
@@ -67,13 +67,13 @@ workflows.
 Run the quick audit before touching anything:
 ```bash
 git status --short --branch
-ls -1 sessions/ | tail -5
+ls -1 .parallelus/sessions/ | tail -5
 ls docs/branches/ | tail -5
 ```
 Use the output to determine whether you are resuming an existing feature or
 starting fresh (Recon & Planning), then open the branch plan/progress notebooks
 you just listed to capture outstanding work before proposing next steps. If the
-latest `sessions/` directory predates today, seed a fresh session immediately via
+latest `.parallelus/sessions/` directory predates today, seed a fresh session immediately via
 `SESSION_PROMPT="..." make start_session` before editing tracked files.
 
 ## 2. Audible Alert Rule
@@ -105,7 +105,7 @@ available. Log results in the branch progress notebook.
 1. `eval "$(make start_session)"`
 2. `make bootstrap slug=<slug>` (refuses if worktree dirty)
 3. `SESSION_PROMPT="..." eval "$(make start_session)"`
-4. Update plan/progress docs with objectives and links to `sessions/<ID>/`
+4. Update plan/progress docs with objectives and links to `.parallelus/sessions/<ID>/`
 5. Record environment diagnostics (above)
 6. Commit the plan/progress bootstrap to freeze the starting state
 
@@ -119,13 +119,13 @@ That closes the prior turn so artifacts stay sequenced.
 
 ### Turn-End Validation (run before replying to the user)
 - Progress log reflects current state (append timestamped entry).
-- Session summary (`sessions/<ID>/summary.md`) updated with turn notes.
+- Session summary (`.parallelus/sessions/<ID>/summary.md`) updated with turn notes.
 - `meta.json` refreshed with latest timestamp.
 - No auto-commits; user decides.
 - Working tree either clean or containing only intentional changes noted in the
   progress log.
 - Fire “ready” audible alert if work block >5s.
-- Session console logging must be enabled (`sessions/<ID>/console.log` is non-empty).
+- Session console logging must be enabled (`.parallelus/sessions/<ID>/console.log` is non-empty).
 - `make start_session` must have been run for the current branch (enforced by a session marker).
 
 Run `make turn_end m="summary"` (wraps `parallelus/engine/bin/agents-turn-end`) to perform

@@ -39,10 +39,6 @@ def sessions_write_root(repo_root: Path) -> Path:
     return (repo_root / ".parallelus" / "sessions").resolve()
 
 
-def sessions_legacy_root(repo_root: Path) -> Path:
-    return (repo_root / "sessions").resolve()
-
-
 def sessions_read_roots(repo_root: Path, configured_root: str | None = None) -> list[Path]:
     configured = configured_root
     if configured is None:
@@ -51,7 +47,6 @@ def sessions_read_roots(repo_root: Path, configured_root: str | None = None) -> 
     candidates: list[Path] = [sessions_write_root(repo_root)]
     if configured:
         candidates.append(normalize_repo_path(repo_root, configured))
-    candidates.append(sessions_legacy_root(repo_root))
 
     roots: list[Path] = []
     seen: set[str] = set()

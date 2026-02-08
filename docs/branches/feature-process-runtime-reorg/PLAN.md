@@ -1,7 +1,7 @@
 # Branch Plan — feature/process-runtime-reorg
 
 ## Objectives
-- implement the process-vs-runtime documentation and layout reorgs described in `docs/deployment-upgrade-and-layout-notes.md`
+- implement the process-vs-runtime documentation and layout reorgs captured in `docs/deployment-upgrade-and-layout-PLAN.md` and `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
 - update Beads integration guidance to reflect the “sync branch + optional usage” stance and how it interacts with Parallelus merge governance
 - keep the repo merge workflow intact (CI, audits, senior review) with minimal disruption
 
@@ -20,6 +20,7 @@
 - [x] execute `PHASE-04` (engine/manual relocation + hardcoded path rewrite + acceptance gate + approved senior review)
 - [x] execute `PHASE-05` (customization contract implementation + acceptance gate + approved senior review)
 - [x] execute `PHASE-06` (pre-reorg upgrade command + idempotent migration + acceptance gate + approved senior review)
+- [x] execute `PHASE-07` (remove legacy runtime fallbacks, retire transitional notes, run full phase gates, and capture approved senior review)
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
@@ -31,5 +32,4 @@
 - [x] implement post-`PHASE-06` process hardening suggestions (serialized artifact-refresh ordering in phase prompt, stale-review auto-clean option, and headless default `senior_review_preflight_run` guidance)
 
 ## Next Actions
-- hold here after `PHASE-06` completion and wait for maintainer direction before starting `PHASE-07`
-- if authorized to continue, execute only `PHASE-07` cleanup/decommission scope with fresh phase-specific gate evidence
+- hold after `PHASE-07` completion and wait for maintainer direction

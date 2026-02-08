@@ -33,7 +33,7 @@ fi
 needs_plan_log_reminder=0
 for path in $staged_files; do
   case "$path" in
-    docs/branches/*|docs/plans/*|docs/progress/*|sessions/*|.parallelus/sessions/*)
+    docs/branches/*|.parallelus/sessions/*)
       ;; # docs already included
     *)
       needs_plan_log_reminder=1
@@ -43,14 +43,14 @@ for path in $staged_files; do
 done
 
 if [[ $needs_plan_log_reminder -eq 1 && "$current_branch" == feature/* ]]; then
-  if ! printf '%s\n' "$staged_files" | grep -Eq '^docs/branches/feature-[^/]+/PROGRESS\.md$|^docs/progress/feature-'; then
+  if ! printf '%s\n' "$staged_files" | grep -Eq '^docs/branches/feature-[^/]+/PROGRESS\.md$'; then
     cat >&2 <<'EOF'
-pre-commit: Reminder — stage docs/branches/<slug>/PROGRESS.md (or legacy docs/progress/feature-*.md) with a timestamped entry.
+pre-commit: Reminder — stage docs/branches/<slug>/PROGRESS.md with a timestamped entry.
 EOF
   fi
-  if ! printf '%s\n' "$staged_files" | grep -Eq '^docs/branches/feature-[^/]+/PLAN\.md$|^docs/plans/feature-'; then
+  if ! printf '%s\n' "$staged_files" | grep -Eq '^docs/branches/feature-[^/]+/PLAN\.md$'; then
     cat >&2 <<'EOF'
-pre-commit: Reminder — sync docs/branches/<slug>/PLAN.md (or legacy docs/plans/feature-*.md) with current tasks/checklist.
+pre-commit: Reminder — sync docs/branches/<slug>/PLAN.md with current tasks/checklist.
 EOF
   fi
 fi
@@ -60,26 +60,13 @@ progress_deleted=()
 while IFS=$'\t' read -r status path new_path; do
   case "$status" in
     D)
-      if [[ "$path" == docs/progress/feature-*.md ]]; then
-        slug="${path#docs/progress/}"
-        slug="${slug%.md}"
-        migrated_path="docs/branches/${slug}/PROGRESS.md"
-        if printf '%s\n' "$staged_files" | grep -Fxq "$migrated_path"; then
-          continue
-        fi
-      fi
       progress_deleted+=("$path")
       ;;
     R*)
-      # Moving legacy progress notebooks to docs/branches/<slug>/PROGRESS.md
-      # is a layout migration, not a deletion.
-      if [[ "$new_path" == docs/branches/*/PROGRESS.md ]]; then
-        continue
-      fi
       progress_deleted+=("$path")
       ;;
   esac
-done < <(git diff --cached --name-status -- 'docs/branches/*/PROGRESS.md' 'docs/progress/feature-*.md')
+done < <(git diff --cached --name-status -- 'docs/branches/*/PROGRESS.md')
 
 if ((${#progress_deleted[@]} > 0)); then
   if ! parallelus/engine/bin/fold-progress verify --target docs/PROGRESS.md --ref HEAD --deleted "${progress_deleted[@]}"; then

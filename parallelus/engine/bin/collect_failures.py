@@ -181,8 +181,6 @@ def main() -> None:
     add_candidates(repo.glob(".parallelus/**/subagent.session.jsonl"))
     add_candidates(repo.glob(".parallelus/guardrails/runs/**/session.jsonl"))
     add_candidates(repo.glob(".parallelus/guardrails/runs/**/subagent.exec_events.jsonl"))
-    add_candidates(repo.glob("docs/guardrails/runs/**/session.jsonl"))
-    add_candidates(repo.glob("docs/guardrails/runs/**/subagent.exec_events.jsonl"))
 
     for path in candidates:
         sources.append(str(path))
