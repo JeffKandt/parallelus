@@ -43,6 +43,10 @@ Commands:
   review-preflight
            Serialize retrospective preflight (marker -> failures -> local audit)
            and optionally launch the senior review subagent
+  review-preflight-run
+           Run review-preflight and, when launch falls back to
+           awaiting_manual_launch, execute the generated sandbox runner,
+           then harvest+cleanup automatically
   status   List registry entries (optionally filter by --id)
   resume   Resume an exec-mode subagent session (follow-up prompt)
   verify   Validate a completed subagent sandbox/worktree
@@ -1233,6 +1237,58 @@ USAGE
   cmd_launch --type throwaway --slug senior-review --role senior_architect --launcher "$launcher"
 }
 
+cmd_review_preflight_run() {
+  local preflight_output entry_id entry_status entry_path runner_path
+  preflight_output=$(cmd_review_preflight "$@")
+  if [[ -n "$preflight_output" ]]; then
+    printf '%s\n' "$preflight_output"
+  fi
+
+  entry_id=$(printf '%s\n' "$preflight_output" | tail -n1 | tr -d '\r' | xargs || true)
+  if [[ -z "$entry_id" ]]; then
+    echo "review-preflight-run: no launch id returned (likely --no-launch); nothing else to run." >&2
+    return 0
+  fi
+
+  local entry_meta
+  entry_meta=$(python3 - "$REGISTRY_FILE" "$entry_id" <<'PY'
+import json
+import sys
+
+registry_path, entry_id = sys.argv[1:3]
+with open(registry_path, "r", encoding="utf-8") as fh:
+    rows = json.load(fh)
+
+for row in rows:
+    if row.get("id") == entry_id:
+        print(row.get("status", ""))
+        print(row.get("path", ""))
+        break
+else:
+    raise SystemExit(f"review-preflight-run: unknown registry id {entry_id}")
+PY
+  ) || return 1
+
+  entry_status=$(printf '%s\n' "$entry_meta" | sed -n '1p')
+  entry_path=$(printf '%s\n' "$entry_meta" | sed -n '2p')
+  if [[ "$entry_status" != "awaiting_manual_launch" ]]; then
+    echo "review-preflight-run: entry $entry_id status is '$entry_status'; skipping manual fallback wrapper." >&2
+    return 0
+  fi
+
+  runner_path="$entry_path/.parallelus_run_subagent.sh"
+  if [[ ! -x "$runner_path" ]]; then
+    echo "review-preflight-run: manual launcher missing or not executable: $runner_path" >&2
+    return 1
+  fi
+
+  echo "review-preflight-run: running manual launcher for $entry_id" >&2
+  "$runner_path"
+
+  cmd_harvest --id "$entry_id"
+  cmd_cleanup --id "$entry_id"
+}
+
 cmd_launch() {
   local type slug launcher scope_override codex_profile role_prompt
   local -a deliverables_specs=()
@@ -2202,6 +2258,7 @@ main() {
   case "$cmd" in
     launch) cmd_launch "$@" ;;
     review-preflight) cmd_review_preflight "$@" ;;
+    review-preflight-run) cmd_review_preflight_run "$@" ;;
     status) cmd_status "$@" ;;
     resume) cmd_resume "$@" ;;
     verify) cmd_verify "$@" ;;

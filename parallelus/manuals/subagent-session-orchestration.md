@@ -45,6 +45,10 @@ report progress or decisions back in plain language.
 > (recommended) to run the
 > serialized pipeline (`retro-marker` -> `collect_failures` -> local
 > commit-aware auditor -> `verify-retrospective`) and launch the senior review.
+> For non-tmux/headless environments, use
+> `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run` to run the
+> same preflight, execute manual-launch fallback automatically, and then
+> harvest/cleanup in one flow.
 > If you run the steps manually, keep the same strict order. The auditor
 > analyses evidence starting from the marker recorded in
 > `docs/parallelus/self-improvement/markers/<branch>.json` (and the failures summary in

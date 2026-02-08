@@ -13,6 +13,17 @@ PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight
 `make senior_review_preflight` runs the serialized preflight pipeline
 (`retro-marker` -> `collect_failures` -> local commit-aware auditor ->
 `verify-retrospective`) and then launches the senior-review subagent. For
+non-tmux/headless runs where launch often falls back to manual, use:
+
+```bash
+PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run
+```
+
+`make senior_review_preflight_run` executes preflight, runs the generated
+sandbox launcher when status is `awaiting_manual_launch`, then harvests and
+cleans up automatically.
+
+For
 manual launch-only fallback, use:
 
 ```bash

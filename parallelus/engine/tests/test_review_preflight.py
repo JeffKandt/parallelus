@@ -155,3 +155,68 @@ def test_review_preflight_default_launch_marks_awaiting_when_not_started() -> No
         entry = data[-1]
         assert entry["launcher"] == "auto"
         assert entry["status"] == "awaiting_manual_launch"
+
+
+def test_review_preflight_run_executes_manual_fallback_and_cleans_up() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-run-wrapper-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-wrapper"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+        for name in ("markers", "reports", "failures"):
+            leaf = repo / "docs" / "parallelus" / "self-improvement" / name
+            leaf.mkdir(parents=True, exist_ok=True)
+            (leaf / ".gitkeep").write_text("", encoding="utf-8")
+        manuals_dir = repo / "parallelus" / "manuals"
+        manuals_dir.mkdir(parents=True, exist_ok=True)
+        (manuals_dir / "subagent-registry.json").write_text("[]\n", encoding="utf-8")
+        _run(["git", "add", "docs/parallelus/self-improvement"], cwd=repo)
+        _run(["git", "add", "parallelus/manuals/subagent-registry.json"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "seed self-improvement scaffold"], cwd=repo)
+        (repo / ".gitignore").write_text(".parallelus/\nparallelus/engine/bin/__pycache__/\n", encoding="utf-8")
+        _run(["git", "add", ".gitignore"], cwd=repo)
+        _run(["git", "commit", "-q", "-m", "ignore runtime workspace"], cwd=repo)
+
+        launcher_stub_dir = Path(tempfile.mkdtemp(prefix="review-preflight-launcher-stub-"))
+
+        codex_stub = launcher_stub_dir / "codex"
+        codex_stub.write_text(
+            f"""#!/usr/bin/env bash
+set -euo pipefail
+commit=$(git rev-parse HEAD)
+mkdir -p docs/parallelus/reviews
+cat > "docs/parallelus/reviews/{slug}-2099-01-01.md" <<EOF
+Reviewed-Branch: {branch}
+Reviewed-Commit: ${{commit}}
+Reviewed-On: 2099-01-01
+Decision: approved
+EOF
+exit 0
+""",
+            encoding="utf-8",
+        )
+        codex_stub.chmod(0o755)
+
+        cmd = _run(
+            [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight-run"],
+            cwd=repo,
+            env={
+                # Keep tmux off PATH so launch falls back to manual instructions.
+                "PATH": f"{launcher_stub_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+            },
+        )
+        assert cmd.returncode == 0, cmd.stderr
+        assert "review-preflight-run: running manual launcher" in cmd.stderr
+        assert "Harvested deliverables:" in cmd.stderr
+        assert "Cleaned " in cmd.stdout
+
+        review_file = repo / "docs" / "parallelus" / "reviews" / f"{slug}-2099-01-01.md"
+        assert review_file.exists()
+
+        registry_path = repo / "parallelus" / "manuals" / "subagent-registry.json"
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+        assert data, "expected a launch registry entry"
+        entry = data[-1]
+        assert entry["status"] == "cleaned"
+        assert entry.get("deliverables_status") == "harvested"
+        assert not Path(entry["path"]).exists()

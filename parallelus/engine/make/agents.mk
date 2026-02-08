@@ -7,7 +7,7 @@ PLAN_DIR ?= docs/branches
 PROGRESS_DIR ?= docs/branches
 SESSION_DIR ?= .parallelus/sessions
 
-.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures retro_audit_local senior_review_preflight
+.PHONY: read_bootstrap bootstrap start_session turn_end archive agents-smoke agents-monitor-loop merge monitor_subagents queue_init queue_show queue_pull queue_clear queue_path collect_failures retro_audit_local senior_review_preflight senior_review_preflight_run
 
 read_bootstrap:
 	@if [ "$${AGENTS_SESSION_LOG_REQUIRED:-1}" != "0" ] && ! $(AGENTS_BIN)/agents-session-logging-active --quiet; then \
@@ -62,6 +62,13 @@ ifdef ARGS
 	@$(AGENTS_BIN)/subagent_manager.sh review-preflight $(ARGS)
 else
 	@$(AGENTS_BIN)/subagent_manager.sh review-preflight
+endif
+
+senior_review_preflight_run:
+ifdef ARGS
+	@$(AGENTS_BIN)/subagent_manager.sh review-preflight-run $(ARGS)
+else
+	@$(AGENTS_BIN)/subagent_manager.sh review-preflight-run
 endif
 
 archive:
