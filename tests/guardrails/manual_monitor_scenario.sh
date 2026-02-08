@@ -16,7 +16,7 @@
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-REGISTRY="$ROOT/docs/agents/subagent-registry.json"
+REGISTRY="$ROOT/parallelus/manuals/subagent-registry.json"
 REGISTRY_BACKUP=$(mktemp)
 SANDBOX_ROOT="$ROOT/.parallelus/test-monitor-scenario"
 KEEP_SESSION=${KEEP_SESSION:-1}
@@ -525,7 +525,7 @@ MONITOR_PID=0
 (
   cd "$ROOT"
   MONITOR_RECHECK_DELAY=$RECHECK_DELAY MONITOR_NUDGE_DELAY=$NUDGE_DELAY MONITOR_NUDGE_MESSAGE=$NUDGE_MESSAGE \
-    "$ROOT/.agents/bin/agents-monitor-loop.sh" \
+    "$ROOT/parallelus/engine/bin/agents-monitor-loop.sh" \
     --interval "$INTERVAL" \
     --threshold "$HEARTBEAT_THRESHOLD" \
     --runtime-threshold "$RUNTIME_THRESHOLD" \

@@ -11,7 +11,7 @@ Parallelus is designed around a clear division of labour:
 - **Dialogue over commands.** Instead of memorising scripts, you describe what should happen: "Create a feature branch for the dashboard uplift" or "Merge the notifications work once the review is green." The agent interprets and carries out the request.
 - **Process without burden.** Guardrails, retrospectives, and review gates are agent responsibilities. You only need to know they exist, why they matter, and how to invoke them. The agent keeps notebooks current, runs audits, and confirms every step in the progress log.
 - **Shared situational awareness.** Documentation is written so humans can understand the state of the project at a glance, even if they never touch the shell. Notebook updates, backlog queues, and review reports keep the narrative flowing between turns.
-- **Portable playbook.** When Parallelus is embedded into another repository, its human-facing guidance moves with it (typically under `.agents/`). The project's own README remains focused on the product; this guide explains how to work with the agent.
+- **Portable playbook.** When Parallelus is embedded into another repository, its human-facing guidance moves with it (typically under `parallelus/engine/`). The project's own README remains focused on the product; this guide explains how to work with the agent.
 
 With these principles, you can treat the agent as a dedicated developer who never forgets the process and always documents what happened.
 
@@ -74,7 +74,7 @@ As the human collaborator, ensure the agent has these capabilities. You do not n
 
 ### Introducing Parallelus to a Project
 1. **Assess fit.** Ask the agent to audit the repo and confirm Parallelus can be layered on top (existing guardrails, expectations, etc.).
-2. **Install the playbook.** Instruct the agent to "Adopt the Parallelus process in this repository," which prompts it to copy the `.agents/` directory, documentation, and hooks.
+2. **Install the playbook.** Instruct the agent to "Adopt the Parallelus process in this repository," which prompts it to copy the `parallelus/engine/` directory, documentation, and hooks.
 3. **Align on cadence.** Discuss how you'd like to work (session length, review cadence, release cadence). The agent will note this in the plan.
 4. **Confirm guardrails.** Request a walkthrough: "Explain the key guardrails and how they impact our workflow."
 5. **Start small.** Begin with a single feature branch to experience the Recon → Planning → Execution flow before scaling up.
@@ -116,11 +116,11 @@ Feel free to paraphrase; the agent is trained to map intent to the underlying pr
 ## Directory Overview (Human-Oriented)
 - `README.md` -- This guide for humans using Parallelus.
 - `AGENTS.md` -- The definitive guardrail checklist the agent follows. Skim it if you want deeper governance detail.
-- `.agents/` -- Implementation details the agent relies on (scripts, hooks, prompts). Humans rarely need to touch these directly.
+- `parallelus/engine/` -- Implementation details the agent relies on (scripts, hooks, prompts). Humans rarely need to touch these directly.
 - `docs/PLAN.md` -- The global backlog and priorities, updated by the agent.
 - `docs/PROGRESS.md` -- The consolidated work log across branches.
-- `docs/agents/` -- Manuals referenced when special gates (merges, diagnostics, subagent orchestration) are triggered.
-- `docs/agents/project/` -- Maintainer notes about the Parallelus toolkit. When adopting Parallelus in another repo, replace this directory with the host project's guidance (see docs/agents/project/README.md).
+- `parallelus/manuals/` -- Manuals referenced when special gates (merges, diagnostics, subagent orchestration) are triggered.
+- `parallelus/manuals/project/` -- Maintainer notes about the Parallelus toolkit. When adopting Parallelus in another repo, replace this directory with the host project's guidance (see parallelus/manuals/project/README.md).
 - `docs/plans/` & `docs/progress/` -- Per-branch notebooks created when new work begins; useful if you want to review the history of a specific feature.
 - `docs/self-improvement/` -- Retrospective markers and reports maintained by the agent.
 

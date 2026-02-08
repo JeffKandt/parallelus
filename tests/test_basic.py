@@ -29,14 +29,14 @@ def run(
 
 def test_subagent_launch_without_role_succeeds(tmp_path):
     """Launching a throwaway sandbox without an explicit role must not crash."""
-    scope = ROOT / "docs/agents/templates/ci_audit_scope.md"
+    scope = ROOT / "parallelus/manuals/templates/ci_audit_scope.md"
     slug = f"pytest-{tmp_path.name}"
     registry_file = tmp_path / "subagent-registry.json"
     env_overrides = {
         "SUBAGENT_REGISTRY_FILE": str(registry_file),
     }
     launch_cmd = [
-        ".agents/bin/subagent_manager.sh",
+        "parallelus/engine/bin/subagent_manager.sh",
         "launch",
         "--type",
         "throwaway",
@@ -50,7 +50,7 @@ def test_subagent_launch_without_role_succeeds(tmp_path):
     launch = run(launch_cmd, env_overrides=env_overrides)
     entry_id = launch.stdout.strip().splitlines()[-1]
     cleanup_cmd = [
-        ".agents/bin/subagent_manager.sh",
+        "parallelus/engine/bin/subagent_manager.sh",
         "cleanup",
         "--id",
         entry_id,

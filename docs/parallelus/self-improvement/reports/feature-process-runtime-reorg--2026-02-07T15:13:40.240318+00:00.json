@@ -1,0 +1,27 @@
+{
+  "branch": "feature/process-runtime-reorg",
+  "marker_timestamp": "2026-02-07T15:13:40.240318+00:00",
+  "summary": "Blocking: the audited state had an incomplete retrospective precheck because the first CI-audit subagent run timed out and was cleaned, and no report file for this marker existed at audit start. The marker failure summary itself contains zero failed tool calls.",
+  "issues": [
+    {
+      "id": "ci-audit-run-timed-out-before-report",
+      "root_cause": "The first Continuous Improvement Auditor launch used a stale committed snapshot and then the manual runner timed out after rollout-recorder parse warnings, so the run was cleaned without producing a marker-matched report.",
+      "mitigation": "Relaunch the auditor from the updated HEAD and persist the JSON report at `docs/self-improvement/reports/feature-process-runtime-reorg--2026-02-07T15:13:40.240318+00:00.json` before proceeding to Senior Architect review.",
+      "prevention": "Add a preflight gate that blocks review progression unless `(marker.head == HEAD)` and the marker-specific report file exists; add automated retry/health-check handling for rollout-recorder parse-warning timeout states.",
+      "evidence": "`docs/progress/feature-process-runtime-reorg.md:553`-`docs/progress/feature-process-runtime-reorg.md:560` records launch, timeout, and cleanup; `docs/progress/feature-process-runtime-reorg.md:563` notes stale marker/report context; `docs/progress/feature-process-runtime-reorg.md:566`-`docs/progress/feature-process-runtime-reorg.md:568` lists pending relaunch/report persistence; `docs/agents/subagent-registry.json:63`-`docs/agents/subagent-registry.json:78` shows `20260207-151346-ci-audit` status `cleaned` with `source_commit` `3f6dc...`; report existence check returned `report_exists_for_marker=no`."
+    },
+    {
+      "id": "marker-session-offset-metadata-missing",
+      "root_cause": "The marker was created without session linkage (`session_id`/`session_console` null), reducing precision for command-level evidence slicing and causing failure collection to scan a broad historical source set.",
+      "mitigation": "Use marker plan/progress line offsets plus git commit range (`3f6dc...`..`8cf6...`) and notebook entries for this audit window.",
+      "prevention": "Require active `start_session` context before marker generation, or fail marker creation when session metadata is null so evidence windows remain tightly scoped.",
+      "evidence": "`docs/self-improvement/markers/feature-process-runtime-reorg.json:9`-`docs/self-improvement/markers/feature-process-runtime-reorg.json:11` are null; `docs/self-improvement/failures/feature-process-runtime-reorg--2026-02-07T15:13:40.240318+00:00.json:5`-`docs/self-improvement/failures/feature-process-runtime-reorg--2026-02-07T15:13:40.240318+00:00.json:39` lists many historical sources."
+    }
+  ],
+  "follow_ups": [
+    "Persist this auditor JSON to `docs/self-improvement/reports/feature-process-runtime-reorg--2026-02-07T15:13:40.240318+00:00.json` and commit it with the existing marker/failure/progress updates.",
+    "Proceed to Senior Architect review only after the marker-matched report is present and committed.",
+    "Implement a retrospective preflight check: fail when `marker.head != HEAD` or the marker report file is missing.",
+    "Harden marker generation/session discipline so `session_id` and `session_console` are populated for future audits."
+  ]
+}

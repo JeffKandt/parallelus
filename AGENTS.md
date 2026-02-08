@@ -15,10 +15,10 @@ every session if it exists and record that acknowledgement in the progress log.
 - Internalise these guardrails during Recon & Planning; they apply to every
   turn regardless of scope.
 - Every mitigation must become a durable, versioned artifact that ships with the
-  repository (e.g. `.agents` tooling, docs/agents runbooks, automated setup,
+  repository (e.g. `parallelus/engine` tooling, `parallelus/manuals` runbooks, automated setup,
   tests/linters). Branch-only notes, local shell hacks, or tribal knowledge are
   not acceptable mitigations.
-- Operational manuals live under `docs/agents/manuals/`. Only consult them when
+- Operational manuals live under `parallelus/manuals/manuals/`. Only consult them when
   a gate below fires. Do **not** pre-emptively open every manual; wait until a
   gate is triggered, then read just the manual(s) required for that task and
   capture the acknowledgement in the progress log before proceeding.
@@ -28,9 +28,9 @@ every session if it exists and record that acknowledgement in the progress log.
   requests an action, acknowledge it, confirm any missing context, and explain
   what you will do. Do not instruct the user to run commands; translate their
   intent into concrete steps you perform and report back in plain language.
-- If the repository provides `.agents/custom/README.md`, read **that file** once
+- If the repository provides `parallelus/engine/custom/README.md`, read **that file** once
   before deviating from the defaults. Only follow links or manuals it explicitly
-  references; do not sweep the rest of `.agents/` unless the custom README tells
+  references; do not sweep the rest of `parallelus/engine/` unless the custom README tells
   you to. Treat those project notes as extensions layered on top of Parallelus
   core and integrate them alongside the standard guardrails.
 - If this file starts with an **Overlay Notice**, reconcile every `.bak`
@@ -46,12 +46,15 @@ every session if it exists and record that acknowledgement in the progress log.
   orphaned notebooks before continuing. Echo the complete branch snapshot table
   (names plus action guidance) back to the user—do not elide or summarise the
   entries.
-- Open the active plan and progress notebooks (`docs/plans/<branch>.md`,
-  `docs/progress/<branch>.md`) or confirm they do not exist yet.
+- Managed hook drift is auto-synced during `make read_bootstrap` / `make start_session`
+  (set `AGENTS_HOOK_AUTO_SYNC=0` to disable auto-sync and receive warning-only detection).
+- Open the active plan and progress notebooks
+  (`docs/branches/<slug>/PLAN.md`, `docs/branches/<slug>/PROGRESS.md`) or
+  confirm they do not exist yet.
 - If the tmux environment changed (new machine, updated launcher), reread
-  `docs/agents/manuals/tmux-setup.md` before continuing to confirm sockets and
+  `parallelus/manuals/manuals/tmux-setup.md` before continuing to confirm sockets and
   binaries align with Parallelus expectations.
-- List recent `sessions/` entries. If none match today (2025-10-12), seed a new
+- List recent `.parallelus/sessions/` entries. If none match today, seed a new
   session with `SESSION_PROMPT="..." eval "$(make start_session)"` **before** leaving
   Recon & Planning.
 - Inspect repo state, answer questions, plan next moves. Do not edit tracked
@@ -63,8 +66,8 @@ every session if it exists and record that acknowledgement in the progress log.
    edit directly on `main`.
 3. Export `SESSION_PROMPT` (optional) and run `eval "$(make start_session)"` to capture
    turn context. Session logs are mandatory; `make start_session` enables
-   `sessions/<ID>/console.log` logging by default and `make turn_end` will fail
-   if the log is empty.
+   `./.parallelus/sessions/<ID>/console.log` logging by default and
+   `make turn_end` will fail if the log is empty.
 4. Update the branch plan/progress notebooks with current objectives before
    editing code or docs.
 5. Run required environment diagnostics (see Operational Gates for details) and
@@ -73,7 +76,7 @@ every session if it exists and record that acknowledgement in the progress log.
   (Bootstrap syncs managed git hooks into `.git/hooks`; do not delete them.)
 
 ### Active Execution & Validation
-- Keep audible alerts active: fire `.agents/bin/agents-alert` **before** any
+- Keep audible alerts active: fire `parallelus/engine/bin/agents-alert` **before** any
   approval pause and after each work block (>5 s) before handing control back.
 - Update branch plan/progress notebooks after meaningful work units. Treat
   `➜ checkpoint` markers as mandatory commit points.
@@ -82,7 +85,7 @@ every session if it exists and record that acknowledgement in the progress log.
 - Before launching a senior architect review, ensure the canonical progress log
   (`docs/PROGRESS.md`) contains a concrete summary—no placeholders, TODO markers,
   or "pending" text.
-- Use `.agents/bin/agents-rebase-continue` (aliases `git-rebase-continue` / `grc`)
+- Use `parallelus/engine/bin/agents-rebase-continue` (aliases `git-rebase-continue` / `grc`)
   to resume rebases without triggering interactive editors.
 - Once a senior architect review is captured, avoid history rewrites (rebase, amend,
   reset) on that branch. Apply follow-up commits instead; doc-only commits are
@@ -92,12 +95,13 @@ every session if it exists and record that acknowledgement in the progress log.
 - When subagents are active, maintain the monitor loop per the Subagent manual.
 - Stay within the requested scope; defer speculative refactors unless directed.
 - Senior architect review is mandatory before merging: capture the signed-off
-  report under `docs/reviews/<branch>-<date>.md` (`Reviewed-Branch`,
+  report under `docs/parallelus/reviews/<branch>-<date>.md`
+  (`Reviewed-Branch`,
   `Reviewed-Commit`, `Reviewed-On`, `Decision: approved`, no `Severity:
   Blocker/High`, and acknowledge other findings via
   `AGENTS_MERGE_ACK_REVIEW`). Default profile values live in
   the prompt’s YAML front matter (defaults defined at the top of
-  `.agents/prompts/agent_roles/senior_architect.md`).
+  `parallelus/engine/prompts/agent_roles/senior_architect.md`).
 - Before launching a senior architect review, confirm the latest review file
   already references the current `HEAD`; the launcher now refuses to rerun when
   the review is current or only doc-only tweaks have landed since the last
@@ -109,7 +113,7 @@ every session if it exists and record that acknowledgement in the progress log.
   the work under review and pushing it to the feature branch; reviews operate on
   the committed state, not local working tree changes.
 - Run the senior architect review via the provided subagent launcher (see
-  `docs/agents/manuals/senior-architect.md`) so the canonical prompt executes
+  `parallelus/manuals/manuals/senior-architect.md`) so the canonical prompt executes
   in an isolated tmux pane.
 
 ### Turn-End & Session Wrap
@@ -126,18 +130,22 @@ every session if it exists and record that acknowledgement in the progress log.
   reinstate the guardrail.
 - Before folding branch notebooks into canonical logs, run
   `make turn_end m="summary"` (or another checkpoint note) so the latest marker
-  lands in `docs/self-improvement/markers/`; the folding helper now enforces
-  this requirement.
+  lands in `docs/parallelus/self-improvement/markers/`; the folding
+  helper now enforces this requirement.
 - Ensure progress logs capture the latest state, session metadata is current,
   and the working tree is either clean or holds only intentional changes noted
   in the progress log. Avoid committing unless the maintainer instructs you to.
 - Do not merge or archive unless the maintainer explicitly asks.
 - Before the senior architect review, launch the Continuous Improvement Auditor
-  prompt (see `.agents/prompts/agent_roles/continuous_improvement_auditor.md`) using the latest
+  prompt (see `parallelus/engine/prompts/agent_roles/continuous_improvement_auditor.md`) using the latest
   marker. The auditor responds with JSON; save it to
-  `docs/self-improvement/reports/<branch>--<marker-timestamp>.json` and carry
-  TODOs into the branch plan. Run `make collect_failures` before the audit so
-  failed tool calls are reviewed and mitigations are documented.
+  `docs/parallelus/self-improvement/reports/<branch>--<marker-timestamp>.json`
+  and carry TODOs into the branch plan. Marker + failures + audit must run
+  sequentially (never in parallel). For headless/manual-launch environments,
+  prefer `make senior_review_preflight_run ARGS="--auto-clean-stale"` so
+  stale `awaiting_manual_launch` review entries are auto-cleaned when no
+  sandbox process appears active; use `make senior_review_preflight
+  ARGS="--auto-clean-stale"` for launch-only behavior.
 
 ## 3. Command Quick Reference
 - `make read_bootstrap` – detect repo mode, base branch, branch hygiene.
@@ -145,12 +153,14 @@ every session if it exists and record that acknowledgement in the progress log.
 - `SESSION_PROMPT="..." eval "$(make start_session)"` – initialise session artifacts and logging.
 - `make turn_end m="summary"` – checkpoint plan/progress + session meta.
 - `make ci` – run lint, tests, and smoke suite inside the configured adapters.
-- `.agents/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.
+- `make senior_review_preflight` – run serialized retrospective preflight and launch senior review.
+- `make senior_review_preflight_run` – run preflight + manual-launch fallback + harvest/cleanup wrapper (preferred for headless/manual-launch setups).
+- `parallelus/engine/bin/agents-rebase-continue` – continue a rebase without invoking an interactive editor.
 
 ## 4. Operational Gates (Read-on-Trigger Manuals)
 - **Subagents:** Before launching or monitoring subagents (e.g.
   `make monitor_subagents`, `subagent_manager ...`), read
-  `docs/agents/subagent-session-orchestration.md` and log the acknowledgement.
+  `parallelus/manuals/subagent-session-orchestration.md` and log the acknowledgement.
   Senior architect reviews are executed inside subagents, so when one is
   requested you must review this manual (even if you've read it earlier in the
   session) and record the acknowledgement in the progress log before continuing.
@@ -158,18 +168,19 @@ every session if it exists and record that acknowledgement in the progress log.
   to the interactive TUI only when needed via `PARALLELUS_CODEX_USE_TUI=1`.
 - **Merge / Archive / Remote triage:** Prior to running `make merge`,
   `make archive`, or evaluating unmerged branches, revisit
-  `docs/agents/git-workflow.md`. Merge requests now require an approved senior
-  architect review staged under `docs/reviews/<branch>-<date>.md` *and* a
-  committed retrospective report covering the latest marker; overrides use
-  `AGENTS_MERGE_FORCE=1` (and `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and
-  must be documented in the progress log.
+  `parallelus/manuals/git-workflow.md`. Merge requests now require an approved senior
+  architect review staged under
+  `docs/parallelus/reviews/<branch>-<date>.md` *and* a committed retrospective
+  report covering the latest marker; overrides use `AGENTS_MERGE_FORCE=1` (and
+  `AGENTS_MERGE_ACK_REVIEW=1` where applicable) and must be documented in the
+  progress log.
 - **Environment & Platform diagnostics:** If environment parity is in question
-  (CI, Codex Cloud, headless shells), review `docs/agents/runtime-matrix.md` and
+  (CI, Codex Cloud, headless shells), review `parallelus/manuals/runtime-matrix.md` and
   run the diagnostics described there.
 - **Language adapters & integrations:** When enabling or maintaining Python or
   Node tooling—or when Codex integration behaviour changes—consult the manuals
-  under `docs/agents/adapters/` and `docs/agents/integrations/`.
-- A directory index lives at `docs/agents/manuals/README.md`; update it when new
+  under `parallelus/manuals/adapters/` and `parallelus/manuals/integrations/`.
+- A directory index lives at `parallelus/manuals/manuals/README.md`; update it when new
   manuals are introduced.
 
 ## 5. Accountability

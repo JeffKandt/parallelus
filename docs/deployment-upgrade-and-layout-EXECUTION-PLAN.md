@@ -186,8 +186,11 @@ Each phase should run only the smallest useful checks plus one broader check:
 
 - Keep this execution plan as the implementation source.
 - Track execution state in branch notebooks:
-  - `docs/plans/feature-process-runtime-reorg.md`
-  - `docs/progress/feature-process-runtime-reorg.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+  - (legacy pre-migration paths may still appear in historical entries:
+    `docs/plans/feature-process-runtime-reorg.md` and
+    `docs/progress/feature-process-runtime-reorg.md`)
 - Optional: mirror each phase slice as Beads items if you want queue visibility
   outside notebooks.
 
@@ -221,19 +224,38 @@ Execution requirements:
 2) Keep diff scoped; do not start later phases.
 3) Run targeted validations for changed files/scripts; run broader checks when
    the phase gate requires.
+   - Prefix validation and preflight commands with
+     `PATH="$PWD/.venv/bin:$PATH"` so Python-backed helpers/tests run against
+     the project environment consistently.
 4) Update:
    - the active branch notebooks for the current layout
      (`docs/plans|docs/progress` before migration, or
      `docs/branches/<slug>/{PLAN,PROGRESS}.md` after migration)
    with concrete evidence (commands run, outcomes, residual risks).
 5) Commit phase work and push branch.
+   - Immediately after the final phase code commit (and before any extra
+     notebook-only checkpoint commit), refresh review artifacts in strict order
+     on the same `HEAD`:
+     1. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/retro-marker`
+     2. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/collect_failures.py`
+     3. `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/bin/retro_audit_local.py`
+   - Do not parallelize these commands.
 
 Review loop (required before declaring phase complete):
 6) Launch Senior Architect review for the current phase scope on current HEAD.
+   - Default review scope rule: Senior review defaults to full branch diff unless this prompt explicitly bounds scope to the current phase.
+   - Preferred command for headless/manual-launch environments:
+     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight_run ARGS="--auto-clean-stale"`
+   - Alternative command when you want launch-only preflight:
+     `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight ARGS="--auto-clean-stale"`
+   - If preflight reports `awaiting_manual_launch`, run the generated sandbox
+     launcher (`<sandbox>/.parallelus_run_subagent.sh`) and continue
+     monitor/harvest/cleanup for that review id.
 7) Reviewer must explicitly evaluate all phase exit gates:
    - gate satisfied? (yes/no)
    - evidence (file paths + command outputs)
    - remaining risks
+   - use the exact acceptance-gate wording for the active phase from this plan
 8) If review is not approved, fix findings, commit, and re-run Senior Architect
    review.
 9) Repeat until approved.
@@ -244,5 +266,6 @@ Handoff:
     - what validated
     - review artifact path
     - explicit statement whether the next phase is unblocked.
+    - any difficulties experienced during execution which might warrant considering a change to the plan, process, or prompt used for future phases. Propose any such changes but do not implement them without user permission.
 11) Stop after completing that one phase. Do not begin the following phase.
 ```

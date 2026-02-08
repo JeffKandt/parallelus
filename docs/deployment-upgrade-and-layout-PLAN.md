@@ -3,9 +3,8 @@
 This document defines the **target layout** and **migration plan** for
 segregating Parallelus process/runtime artifacts from project documentation.
 
-It is intentionally written as a “set-in-stone” plan. The companion document
-`docs/deployment-upgrade-and-layout-notes.md` remains the working draft/history
-until this plan is complete and executed.
+It is intentionally written as a “set-in-stone” plan and remains the canonical
+record for layout decisions and migration policy.
 
 ## Terminology (Source Repo vs Bundle vs Host Repo)
 
@@ -270,8 +269,8 @@ to reference `parallelus/engine/...`, including:
 
 ### Deployment upgrade note
 
-- Keep `docs/deployment-upgrade-and-layout-notes.md` until this plan is fully
-  implemented and validated, then delete it.
+- The earlier working-draft notes file has been retired; this plan plus
+  execution/progress artifacts now serve as the canonical historical record.
 
 ## Implementation Work Items (Resulting Tasks)
 
@@ -485,8 +484,7 @@ Detailed executable slicing, gates, and rollback criteria are tracked in:
 8. Establish guardrail run output as runtime (`./.parallelus/guardrails/runs/`)
    and archive any legacy tracked runs.
 9. Validate: fresh bootstrap + CI + merge workflow + subagent workflow.
-10. Delete `docs/deployment-upgrade-and-layout-notes.md` after confirming it no
-   longer contains unique value.
+10. Retire temporary planning drafts once no unique value remains.
 
 ## Decisions (Resolved)
 

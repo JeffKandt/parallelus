@@ -4,7 +4,7 @@ This sandbox simulates long-running work without interactive prompts.
 Before launching the workload, complete the standard bootstrap flow:
 
 - Run `make read_bootstrap`.
-- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+- Review `AGENTS.md` and `parallelus/engine/custom/README.md` (plus any manuals they
   explicitly call out for this scope).
 - Run `make bootstrap slug=real-slow-progress` so plan/progress notebooks
   exist in the sandbox.

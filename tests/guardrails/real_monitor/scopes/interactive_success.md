@@ -4,7 +4,7 @@ You are operating inside a throwaway sandbox. Before posting the readiness
 message, complete the standard bootstrap sequence:
 
 - Run `make read_bootstrap`.
-- Review `AGENTS.md` and `.agents/custom/README.md` (plus any manuals they
+- Review `AGENTS.md` and `parallelus/engine/custom/README.md` (plus any manuals they
   explicitly reference for this scope).
 - Run `make bootstrap slug=real-interactive-success` so plan/progress notebooks
   exist in the sandbox.

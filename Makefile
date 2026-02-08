@@ -2,7 +2,7 @@
 
 # >>> agent-process integration >>>
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-AGENTS_DIR ?= $(ROOT)/.agents
+AGENTS_DIR ?= $(ROOT)/parallelus/engine
 LANG_ADAPTERS ?= python
 
 include $(AGENTS_DIR)/make/agents.mk
@@ -33,7 +33,7 @@ help:
 	@echo "  make ci"
 	@echo "  make merge slug=my-feature"
 	@echo "  make remember_later m=\"Capture exploratory insight\" [topic=research] [next_step=run+spike]"
-	@echo "  make capsule_prompt [session=20251025-123456] [file=docs/agents/capsules/...md] [stub=1]"
+	@echo "  make capsule_prompt [session=20251025-123456] [file=parallelus/manuals/capsules/...md] [stub=1]"
 
 setup:
 	@echo "Customize this target for project-specific setup"

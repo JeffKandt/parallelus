@@ -1,6 +1,10 @@
 # Project Plan
 
 ## Completed Work
+- Completed the process/runtime reorganization (`feature/process-runtime-reorg`):
+  migrated tracked Parallelus assets under `parallelus/` and `docs/parallelus/`,
+  moved runtime churn to `./.parallelus/`, implemented pre-reorg upgrade
+  migration tooling, and closed PHASE-01..PHASE-07 acceptance gates.
 - Synchronous retrospective workflow enforced (marker validation, auditor prompt).
 - Senior architect review guardrails updated (config defaults, review commit checks).
 - Deployment safety and CI flow hardened (hook backups, Python-only adapter).
@@ -18,6 +22,7 @@
   already covers `HEAD` or only doc-only follow-ups landed (`feature/branch-audit-report`).
 
 ## Next Focus Areas
+- Reactivate merge-time retrospective audits once failure harvesting produces actionable signals (not just freshness checks), including a narrowed source scope and explicit signal-quality thresholds.
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
 - Socialise the updated folding workflow and communication philosophy with maintainers; gather feedback for the next iteration.
 - Pilot the Recon queue split (next-feature vs backlog) on upcoming branches and capture friction points for tooling tweaks.

@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'HELP'
+Usage: agents-ensure-feature <slug>
+
+Creates (or switches to) feature/<slug> from the detected base branch after
+verifying the working tree is clean. Scaffolds plan/progress notebooks defined
+in parallelus/engine/agentrc when missing.
+HELP
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+slug_input=${1:-}
+if [[ -z "$slug_input" ]]; then
+  echo "agents-ensure-feature: slug required" >&2
+  usage >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=../agentrc
+. "${SCRIPT_DIR}/../agentrc"
+# shellcheck source=./agents-doc-paths.sh
+. "${SCRIPT_DIR}/agents-doc-paths.sh"
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+  echo "agents-ensure-feature: not inside a git repository" >&2
+  exit 1
+fi
+
+cd "$repo_root"
+current_branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+engine_rel="${ENGINE_ROOT#$repo_root/}"
+
+custom_hook_runner="$ENGINE_ROOT/bin/agents-custom-hook"
+run_custom_hook() {
+  local event="$1"
+  if [[ -x "$custom_hook_runner" ]]; then
+    "$custom_hook_runner" --repo-root "$repo_root" --event "$event"
+  fi
+}
+
+run_custom_hook pre_bootstrap
+
+install_hooks="$ENGINE_ROOT/bin/install-hooks"
+if [[ -x "$install_hooks" ]]; then
+  "$install_hooks" --quiet || true
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "agents-ensure-feature: working tree dirty; commit, stash, or clean first" >&2
+  exit 1
+fi
+
+slug=$(printf '%s' "$slug_input" | tr '[:upper:]' '[:lower:]')
+slug=$(printf '%s' "$slug" | tr -c 'a-z0-9-' '-')
+slug=$(printf '%s' "$slug" | sed -E 's/-+/-/g; s/^-+//; s/-+$//')
+if [[ -z "$slug" ]]; then
+  echo "agents-ensure-feature: slug must contain alphanumeric characters" >&2
+  exit 1
+fi
+
+feature_branch="feature/$slug"
+
+# Determine base branch via agents-detect to stay consistent.
+detect_output="$("$ENGINE_ROOT/bin/agents-detect")"
+base_branch=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="BASE_BRANCH" {print $2}')
+repo_mode=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="REPO_MODE" {print $2}')
+
+if [[ -z "$base_branch" ]]; then
+  base_branch="$DEFAULT_BASE"
+fi
+
+if [[ "$repo_mode" == "remote-connected" ]]; then
+  if ! git show-ref --quiet "refs/remotes/${BASE_REMOTE}/$base_branch" && ! git show-ref --quiet "refs/heads/$base_branch"; then
+    echo "agents-ensure-feature: unable to locate base branch '$base_branch'" >&2
+    exit 1
+  fi
+else
+  if ! git show-ref --quiet "refs/heads/$base_branch"; then
+    base_branch=$(git rev-parse --abbrev-ref HEAD)
+  fi
+fi
+
+resolve_branch_commit() {
+  local branch_ref="$1"
+  local commit
+  if commit=$(git rev-parse --verify "$branch_ref" 2>/dev/null); then
+    printf '%s\n' "$commit"
+    return 0
+  fi
+  if commit=$(git rev-parse --verify "refs/remotes/${BASE_REMOTE}/$branch_ref" 2>/dev/null); then
+    printf '%s\n' "$commit"
+    return 0
+  fi
+  return 1
+}
+
+if [[ -n "$engine_rel" ]]; then
+  base_commit="$(resolve_branch_commit "$base_branch" || true)"
+  if [[ -n "$base_commit" ]] && ! git cat-file -e "${base_commit}:${engine_rel}/bin/agents-detect" 2>/dev/null; then
+    if [[ -n "$current_branch_name" && "$current_branch_name" != "HEAD" ]]; then
+      echo "agents-ensure-feature: base branch '$base_branch' does not contain ${engine_rel}; using '$current_branch_name' as bootstrap base" >&2
+      base_branch="$current_branch_name"
+    fi
+  fi
+fi
+
+if git show-ref --quiet "refs/heads/$feature_branch"; then
+  git checkout "$feature_branch" >/dev/null
+else
+  if git show-ref --quiet "refs/remotes/${BASE_REMOTE}/$feature_branch"; then
+    git checkout -b "$feature_branch" "${BASE_REMOTE}/$feature_branch" >/dev/null
+  else
+    git checkout -b "$feature_branch" "$base_branch" >/dev/null
+  fi
+fi
+
+slugged_branch="${feature_branch//\//-}"
+plan_file="$(parallelus_branch_plan_write_path "$repo_root" "$slugged_branch")"
+progress_file="$(parallelus_branch_progress_write_path "$repo_root" "$slugged_branch")"
+
+mkdir -p "$(dirname "$plan_file")" "$(dirname "$progress_file")"
+
+if [[ ! -f "$plan_file" ]]; then
+  cat <<EOF_PLAN >"$plan_file"
+# Branch Plan — ${feature_branch}
+
+## Objectives
+- TODO: document branch goals.
+
+## Checklist
+- [ ] TODO: outline tasks.
+
+## Next Actions
+- TODO: capture immediate steps.
+EOF_PLAN
+fi
+
+if [[ ! -f "$progress_file" ]]; then
+  ts=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+  cat <<EOF_PROGRESS >"$progress_file"
+# Branch Progress — ${feature_branch}
+
+## ${ts}
+**Objectives**
+- TODO: summarize session goals.
+
+**Work Performed**
+- TODO: describe work performed.
+
+**Artifacts**
+- TODO: list touched files.
+
+**Next Actions**
+- TODO: capture follow-ups.
+EOF_PROGRESS
+fi
+
+printf '[agents-ensure-feature] Ensured %s\n' "$plan_file" >&2
+printf '[agents-ensure-feature] Ensured %s\n' "$progress_file" >&2
+
+session_marker="$ENGINE_ROOT/session-required.${feature_branch//\//-}"
+printf '%s\n' "branch=$feature_branch" "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$session_marker"
+
+run_custom_hook post_bootstrap
+
+echo "✅ Ready on branch ${feature_branch}"
