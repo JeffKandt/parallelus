@@ -32,3 +32,5 @@
 ## Next Actions
 - hold here after `PHASE-06` completion and wait for maintainer direction before starting `PHASE-07`
 - if authorized to continue, execute only `PHASE-07` cleanup/decommission scope with fresh phase-specific gate evidence
+
+- [ ] PHASE-06 checkpoint before senior review
