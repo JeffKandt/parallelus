@@ -1,6 +1,10 @@
 # Project Plan
 
 ## Completed Work
+- Completed the process/runtime reorganization (`feature/process-runtime-reorg`):
+  migrated tracked Parallelus assets under `parallelus/` and `docs/parallelus/`,
+  moved runtime churn to `./.parallelus/`, implemented pre-reorg upgrade
+  migration tooling, and closed PHASE-01..PHASE-07 acceptance gates.
 - Synchronous retrospective workflow enforced (marker validation, auditor prompt).
 - Senior architect review guardrails updated (config defaults, review commit checks).
 - Deployment safety and CI flow hardened (hook backups, Python-only adapter).
