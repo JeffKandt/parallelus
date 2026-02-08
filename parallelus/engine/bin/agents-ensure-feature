@@ -24,6 +24,7 @@ if [[ -z "$slug_input" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-doc-paths.sh
@@ -37,7 +38,7 @@ fi
 
 cd "$repo_root"
 
-custom_hook_runner="$repo_root/parallelus/engine/bin/agents-custom-hook"
+custom_hook_runner="$ENGINE_ROOT/bin/agents-custom-hook"
 run_custom_hook() {
   local event="$1"
   if [[ -x "$custom_hook_runner" ]]; then
@@ -47,7 +48,7 @@ run_custom_hook() {
 
 run_custom_hook pre_bootstrap
 
-install_hooks="$repo_root/parallelus/engine/bin/install-hooks"
+install_hooks="$ENGINE_ROOT/bin/install-hooks"
 if [[ -x "$install_hooks" ]]; then
   "$install_hooks" --quiet || true
 fi
@@ -68,7 +69,7 @@ fi
 feature_branch="feature/$slug"
 
 # Determine base branch via agents-detect to stay consistent.
-detect_output="$(parallelus/engine/bin/agents-detect)"
+detect_output="$("$ENGINE_ROOT/bin/agents-detect")"
 base_branch=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="BASE_BRANCH" {print $2}')
 repo_mode=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="REPO_MODE" {print $2}')
 
@@ -150,7 +151,7 @@ fi
 printf '[agents-ensure-feature] Ensured %s\n' "$plan_file" >&2
 printf '[agents-ensure-feature] Ensured %s\n' "$progress_file" >&2
 
-session_marker="$repo_root/parallelus/engine/session-required.${feature_branch//\//-}"
+session_marker="$ENGINE_ROOT/session-required.${feature_branch//\//-}"
 printf '%s\n' "branch=$feature_branch" "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$session_marker"
 
 run_custom_hook post_bootstrap

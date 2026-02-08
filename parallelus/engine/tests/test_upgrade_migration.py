@@ -144,6 +144,28 @@ def test_overlay_upgrade_classifies_mixed_interrupted_state() -> None:
         assert report["namespace_detection"]["decision"] == "parallelus"
 
 
+def test_vendor_namespace_upgrade_keeps_bootstrap_entrypoints_working() -> None:
+    with tempfile.TemporaryDirectory(prefix="upgrade-vendor-") as tmp:
+        repo = Path(tmp) / "repo"
+        _init_repo(repo)
+        _commit_all(repo, "baseline")
+
+        result = _run([str(SCRIPT), "--overlay-upgrade", str(repo)], cwd=REPO_ROOT)
+        assert result.returncode == 0, result.stderr
+
+        report = _latest_report(repo)
+        assert report["namespace_detection"]["decision"] == "vendor/parallelus"
+        _commit_all(repo, "vendor upgrade")
+
+        start_result = _run(["make", "start_session"], cwd=repo)
+        assert start_result.returncode == 0, start_result.stderr
+
+        bootstrap_result = _run(["make", "bootstrap", "slug=vendor-ready"], cwd=repo)
+        assert bootstrap_result.returncode == 0, bootstrap_result.stderr
+        branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo).stdout.strip()
+        assert branch == "feature/vendor-ready"
+
+
 def test_overlay_upgrade_rerun_on_reorg_repo_is_safe() -> None:
     with tempfile.TemporaryDirectory(prefix="upgrade-reorg-") as tmp:
         repo = Path(tmp) / "repo"

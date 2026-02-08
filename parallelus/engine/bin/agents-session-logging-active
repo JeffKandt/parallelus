@@ -44,6 +44,7 @@ if [[ -z "$repo_root" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-paths.sh
@@ -91,7 +92,7 @@ for sid in "${candidate_ids[@]-}"; do
   fi
 done
 
-session_marker="$repo_root/parallelus/engine/session-required.${slugged_branch}"
+session_marker="$ENGINE_ROOT/session-required.${slugged_branch}"
 if [[ -f "$session_marker" ]]; then
   log "agents-session-logging-active: session marker indicates start_session is still required for $branch"
 else

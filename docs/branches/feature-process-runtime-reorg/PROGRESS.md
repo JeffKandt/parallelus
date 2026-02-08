@@ -1925,6 +1925,58 @@
 - commit and push `PHASE-06` implementation + tests/docs/notebook updates
 - run required Senior Architect review loop on current `HEAD` and iterate until approved with explicit `PHASE-06` gate wording/evidence
 
+## 2026-02-08 01:05:18 UTC
+**Objectives**
+- remediate Senior Architect `changes_requested` finding for `PHASE-06` (vendor-root bootstrap/runtime breakage)
+- preserve phase scope (`PHASE-06` only) and rerun targeted validations before relaunching review
+
+**Work Performed**
+- launched `PATH="$PWD/.venv/bin:$PATH" make senior_review_preflight` on commit `429c6dc` and manual-run review id `20260208-005408-senior-review`
+- harvested review artifact:
+  - `docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md`
+  - decision: `changes_requested`
+  - blocker: vendor-root upgrade leaves core bootstrap/runtime entrypoints hardcoded to `parallelus/engine/...`
+- applied vendor-root runtime-path remediation across core entrypoints by resolving engine paths from script location (`SCRIPT_DIR/..`) instead of repo-root hardcoded `parallelus/engine`:
+  - `parallelus/engine/bin/agents-ensure-feature`
+  - `parallelus/engine/bin/agents-session-start`
+  - `parallelus/engine/bin/agents-turn-end`
+  - `parallelus/engine/bin/agents-session-logging-active`
+  - `parallelus/engine/bin/install-hooks`
+  - `parallelus/engine/bin/agents-merge`
+- expanded phase test coverage to enforce vendor-root bootstrap viability after upgrade:
+  - `parallelus/engine/tests/test_upgrade_migration.py`
+  - new test: `test_vendor_namespace_upgrade_keeps_bootstrap_entrypoints_working`
+  - validates:
+    - namespace decision locks to `vendor/parallelus`
+    - `make start_session` succeeds
+    - `make bootstrap slug=vendor-ready` succeeds and lands on `feature/vendor-ready`
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/deploy_agents_process.sh parallelus/engine/bin/agents-ensure-feature parallelus/engine/bin/agents-session-start parallelus/engine/bin/agents-turn-end parallelus/engine/bin/agents-session-logging-active parallelus/engine/bin/install-hooks parallelus/engine/bin/agents-merge`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py`
+  - outcome: pass (`21 passed in 9.40s`)
+
+**PHASE-06 Gate Status (post-remediation, pre-rerun-review)**
+- `Migration works from: legacy pre-reorg repo state` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_migrates_legacy_layout_and_writes_report`
+- `Migration works from: mixed/interrupted state` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_classifies_mixed_interrupted_state`
+- `Migration works from: already-reorged state (idempotent no-op or safe update)` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_rerun_on_reorg_repo_is_safe`
+- `Re-running migration does not duplicate/corrupt artifacts.` — **Yes (pre-review)**
+  - evidence: rerun assertions + non-overwriting migration copy semantics
+
+**Residual Risks**
+- prior medium/low review items remain open follow-ups:
+  - `review-preflight` dependency on `python3` + `PyYAML` in non-venv shells
+  - sentinel runtime validator still less strict than full schema constraints
+
+**Next Actions**
+- commit/push vendor-root path remediations and test updates
+- refresh marker/failure/report for current `HEAD` in serialized order (`retro-marker` -> `collect_failures.py` -> `retro_audit_local.py`)
+- relaunch Senior Architect review loop and iterate until `Decision: approved`
+
 ## 2026-02-08 00:52:12 UTC
 **Summary**
 - PHASE-06 checkpoint before senior review

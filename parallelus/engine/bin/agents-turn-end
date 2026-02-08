@@ -16,6 +16,7 @@ if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-paths.sh
@@ -31,7 +32,7 @@ fi
 
 cd "$repo_root"
 
-custom_hook_runner="$repo_root/parallelus/engine/bin/agents-custom-hook"
+custom_hook_runner="$ENGINE_ROOT/bin/agents-custom-hook"
 run_custom_hook() {
   local event="$1"
   if [[ -x "$custom_hook_runner" ]]; then
@@ -59,7 +60,7 @@ if [[ ! -f "$plan_file" ]]; then
   exit 1
 fi
 
-session_marker="${repo_root}/parallelus/engine/session-required.${slugged_branch}"
+session_marker="${ENGINE_ROOT}/session-required.${slugged_branch}"
 if [[ -f "$session_marker" ]]; then
   echo "agents-turn-end: session not started for $current_branch; run make start_session before turn_end" >&2
   exit 1
@@ -165,7 +166,7 @@ fi
 
 echo "agents-turn-end: recorded checkpoint for $current_branch at $timestamp"
 
-retro_marker="$repo_root/parallelus/engine/bin/retro-marker"
+retro_marker="$ENGINE_ROOT/bin/retro-marker"
 if [[ -x "$retro_marker" ]]; then
   if [[ -n "$active_session_id" ]]; then
     SESSION_ID="$active_session_id" "$retro_marker" || true

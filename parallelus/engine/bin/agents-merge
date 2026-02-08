@@ -24,6 +24,7 @@ if [[ -z "$slug_input" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-doc-paths.sh
@@ -37,7 +38,7 @@ fi
 
 cd "$repo_root"
 
-install_hooks="$repo_root/parallelus/engine/bin/install-hooks"
+install_hooks="$ENGINE_ROOT/bin/install-hooks"
 if [[ -x "$install_hooks" ]]; then
   "$install_hooks" --quiet || true
 fi
@@ -47,7 +48,7 @@ if [[ -n $(git status --porcelain) ]]; then
   exit 1
 fi
 
-review_scan="$repo_root/parallelus/engine/bin/review_secret_scan.py"
+review_scan="$ENGINE_ROOT/bin/review_secret_scan.py"
 if [[ -x "$review_scan" ]]; then
   "$review_scan" || exit $?
 fi
@@ -88,7 +89,7 @@ fi
 
 # Verify retrospectives before modifying branch notebooks so audit guardrails fail fast.
 # Install/refresh merge guard hook (supports worktrees via git-path).
-hook_src="$repo_root/parallelus/engine/hooks/pre-merge-commit"
+hook_src="$ENGINE_ROOT/hooks/pre-merge-commit"
 hooks_dir=$(git rev-parse --git-path hooks 2>/dev/null || true)
 hook_dst=""
 if [[ -n "$hooks_dir" ]]; then
@@ -452,7 +453,7 @@ if ((${#progress_files[@]} > 0)); then
 fi
 
 # Determine base branch via agents-detect.
-detect_output="$(parallelus/engine/bin/agents-detect)"
+detect_output="$("$ENGINE_ROOT/bin/agents-detect")"
 base_branch=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="BASE_BRANCH" {print $2}')
 has_remote=$(printf '%s\n' "$detect_output" | awk -F'=' '$1=="HAS_REMOTE" {print $2}')
 

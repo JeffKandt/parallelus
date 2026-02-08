@@ -16,6 +16,7 @@ if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=../agentrc
 . "${SCRIPT_DIR}/../agentrc"
 # shellcheck source=./agents-paths.sh
@@ -36,7 +37,7 @@ cd "$ROOT"
 current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 SESSION_CONFIGURED_ROOT="${SESSION_DIR:-}"
 SESSION_WRITE_ROOT="$(parallelus_sessions_write_root "$ROOT")"
-custom_hook_runner="$ROOT/parallelus/engine/bin/agents-custom-hook"
+custom_hook_runner="$ENGINE_ROOT/bin/agents-custom-hook"
 
 run_custom_hook() {
   local event="$1"
@@ -178,7 +179,7 @@ printf "export SESSION_DIR='%s'\n" "$SDIR"
 printf "export SESSION_LOG_PATH='%s'\n" "$SDIR/console.log"
 
 if [[ -n "$current_branch" && "$current_branch" != "HEAD" ]]; then
-  session_marker="$ROOT/parallelus/engine/session-required.${current_branch//\//-}"
+  session_marker="$ENGINE_ROOT/session-required.${current_branch//\//-}"
   if [[ -f "$session_marker" ]]; then
     rm -f "$session_marker"
   fi

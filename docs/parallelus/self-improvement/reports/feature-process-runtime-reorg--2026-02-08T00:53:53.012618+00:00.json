@@ -1,0 +1,12 @@
+{
+  "branch": "feature/process-runtime-reorg",
+  "marker_timestamp": "2026-02-08T00:53:53.012618+00:00",
+  "summary": "No blocking issues detected. Marker and marker-matched failures summary align to the current commit.",
+  "issues": [],
+  "follow_ups": [
+    "Keep preflight serialized: retro-marker -> collect_failures -> retro_audit_local.",
+    "Re-run preflight whenever HEAD changes before senior review launch."
+  ],
+  "generated_at": "2026-02-08T00:54:02.580152+00:00",
+  "mode": "local_commit_aware"
+}
