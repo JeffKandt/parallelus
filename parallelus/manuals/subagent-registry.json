@@ -522,5 +522,43 @@
     "deliverables_status": "harvested",
     "source_commit": "142c97a9123c66f29599394f2c74f5c4e299d04c",
     "source_branch": "feature/process-runtime-reorg"
+  },
+  {
+    "id": "20260208-022817-senior-review",
+    "type": "throwaway",
+    "slug": "senior-review",
+    "path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-4DXfFZ",
+    "scope_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-4DXfFZ/SUBAGENT_SCOPE.md",
+    "prompt_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-4DXfFZ/SUBAGENT_PROMPT.txt",
+    "log_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-4DXfFZ/subagent.log",
+    "progress_path": "/Users/jeff/Code/parallelus/.parallelus/subagents/sandboxes/senior-review-4DXfFZ/subagent.progress.md",
+    "launcher": "auto",
+    "status": "cleaned",
+    "launched_at": "20260208-022817",
+    "window_title": "",
+    "launcher_kind": "",
+    "launcher_handle": null,
+    "role_prompt": "senior_architect.md",
+    "deliverables": [
+      {
+        "id": "senior-review-report",
+        "kind": "review_markdown",
+        "source_glob": "docs/parallelus/reviews/feature-process-runtime-reorg-*.md",
+        "baseline": [
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md",
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md"
+        ],
+        "baseline_fingerprints": {
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-07.md": "file:d71566838ca7f44e28415a6e8ad3ab5cd5143f63f1bdd314b21ddc1622f34085",
+          "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md": "file:9cc301c4a7572ffbfdc39481f3165c0a88c7bafe890350f043f19f8b64ce7f0b"
+        },
+        "status": "harvested",
+        "harvested_at": "2026-02-08T02:34:15Z",
+        "target_path": "docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md"
+      }
+    ],
+    "deliverables_status": "harvested",
+    "source_commit": "a483ebef1f550656b66ea7b65877c394ad35f2e8",
+    "source_branch": "feature/process-runtime-reorg"
   }
 ]

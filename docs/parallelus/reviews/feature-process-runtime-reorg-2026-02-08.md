@@ -1,104 +1,93 @@
 # Senior Architect Review - feature/process-runtime-reorg
 
 Reviewed-Branch: feature/process-runtime-reorg
-Reviewed-Commit: 142c97a9123c66f29599394f2c74f5c4e299d04c
+Reviewed-Commit: a483ebef1f550656b66ea7b65877c394ad35f2e8
 Reviewed-On: 2026-02-08
 Decision: approved
 Reviewer: senior-review-gpt-5
 
 ## Scope
-- Full feature-branch delta intended for merge to `main` (`origin/main...142c97a9123c66f29599394f2c74f5c4e299d04c`).
-- Deep verification focus for this rerun: remediation commits since prior review point `429c6dcc7e4824671a79ec600d52c26479ab1628`.
+- Full feature-branch delta intended for merge to `main` (`origin/main...a483ebef1f550656b66ea7b65877c394ad35f2e8`).
+- Focused verification for this refresh: commits since prior review point `142c97a9123c66f29599394f2c74f5c4e299d04c`, including `PHASE-07` decommissioning and retrospective-artifact refresh.
 
 ## Gate Evaluation
 - Gate: Scope + metadata aligned to requested branch/commit.
   - gate satisfied? yes
   - evidence:
-    - `git rev-parse HEAD` -> `142c97a9123c66f29599394f2c74f5c4e299d04c`.
-    - `git branch --list 'feature/process-runtime-reorg' --format='%(refname:short) %(objectname)'` -> `feature/process-runtime-reorg 142c97a9123c66f29599394f2c74f5c4e299d04c`.
-    - `git diff --stat origin/main..142c97a9123c66f29599394f2c74f5c4e299d04c | tail -1` -> `222 files changed, 9779 insertions(+), 1680 deletions(-)`.
-    - `git diff --stat 429c6dcc7e4824671a79ec600d52c26479ab1628..142c97a9123c66f29599394f2c74f5c4e299d04c | tail -1` -> `18 files changed, 532 insertions(+), 19 deletions(-)`.
+    - `git rev-parse HEAD` -> `a483ebef1f550656b66ea7b65877c394ad35f2e8`.
+    - `git branch --list 'feature/process-runtime-reorg' --format='%(refname:short) %(objectname)'` -> `feature/process-runtime-reorg a483ebef1f550656b66ea7b65877c394ad35f2e8`.
+    - `git diff --stat origin/main..a483ebef1f550656b66ea7b65877c394ad35f2e8 | tail -1` -> `227 files changed, 10093 insertions(+), 1789 deletions(-)`.
+    - `git diff --stat 142c97a9123c66f29599394f2c74f5c4e299d04c..a483ebef1f550656b66ea7b65877c394ad35f2e8 | tail -1` -> `35 files changed, 644 insertions(+), 439 deletions(-)`.
   - remaining risks: none.
 
-- Gate: `Migration works from: legacy pre-reorg repo state`
+- Gate: `Full make ci passes.`
   - gate satisfied? yes
   - evidence:
-    - Legacy migration coverage exists at `parallelus/engine/tests/test_upgrade_migration.py:86` (`test_overlay_upgrade_migrates_legacy_layout_and_writes_report`).
-    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py` -> `21 passed in 8.93s`.
-  - remaining risks: coverage is strongest for in-place namespace; vendor-specific lifecycle behavior is validated separately below.
+    - `PATH="$PWD/.venv/bin:$PATH" make ci` -> pass (`All checks passed!`, `agents smoke test passed`, `1 passed in 2.44s`).
+  - remaining risks: smoke still emits the known path-alias warning from `agents-ensure-feature` (documented as Low finding).
 
-- Gate: `Migration works from: mixed/interrupted state`
+- Gate: `Manual smoke of core workflow passes on clean clone/worktree.`
   - gate satisfied? yes
   - evidence:
-    - Mixed/interrupted classification coverage exists at `parallelus/engine/tests/test_upgrade_migration.py:130` (`test_overlay_upgrade_classifies_mixed_interrupted_state`).
-    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py` -> `21 passed in 8.93s`.
-  - remaining risks: mixed-state test validates classification + successful run, but not every downstream command path permutation.
+    - `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/tests/smoke.sh` -> pass (`agents smoke test passed`) on a fresh temp repo/worktree.
+  - remaining risks: smoke validates canonical flow and fast-fail guards, but not every host shell/path alias variant.
 
-- Gate: `Migration works from: already-reorged state (idempotent no-op or safe update)`
+- Gate: `Pre-reorg upgrade simulation passes end-to-end.`
   - gate satisfied? yes
   - evidence:
-    - Idempotent rerun coverage exists at `parallelus/engine/tests/test_upgrade_migration.py:169` (`test_overlay_upgrade_rerun_on_reorg_repo_is_safe`).
-    - Vendor runtime viability regression coverage exists at `parallelus/engine/tests/test_upgrade_migration.py:147` (`test_vendor_namespace_upgrade_keeps_bootstrap_entrypoints_working`) and validates `make start_session` + `make bootstrap` after `vendor/parallelus` migration.
-    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py` -> `21 passed in 8.93s`.
-  - remaining risks: no dedicated coverage yet for symlinked path alias behavior (see Low finding below).
-
-- Gate: `Re-running migration does not duplicate/corrupt artifacts.`
-  - gate satisfied? yes
-  - evidence:
-    - Rerun assertions are exercised in `parallelus/engine/tests/test_upgrade_migration.py:180` through `parallelus/engine/tests/test_upgrade_migration.py:189`.
-    - Non-overwriting migration semantics are enforced by `rsync_copy ... --ignore-existing` at `parallelus/engine/bin/deploy_agents_process.sh:941`, `parallelus/engine/bin/deploy_agents_process.sh:961`, `parallelus/engine/bin/deploy_agents_process.sh:978`, `parallelus/engine/bin/deploy_agents_process.sh:999`, `parallelus/engine/bin/deploy_agents_process.sh:1009`, `parallelus/engine/bin/deploy_agents_process.sh:1033`, and `parallelus/engine/bin/deploy_agents_process.sh:1051`.
-  - remaining risks: non-destructive semantics intentionally leave legacy trees in place until `PHASE-07` cleanup/decommission.
+    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py` -> `5 passed in 5.40s`.
+    - Coverage includes legacy, mixed/interrupted, vendor namespace bootstrap viability, rerun idempotency, and dry-run reporting (`parallelus/engine/tests/test_upgrade_migration.py:86`, `parallelus/engine/tests/test_upgrade_migration.py:130`, `parallelus/engine/tests/test_upgrade_migration.py:147`, `parallelus/engine/tests/test_upgrade_migration.py:169`, `parallelus/engine/tests/test_upgrade_migration.py:192`).
+  - remaining risks: simulation coverage is strong but still synthetic; unusual host customizations may expose migration edge cases not represented in fixtures.
 
 ## Findings
-- Severity: Medium | Area: review-preflight launch portability
-  - summary: review-preflight still requires system `python3` to provide `PyYAML`; non-venv hosts fail even when retrospective preflight succeeds.
+- Severity: Medium | Area: senior-review preflight launch portability
+  - summary: `review-preflight` still requires `python3` to provide `PyYAML`; non-venv hosts fail in role front-matter parsing even when preflight sequencing is otherwise valid.
   - evidence:
-    - Unconditional `import yaml` in `parallelus/engine/bin/subagent_manager.sh:844`.
     - `python3 -c 'import yaml'` -> `ModuleNotFoundError: No module named 'yaml'`.
-    - `pytest -q parallelus/engine/tests/test_review_preflight.py::test_review_preflight_default_launch_marks_awaiting_when_not_started` fails with `ModuleNotFoundError: No module named 'yaml'`.
-    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py` -> `5 passed in 8.86s`.
-  - impact: launch behavior remains environment-sensitive outside venv-pinned execution paths.
+    - `pytest -q parallelus/engine/tests/test_review_preflight.py::test_review_preflight_default_launch_marks_awaiting_when_not_started` -> fails with `ModuleNotFoundError` at runtime.
+    - `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py` -> `6 passed in 12.79s`.
+    - Unconditional dependency path remains in `parallelus/engine/bin/subagent_manager.sh:894` and `parallelus/engine/bin/subagent_manager.sh:896`.
+  - impact: review launch behavior remains environment-sensitive outside venv-pinned execution paths.
   - remediation notes:
-    - Resolve/validate interpreter dependencies before launch parsing, or
-    - Replace this YAML parse path with a stdlib-only front-matter parser for the constrained key set.
+    - Switch to stdlib-only parsing for the constrained front-matter key set, or
+    - Enforce interpreter/venv selection before any YAML parse and fail with explicit dependency guidance.
 
 - Severity: Low | Area: bootstrap base-branch fallback path canonicalization
-  - summary: fallback check in `agents-ensure-feature` can mis-detect bundle presence when `ENGINE_ROOT` and git root use different path aliases (for example `/var` vs `/private/var`), producing false fallback warnings and potentially selecting the current branch unnecessarily.
+  - summary: the fallback check still compares non-canonical path spellings, producing false warnings (`/var/...` vs `/private/var/...`) in clean smoke/CI runs.
   - evidence:
-    - Relative-path derivation depends on raw string prefix stripping at `parallelus/engine/bin/agents-ensure-feature:41`.
-    - Existence check and fallback branch rewrite at `parallelus/engine/bin/agents-ensure-feature:107` through `parallelus/engine/bin/agents-ensure-feature:113`.
-    - `PATH="$PWD/.venv/bin:$PATH" make ci` emitted: `agents-ensure-feature: base branch 'main' does not contain /var/folders/.../parallelus/engine; using 'main' as bootstrap base`.
-  - impact: branch ancestry choice may become path-spelling dependent in symlinked/canonicalized working-directory scenarios.
+    - `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/tests/smoke.sh` and `PATH="$PWD/.venv/bin:$PATH" make ci` both emit: `agents-ensure-feature: base branch 'main' does not contain /var/.../parallelus/engine; using 'main' as bootstrap base`.
+    - Relative-path derivation remains string-prefix based in `parallelus/engine/bin/agents-ensure-feature:41` and checked in `parallelus/engine/bin/agents-ensure-feature:109`.
+  - impact: noisy branch-base warnings and potential path-spelling-dependent branch selection in aliased filesystem contexts.
   - remediation notes:
-    - Canonicalize both paths (`realpath`/`pwd -P`) before computing `engine_rel`.
-    - Add a regression test that runs bootstrap through alternate path aliases.
+    - Canonicalize both `repo_root` and `ENGINE_ROOT` (`pwd -P`/`realpath`) before deriving `engine_rel`.
+    - Add regression coverage for `/var` vs `/private/var` style aliases.
 
-- Severity: Low | Area: bundle manifest/schema contract parity
-  - summary: runtime sentinel validation still under-enforces schema constraints.
+- Severity: Low | Area: bundle manifest/schema parity
+  - summary: runtime validation still under-enforces schema constraints for sentinel metadata.
   - evidence:
-    - Validator checks type/non-empty only in `parallelus/engine/bin/deploy_agents_process.sh:342` and `parallelus/engine/bin/deploy_agents_process.sh:354`.
-    - Schema requires `layout_version >= 1` and `installed_on` `date-time` format in `parallelus/schema/bundle-manifest.v1.json:22` and `parallelus/schema/bundle-manifest.v1.json:34`.
-  - impact: malformed-but-type-correct sentinels can still pass runtime validation.
+    - Runtime validator only checks type/non-empty for some fields in `parallelus/engine/bin/deploy_agents_process.sh:342` and `parallelus/engine/bin/deploy_agents_process.sh:354`.
+    - Schema requires stricter constraints (`minimum: 1`, `date-time`) in `parallelus/schema/bundle-manifest.v1.json:22` and `parallelus/schema/bundle-manifest.v1.json:34`.
+  - impact: malformed-but-type-correct manifests can pass runtime validation.
   - remediation notes:
-    - Enforce full schema parity in runtime validator.
-    - Add negative tests for `layout_version < 1` and invalid `installed_on` format.
+    - Enforce full schema-equivalent checks in runtime validation.
+    - Add negative tests for below-minimum `layout_version` and invalid timestamp format.
 
 ## Tests & Evidence Reviewed
 - `git rev-parse HEAD`
 - `git branch --list 'feature/process-runtime-reorg' --format='%(refname:short) %(objectname)'`
-- `git diff --stat origin/main..142c97a9123c66f29599394f2c74f5c4e299d04c | tail -1`
-- `git diff --stat 429c6dcc7e4824671a79ec600d52c26479ab1628..142c97a9123c66f29599394f2c74f5c4e299d04c | tail -1`
-- `git diff --name-status 429c6dcc7e4824671a79ec600d52c26479ab1628..142c97a9123c66f29599394f2c74f5c4e299d04c`
-- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/agents-ensure-feature parallelus/engine/bin/agents-merge parallelus/engine/bin/agents-session-logging-active parallelus/engine/bin/agents-session-start parallelus/engine/bin/agents-turn-end parallelus/engine/bin/install-hooks`
-- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py`
-- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py`
-- `pytest -q parallelus/engine/tests/test_review_preflight.py::test_review_preflight_default_launch_marks_awaiting_when_not_started`
-- `python3 -c 'import yaml'`
+- `git diff --stat origin/main..a483ebef1f550656b66ea7b65877c394ad35f2e8 | tail -1`
+- `git diff --stat 142c97a9123c66f29599394f2c74f5c4e299d04c..a483ebef1f550656b66ea7b65877c394ad35f2e8 | tail -1`
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py parallelus/engine/tests/test_session_paths.py parallelus/engine/tests/test_subagent_manager.py`
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py`
+- `PATH="$PWD/.venv/bin:$PATH" parallelus/engine/tests/smoke.sh`
 - `PATH="$PWD/.venv/bin:$PATH" make ci`
+- `python3 -c 'import yaml'`
+- `pytest -q parallelus/engine/tests/test_review_preflight.py::test_review_preflight_default_launch_marks_awaiting_when_not_started`
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_review_preflight.py`
 
 ## Conclusion
-- The prior High-severity vendor-runtime breakage has been remediated, and `PHASE-06` acceptance gates are satisfied on current `HEAD`.
-- Approval is granted for this commit with one Medium and two Low follow-up items tracked above.
+- `PHASE-07` acceptance gates are satisfied on `a483ebef1f550656b66ea7b65877c394ad35f2e8` with explicit evidence.
+- No Blocker/High findings were identified; approval is granted with one Medium and two Low follow-up items.
 
 ## Provenance
 - Model: GPT-5 Codex
