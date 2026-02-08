@@ -103,6 +103,41 @@ is_enabled() {
   [[ -n "$raw" ]] && ! is_falsey "$raw"
 }
 
+retro_required() {
+  local raw="${AGENTS_REQUIRE_RETRO:-}"
+  if [[ -z "$raw" && -f "$ROOT/parallelus/engine/agentrc" ]]; then
+    raw=$(awk -F= '
+      /^[[:space:]]*AGENTS_REQUIRE_RETRO[[:space:]]*=/ {
+        v=$2
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        gsub(/^"|"$/, "", v)
+        print v
+        found=1
+        exit
+      }
+      /^[[:space:]]*REQUIRE_AGENT_CI_AUDITS[[:space:]]*=/ {
+        if (legacy == "") {
+          legacy=$2
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", legacy)
+          gsub(/^"|"$/, "", legacy)
+        }
+      }
+      END {
+        if (!found && legacy != "") {
+          print legacy
+        }
+      }
+    ' "$ROOT/parallelus/engine/agentrc" || true)
+  fi
+  if [[ -z "$raw" ]]; then
+    raw="1"
+  fi
+  if is_falsey "$raw"; then
+    return 1
+  fi
+  return 0
+}
+
 current_branch() {
   git rev-parse --abbrev-ref HEAD
 }
@@ -1217,17 +1252,21 @@ USAGE
   branch=$(git rev-parse --abbrev-ref HEAD)
   head=$(git rev-parse HEAD)
 
-  echo "review-preflight: recording marker for $branch@$head" >&2
-  "$ROOT/parallelus/engine/bin/retro-marker"
+  if retro_required; then
+    echo "review-preflight: recording marker for $branch@$head" >&2
+    "$ROOT/parallelus/engine/bin/retro-marker"
 
-  echo "review-preflight: collecting failures (must run after marker; do not parallelize)" >&2
-  "$ROOT/parallelus/engine/bin/collect_failures.py"
+    echo "review-preflight: collecting failures (must run after marker; do not parallelize)" >&2
+    "$ROOT/parallelus/engine/bin/collect_failures.py"
 
-  echo "review-preflight: generating marker-matched retrospective report (local commit-aware mode)" >&2
-  "$RETRO_LOCAL_AUDITOR"
+    echo "review-preflight: generating marker-matched retrospective report (local commit-aware mode)" >&2
+    "$RETRO_LOCAL_AUDITOR"
 
-  echo "review-preflight: verifying retrospective linkage" >&2
-  "$ROOT/parallelus/engine/bin/verify-retrospective"
+    echo "review-preflight: verifying retrospective linkage" >&2
+    "$ROOT/parallelus/engine/bin/verify-retrospective"
+  else
+    echo "review-preflight: AGENTS_REQUIRE_RETRO=0; skipping retrospective preflight pipeline." >&2
+  fi
 
   if (( skip_launch == 1 )); then
     echo "review-preflight: complete (launch skipped)" >&2

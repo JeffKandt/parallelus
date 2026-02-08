@@ -18,6 +18,7 @@
   already covers `HEAD` or only doc-only follow-ups landed (`feature/branch-audit-report`).
 
 ## Next Focus Areas
+- Reactivate merge-time retrospective audits once failure harvesting produces actionable signals (not just freshness checks), including a narrowed source scope and explicit signal-quality thresholds.
 - Continue refining auditor heuristic coverage (e.g., additional log analysis).
 - Socialise the updated folding workflow and communication philosophy with maintainers; gather feedback for the next iteration.
 - Pilot the Recon queue split (next-feature vs backlog) on upcoming branches and capture friction points for tooling tweaks.

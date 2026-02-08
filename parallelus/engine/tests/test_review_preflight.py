@@ -85,6 +85,7 @@ def test_review_preflight_no_launch_creates_marker_linked_artifacts() -> None:
         cmd = _run(
             [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight", "--no-launch"],
             cwd=repo,
+            env={"AGENTS_REQUIRE_RETRO": "1"},
         )
         assert cmd.returncode == 0, cmd.stderr
         assert "review-preflight: complete (launch skipped)" in cmd.stderr
@@ -144,7 +145,7 @@ def test_review_preflight_default_launch_marks_awaiting_when_not_started() -> No
         cmd = _run(
             [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight"],
             cwd=repo,
-            env={"SUBAGENT_LAUNCH_HELPER": str(launcher_stub)},
+            env={"SUBAGENT_LAUNCH_HELPER": str(launcher_stub), "AGENTS_REQUIRE_RETRO": "1"},
         )
         assert cmd.returncode == 0, cmd.stderr
         assert "awaiting_manual_launch" in cmd.stderr
@@ -203,6 +204,7 @@ exit 0
             env={
                 # Keep tmux off PATH so launch falls back to manual instructions.
                 "PATH": f"{launcher_stub_dir}:/usr/bin:/bin:/usr/sbin:/sbin",
+                "AGENTS_REQUIRE_RETRO": "1",
             },
         )
         assert cmd.returncode == 0, cmd.stderr
@@ -220,3 +222,23 @@ exit 0
         assert entry["status"] == "cleaned"
         assert entry.get("deliverables_status") == "harvested"
         assert not Path(entry["path"]).exists()
+
+
+def test_review_preflight_no_launch_skips_retro_pipeline_when_disabled() -> None:
+    with tempfile.TemporaryDirectory(prefix="review-preflight-skip-retro-") as tmpdir:
+        repo = Path(tmpdir)
+        branch = "feature/preflight-skip-retro"
+        slug = branch.replace("/", "-")
+        _init_repo(repo, branch=branch)
+
+        cmd = _run(
+            [str(repo / "parallelus/engine" / "bin" / "subagent_manager.sh"), "review-preflight", "--no-launch"],
+            cwd=repo,
+            env={"AGENTS_REQUIRE_RETRO": "0"},
+        )
+        assert cmd.returncode == 0, cmd.stderr
+        assert "AGENTS_REQUIRE_RETRO=0; skipping retrospective preflight pipeline." in cmd.stderr
+        assert "review-preflight: complete (launch skipped)" in cmd.stderr
+
+        marker_path = repo / "docs" / "parallelus" / "self-improvement" / "markers" / f"{slug}.json"
+        assert not marker_path.exists()
