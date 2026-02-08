@@ -28,6 +28,14 @@ FORCE=0
 OVERLAY_BACKUP=1
 OVERLAY_UPGRADE=0
 DETECT_NAMESPACE_ONLY=0
+DRY_RUN=0
+MIGRATION_REPORT_FILE=""
+
+BUNDLE_ROOT_REL="parallelus"
+HOST_STATE_CLASSIFICATION="unknown"
+declare -a LEGACY_LEFTOVERS=()
+
+MIGRATION_STEPS_FILE=""
 
 NAMESPACE_DECISION=""
 NAMESPACE_REASON=""
@@ -54,6 +62,9 @@ Options:
       --overlay-no-backup
                          Skip creating .bak backups during overlay (use with caution)
       --overlay-upgrade  Overlay shortcut: implies --mode overlay, enforces clean target, and disables .bak backups
+      --dry-run          Overlay-upgrade only; prints migration plan/report without mutating files
+      --migration-report PATH
+                         Write machine-readable migration report JSON (default: .parallelus/upgrade-reports/* for --overlay-upgrade)
       --detect-namespace
                          Print namespace detection decision for TARGET_DIRECTORY and exit
   -h, --help             Show this message
@@ -62,6 +73,7 @@ Examples:
   parallelus/engine/bin/deploy_agents_process.sh ./new-repo
   parallelus/engine/bin/deploy_agents_process.sh --name my-app --lang swift ./swift-repo
   parallelus/engine/bin/deploy_agents_process.sh --mode overlay --lang python ../existing
+  parallelus/engine/bin/deploy_agents_process.sh --overlay-upgrade --dry-run ../existing
   parallelus/engine/bin/deploy_agents_process.sh --detect-namespace ../existing
 USAGE
 }
@@ -124,6 +136,55 @@ join_csv() {
     printf '%s\n' "$*"
 }
 
+cleanup_temp_files() {
+    if [[ -n "${MIGRATION_STEPS_FILE:-}" && -f "$MIGRATION_STEPS_FILE" ]]; then
+        rm -f "$MIGRATION_STEPS_FILE"
+    fi
+}
+
+trap cleanup_temp_files EXIT
+
+bundle_engine_rel() {
+    printf '%s\n' "$BUNDLE_ROOT_REL/engine"
+}
+
+bundle_manuals_rel() {
+    printf '%s\n' "$BUNDLE_ROOT_REL/manuals"
+}
+
+bundle_engine_path() {
+    printf '%s\n' "$TARGET_DIR/$(bundle_engine_rel)"
+}
+
+bundle_manuals_path() {
+    printf '%s\n' "$TARGET_DIR/$(bundle_manuals_rel)"
+}
+
+set_bundle_root_from_namespace() {
+    if [[ "$NAMESPACE_DECISION" == "vendor/parallelus" ]]; then
+        BUNDLE_ROOT_REL="vendor/parallelus"
+    else
+        BUNDLE_ROOT_REL="parallelus"
+    fi
+}
+
+ensure_migration_steps_file() {
+    if [[ -n "$MIGRATION_STEPS_FILE" ]]; then
+        return
+    fi
+    MIGRATION_STEPS_FILE="$(mktemp)"
+}
+
+record_migration_step() {
+    local step="$1"
+    local status="$2"
+    local detail="${3:-}"
+    detail="${detail//$'\t'/ }"
+    detail="${detail//$'\n'/; }"
+    ensure_migration_steps_file
+    printf '%s\t%s\t%s\n' "$step" "$status" "$detail" >> "$MIGRATION_STEPS_FILE"
+}
+
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -174,6 +235,15 @@ parse_args() {
                 FORCE=1
                 shift
                 ;;
+            --dry-run)
+                DRY_RUN=1
+                shift
+                ;;
+            --migration-report)
+                [[ $# -lt 2 ]] && fail "Missing value for --migration-report"
+                MIGRATION_REPORT_FILE="$2"
+                shift 2
+                ;;
             --detect-namespace)
                 DETECT_NAMESPACE_ONLY=1
                 shift
@@ -221,12 +291,21 @@ parse_args() {
     if [[ $OVERLAY_BACKUP -eq 0 && "$MODE" != "overlay" ]]; then
         fail "--overlay-no-backup is only supported when --mode overlay is set"
     fi
+    if [[ $DRY_RUN -eq 1 && $OVERLAY_UPGRADE -eq 0 ]]; then
+        fail "--dry-run currently requires --overlay-upgrade"
+    fi
+    if [[ -n "$MIGRATION_REPORT_FILE" && $OVERLAY_UPGRADE -eq 0 ]]; then
+        fail "--migration-report is only supported with --overlay-upgrade"
+    fi
 
     if [[ -z "$LANGS" ]]; then
         LANGS="$DEFAULT_LANGS"
     fi
 
     TARGET_DIR="$(absolute_path "$TARGET_DIR")"
+    if [[ -n "$MIGRATION_REPORT_FILE" && "$MIGRATION_REPORT_FILE" != /* ]]; then
+        MIGRATION_REPORT_FILE="$TARGET_DIR/$MIGRATION_REPORT_FILE"
+    fi
 }
 
 ensure_source_repo() {
@@ -418,6 +497,154 @@ print_bundle_namespace_detection() {
     echo "LEGACY_CONTEXT_MATCHES=$(join_csv "${NAMESPACE_CONTEXT_MATCHES[@]-}")"
 }
 
+classify_host_state() {
+    local has_legacy=0
+    local has_parallelus=0
+    local has_vendor=0
+
+    [[ -d "$TARGET_DIR/.agents" ]] && has_legacy=1
+    [[ -d "$TARGET_DIR/parallelus/engine" || -d "$TARGET_DIR/parallelus/manuals" ]] && has_parallelus=1
+    [[ -d "$TARGET_DIR/vendor/parallelus/engine" || -d "$TARGET_DIR/vendor/parallelus/manuals" ]] && has_vendor=1
+
+    if [[ $has_legacy -eq 1 && ( $has_parallelus -eq 1 || $has_vendor -eq 1 || "$NAMESPACE_PARALLELUS_SENTINEL" != "missing" || "$NAMESPACE_VENDOR_SENTINEL" != "missing" ) ]]; then
+        HOST_STATE_CLASSIFICATION="mixed_or_interrupted"
+    elif [[ "$NAMESPACE_PARALLELUS_SENTINEL" == "valid" || "$NAMESPACE_VENDOR_SENTINEL" == "valid" ]]; then
+        HOST_STATE_CLASSIFICATION="reorg_deployment"
+    elif [[ $has_legacy -eq 1 ]]; then
+        HOST_STATE_CLASSIFICATION="legacy_deployment"
+    elif [[ -d "$TARGET_DIR/parallelus" && "$NAMESPACE_PARALLELUS_SENTINEL" == invalid:* ]]; then
+        HOST_STATE_CLASSIFICATION="conflict_namespace"
+    else
+        HOST_STATE_CLASSIFICATION="unclassified_or_unrelated"
+    fi
+}
+
+resolve_migration_report_path() {
+    if [[ -n "$MIGRATION_REPORT_FILE" ]]; then
+        return
+    fi
+    if [[ $OVERLAY_UPGRADE -eq 1 && $DRY_RUN -eq 0 ]]; then
+        MIGRATION_REPORT_FILE="$TARGET_DIR/.parallelus/upgrade-reports/upgrade-$(date -u '+%Y%m%dT%H%M%SZ').json"
+    fi
+}
+
+collect_legacy_leftovers() {
+    LEGACY_LEFTOVERS=()
+    local rel
+    local candidates=(
+        ".agents"
+        "docs/agents"
+        "docs/plans"
+        "docs/progress"
+        "docs/reviews"
+        "docs/self-improvement"
+        "sessions"
+    )
+    for rel in "${candidates[@]}"; do
+        if [[ -e "$TARGET_DIR/$rel" ]]; then
+            LEGACY_LEFTOVERS+=("$rel")
+        fi
+    done
+}
+
+emit_migration_report() {
+    local report_path="${1:-}"
+    ensure_migration_steps_file
+
+    local report_json
+    report_json="$(python3 - "$MIGRATION_STEPS_FILE" \
+        "$TARGET_DIR" "$MODE" "$OVERLAY_UPGRADE" "$DRY_RUN" \
+        "$HOST_STATE_CLASSIFICATION" "$BUNDLE_ROOT_REL" \
+        "$NAMESPACE_DECISION" "$NAMESPACE_REASON" "$NAMESPACE_OVERRIDE_USED" \
+        "$NAMESPACE_PARALLELUS_SENTINEL" "$NAMESPACE_VENDOR_SENTINEL" \
+        "$NAMESPACE_STRONG_COUNT" "$NAMESPACE_CONTEXT_COUNT" \
+        "$(join_csv "${NAMESPACE_STRONG_MATCHES[@]-}")" \
+        "$(join_csv "${NAMESPACE_CONTEXT_MATCHES[@]-}")" \
+        "$(join_csv "${LEGACY_LEFTOVERS[@]-}")" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+(
+    steps_path,
+    target_dir,
+    mode,
+    overlay_upgrade,
+    dry_run,
+    host_state,
+    bundle_root,
+    namespace_decision,
+    namespace_reason,
+    namespace_override_used,
+    parallelus_sentinel,
+    vendor_sentinel,
+    legacy_strong_count,
+    legacy_context_count,
+    legacy_strong_matches,
+    legacy_context_matches,
+    legacy_leftovers,
+) = sys.argv[1:]
+
+def parse_csv(raw: str) -> list[str]:
+    if not raw or raw == "-":
+        return []
+    return [item for item in raw.split(",") if item]
+
+steps = []
+for line in Path(steps_path).read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    parts = line.split("\t", 2)
+    if len(parts) == 3:
+        step, status, detail = parts
+    elif len(parts) == 2:
+        step, status = parts
+        detail = ""
+    else:
+        step = parts[0]
+        status = "unknown"
+        detail = ""
+    steps.append({"step": step, "status": status, "detail": detail})
+
+payload = {
+    "generated_at": datetime.now(timezone.utc).isoformat(),
+    "target_dir": target_dir,
+    "mode": mode,
+    "overlay_upgrade": overlay_upgrade == "1",
+    "dry_run": dry_run == "1",
+    "host_state_classification": host_state,
+    "bundle_root": bundle_root,
+    "namespace_detection": {
+        "decision": namespace_decision,
+        "reason": namespace_reason,
+        "override_used": namespace_override_used == "1",
+        "parallelus_sentinel": parallelus_sentinel,
+        "vendor_sentinel": vendor_sentinel,
+        "legacy_strong_count": int(legacy_strong_count),
+        "legacy_context_count": int(legacy_context_count),
+        "legacy_strong_matches": parse_csv(legacy_strong_matches),
+        "legacy_context_matches": parse_csv(legacy_context_matches),
+    },
+    "steps": steps,
+    "legacy_leftovers": parse_csv(legacy_leftovers),
+}
+print(json.dumps(payload, indent=2, sort_keys=True))
+PY
+)"
+
+    if [[ -n "$report_path" ]]; then
+        mkdir -p "$(dirname "$report_path")"
+        printf '%s\n' "$report_json" > "$report_path"
+        echo "MIGRATION_REPORT_PATH=$report_path"
+        return
+    fi
+
+    echo "MIGRATION_REPORT_JSON_BEGIN"
+    printf '%s\n' "$report_json"
+    echo "MIGRATION_REPORT_JSON_END"
+}
+
 prepare_destination() {
     if [[ "$MODE" == "scaffold" ]]; then
         if [[ -e "$TARGET_DIR" ]]; then
@@ -479,10 +706,19 @@ warn_overlay_overwrites() {
     fi
     local collisions=()
     local path
+    local bundle_engine_rel_path bundle_manuals_rel_path
+    bundle_engine_rel_path="$(bundle_engine_rel)"
+    bundle_manuals_rel_path="$(bundle_manuals_rel)"
     # Temporary compatibility: include legacy paths so overlay warnings cover
     # partially migrated repositories.
-    for path in AGENTS.md parallelus/engine parallelus/manuals .agents docs/agents docs/parallelus/reviews docs/reviews Makefile .gitignore; do
-        if diff_exists "$SOURCE_REPO/$path" "$TARGET_DIR/$path"; then
+    for path in AGENTS.md "$bundle_engine_rel_path" "$bundle_manuals_rel_path" .agents docs/agents docs/parallelus/reviews docs/reviews Makefile .gitignore; do
+        local source_path="$SOURCE_REPO/$path"
+        if [[ "$path" == "$bundle_engine_rel_path" ]]; then
+            source_path="$SOURCE_REPO/parallelus/engine"
+        elif [[ "$path" == "$bundle_manuals_rel_path" ]]; then
+            source_path="$SOURCE_REPO/parallelus/manuals"
+        fi
+        if diff_exists "$source_path" "$TARGET_DIR/$path"; then
             collisions+=("$path")
         fi
     done
@@ -521,7 +757,8 @@ backup_existing_git_hooks() {
     if [[ ! -d "$git_hooks" ]]; then
         return
     fi
-    local agents_hooks="$TARGET_DIR/parallelus/engine/hooks"
+    local agents_hooks
+    agents_hooks="$(bundle_engine_path)/hooks"
     mkdir -p "$agents_hooks"
     local ts
     ts=$(date -u '+%Y%m%d%H%M%S')
@@ -541,7 +778,7 @@ backup_existing_git_hooks() {
         backed_up=1
     done
     if [[ $backed_up -eq 1 ]]; then
-        warn "Preserved existing .git/hooks scripts under parallelus/engine/hooks/*.predeploy.*.bak"
+        warn "Preserved existing .git/hooks scripts under $(bundle_engine_rel)/hooks/*.predeploy.*.bak"
     fi
 }
 
@@ -656,18 +893,218 @@ EOF
     done
 }
 
+write_bundle_manifest() {
+    local sentinel="$TARGET_DIR/$BUNDLE_ROOT_REL/.parallelus-bundle.json"
+    local bundle_version
+    bundle_version="$(cd "$SOURCE_REPO" && git rev-parse --short=12 HEAD 2>/dev/null || printf 'unknown')"
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "write_bundle_manifest" "planned" "$sentinel"
+        return
+    fi
+
+    mkdir -p "$(dirname "$sentinel")"
+    python3 - "$sentinel" "$bundle_version" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+path = Path(sys.argv[1])
+bundle_version = sys.argv[2]
+payload = {
+    "bundle_id": "parallelus.bundle.v1",
+    "layout_version": 1,
+    "upstream_repo": "https://github.com/parallelus/parallelus.git",
+    "bundle_version": bundle_version,
+    "installed_on": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+    "managed_paths": ["engine", "manuals"],
+}
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+    record_migration_step "write_bundle_manifest" "applied" "$sentinel"
+}
+
+migrate_legacy_docs_agents() {
+    local source_dir="$TARGET_DIR/docs/agents"
+    local dest_dir
+    dest_dir="$(bundle_manuals_path)"
+
+    if [[ ! -d "$source_dir" ]]; then
+        record_migration_step "migrate_docs_agents_to_manuals" "skipped" "docs/agents not present"
+        return
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "migrate_docs_agents_to_manuals" "planned" "docs/agents -> $(bundle_manuals_rel)"
+        return
+    fi
+
+    rsync_copy "$source_dir/" "$dest_dir/" --ignore-existing
+    record_migration_step "migrate_docs_agents_to_manuals" "applied" "docs/agents -> $(bundle_manuals_rel)"
+}
+
+migrate_legacy_branch_notebooks() {
+    local plans_dir="$TARGET_DIR/docs/plans"
+    local progress_dir="$TARGET_DIR/docs/progress"
+    local moved=0
+    local file slug dest
+
+    if [[ -d "$plans_dir" ]]; then
+        for file in "$plans_dir"/*.md; do
+            [[ -f "$file" ]] || continue
+            slug="$(basename "$file" .md)"
+            [[ "$slug" == "README" ]] && continue
+            dest="$TARGET_DIR/docs/branches/$slug/PLAN.md"
+            if [[ $DRY_RUN -eq 1 ]]; then
+                record_migration_step "migrate_branch_plan" "planned" "docs/plans/$slug.md -> docs/branches/$slug/PLAN.md"
+            else
+                mkdir -p "$(dirname "$dest")"
+                rsync_copy "$file" "$dest" --ignore-existing
+                record_migration_step "migrate_branch_plan" "applied" "docs/plans/$slug.md -> docs/branches/$slug/PLAN.md"
+            fi
+            moved=1
+        done
+    fi
+
+    if [[ -d "$progress_dir" ]]; then
+        for file in "$progress_dir"/*.md; do
+            [[ -f "$file" ]] || continue
+            slug="$(basename "$file" .md)"
+            [[ "$slug" == "README" ]] && continue
+            dest="$TARGET_DIR/docs/branches/$slug/PROGRESS.md"
+            if [[ $DRY_RUN -eq 1 ]]; then
+                record_migration_step "migrate_branch_progress" "planned" "docs/progress/$slug.md -> docs/branches/$slug/PROGRESS.md"
+            else
+                mkdir -p "$(dirname "$dest")"
+                rsync_copy "$file" "$dest" --ignore-existing
+                record_migration_step "migrate_branch_progress" "applied" "docs/progress/$slug.md -> docs/branches/$slug/PROGRESS.md"
+            fi
+            moved=1
+        done
+    fi
+
+    if [[ $moved -eq 0 ]]; then
+        record_migration_step "migrate_branch_notebooks" "skipped" "legacy docs/plans and docs/progress notebooks not present"
+    fi
+}
+
+migrate_legacy_reviews_and_self_improvement() {
+    local legacy_reviews="$TARGET_DIR/docs/reviews"
+    local legacy_self="$TARGET_DIR/docs/self-improvement"
+    local moved=0
+
+    if [[ -d "$legacy_reviews" ]]; then
+        if [[ $DRY_RUN -eq 1 ]]; then
+            record_migration_step "migrate_reviews" "planned" "docs/reviews -> docs/parallelus/reviews"
+        else
+            rsync_copy "$legacy_reviews/" "$TARGET_DIR/docs/parallelus/reviews/" --ignore-existing
+            record_migration_step "migrate_reviews" "applied" "docs/reviews -> docs/parallelus/reviews"
+        fi
+        moved=1
+    fi
+
+    if [[ -d "$legacy_self" ]]; then
+        if [[ $DRY_RUN -eq 1 ]]; then
+            record_migration_step "migrate_self_improvement" "planned" "docs/self-improvement -> docs/parallelus/self-improvement"
+        else
+            rsync_copy "$legacy_self/" "$TARGET_DIR/docs/parallelus/self-improvement/" --ignore-existing
+            record_migration_step "migrate_self_improvement" "applied" "docs/self-improvement -> docs/parallelus/self-improvement"
+        fi
+        moved=1
+    fi
+
+    if [[ $moved -eq 0 ]]; then
+        record_migration_step "migrate_reviews_and_self_improvement" "skipped" "legacy docs/reviews and docs/self-improvement not present"
+    fi
+}
+
+migrate_legacy_sessions() {
+    local legacy_sessions="$TARGET_DIR/sessions"
+    local new_sessions="$TARGET_DIR/.parallelus/sessions"
+    if [[ ! -d "$legacy_sessions" ]]; then
+        record_migration_step "migrate_sessions" "skipped" "sessions/ not present"
+        return
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "migrate_sessions" "planned" "sessions -> .parallelus/sessions"
+        return
+    fi
+
+    mkdir -p "$new_sessions"
+    rsync_copy "$legacy_sessions/" "$new_sessions/" --ignore-existing
+    record_migration_step "migrate_sessions" "applied" "sessions -> .parallelus/sessions"
+}
+
+migrate_legacy_engine_tree() {
+    local legacy_engine="$TARGET_DIR/.agents"
+    local new_engine
+    new_engine="$(bundle_engine_path)"
+
+    if [[ ! -d "$legacy_engine" ]]; then
+        record_migration_step "migrate_legacy_engine" "skipped" ".agents/ not present"
+        return
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "migrate_legacy_engine" "planned" ".agents -> $(bundle_engine_rel) (non-overwriting)"
+        return
+    fi
+
+    rsync_copy "$legacy_engine/" "$new_engine/" --ignore-existing
+    record_migration_step "migrate_legacy_engine" "applied" ".agents -> $(bundle_engine_rel) (non-overwriting)"
+}
+
+verify_upgrade_layout() {
+    local sentinel="$TARGET_DIR/$BUNDLE_ROOT_REL/.parallelus-bundle.json"
+    local engine_entry="$TARGET_DIR/$BUNDLE_ROOT_REL/engine/bin/agents-session-start"
+    local missing=()
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "verify_upgrade_layout" "planned" "structural checks skipped in dry-run"
+        return
+    fi
+
+    local sentinel_status
+    sentinel_status="$(validate_bundle_manifest "$sentinel")"
+    [[ "$sentinel_status" == "valid" ]] || missing+=("$BUNDLE_ROOT_REL/.parallelus-bundle.json:$sentinel_status")
+    [[ -f "$engine_entry" ]] || missing+=("$BUNDLE_ROOT_REL/engine/bin/agents-session-start")
+    [[ -d "$TARGET_DIR/.parallelus/sessions" ]] || missing+=(".parallelus/sessions")
+    [[ -d "$TARGET_DIR/docs/branches" ]] || missing+=("docs/branches")
+    [[ -d "$TARGET_DIR/docs/parallelus/reviews" ]] || missing+=("docs/parallelus/reviews")
+    [[ -d "$TARGET_DIR/docs/parallelus/self-improvement" ]] || missing+=("docs/parallelus/self-improvement")
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        record_migration_step "verify_upgrade_layout" "failed" "$(join_csv "${missing[@]}")"
+        fail "Upgrade verification failed: missing or invalid paths: $(join_csv "${missing[@]}")"
+    fi
+    record_migration_step "verify_upgrade_layout" "applied" "all structural checks passed"
+}
+
+run_overlay_upgrade_migrations() {
+    migrate_legacy_docs_agents
+    migrate_legacy_branch_notebooks
+    migrate_legacy_reviews_and_self_improvement
+    migrate_legacy_sessions
+    migrate_legacy_engine_tree
+    write_bundle_manifest
+    verify_upgrade_layout
+    collect_legacy_leftovers
+}
+
 copy_base_assets() {
     info "Copying agent process assets"
     backup_existing_git_hooks
+    local bundle_engine bundle_manuals
+    bundle_engine="$(bundle_engine_path)"
+    bundle_manuals="$(bundle_manuals_path)"
+
     rsync_copy "$SOURCE_REPO/AGENTS.md" "$TARGET_DIR/AGENTS.md"
-    rsync_copy "$SOURCE_REPO/parallelus/engine/" "$TARGET_DIR/parallelus/engine/"
+    rsync_copy "$SOURCE_REPO/parallelus/engine/" "$bundle_engine/"
 
     local project_preserved=0
-    if [[ "$MODE" == "overlay" && -d "$TARGET_DIR/parallelus/manuals/project" ]]; then
+    if [[ "$MODE" == "overlay" && -d "$bundle_manuals/project" ]]; then
         project_preserved=1
-        rsync_copy "$SOURCE_REPO/parallelus/manuals/" "$TARGET_DIR/parallelus/manuals/" --exclude 'project/'
+        rsync_copy "$SOURCE_REPO/parallelus/manuals/" "$bundle_manuals/" --exclude 'project/'
     else
-        rsync_copy "$SOURCE_REPO/parallelus/manuals/" "$TARGET_DIR/parallelus/manuals/"
+        rsync_copy "$SOURCE_REPO/parallelus/manuals/" "$bundle_manuals/"
     fi
     local source_reviews_dir="$SOURCE_REPO/docs/parallelus/reviews"
     local source_reviews_readme="$source_reviews_dir/README.md"
@@ -686,7 +1123,7 @@ copy_base_assets() {
     ensure_self_improvement_scaffold
 
     if [[ $project_preserved -eq 1 ]]; then
-        warn "Preserved existing parallelus/manuals/project/ content (merge templates manually if desired)."
+        warn "Preserved existing $(bundle_manuals_rel)/project/ content (merge templates manually if desired)."
     fi
 }
 
@@ -695,7 +1132,7 @@ install_hooks_into_repo() {
         return
     fi
     info "Installing managed git hooks"
-    (cd "$TARGET_DIR" && parallelus/engine/bin/install-hooks --quiet || true)
+    (cd "$TARGET_DIR" && "$BUNDLE_ROOT_REL/engine/bin/install-hooks" --quiet || true)
 }
 
 annotate_agents_overlay() {
@@ -729,9 +1166,9 @@ PY
 }
 
 update_agentrc() {
-    local file="$TARGET_DIR/parallelus/engine/agentrc"
+    local file="$TARGET_DIR/$BUNDLE_ROOT_REL/engine/agentrc"
     if [[ ! -f "$file" ]]; then
-        warn "parallelus/engine/agentrc not found after copy"
+        warn "$BUNDLE_ROOT_REL/engine/agentrc not found after copy"
         return
     fi
     python3 - <<'PY' "$file" "$PROJECT_NAME" "$BASE_BRANCH" "$LANGS"
@@ -779,7 +1216,7 @@ generate_makefile_snippet() {
 
     printf '%s\n' '# >>> agent-process integration >>>'
     printf '%s\n' 'ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))'
-    printf '%s\n' 'AGENTS_DIR ?= $(ROOT)/parallelus/engine'
+    printf 'AGENTS_DIR ?= $(ROOT)/%s\n' "$(bundle_engine_rel)"
     printf 'LANG_ADAPTERS ?= %s\n\n' "$LANGS"
     printf '%s\n' 'include $(AGENTS_DIR)/make/agents.mk'
     printf '%s' "$adapter_block"
@@ -858,7 +1295,7 @@ This repository is configured with the Parallelus Agent Process.
 
 ## Next Steps
 
-1. Read \`AGENTS.md\` and the documents under \`parallelus/manuals/\`.
+1. Read \`AGENTS.md\` and the documents under \`$(bundle_manuals_rel)/\`.
 2. Run \`make read_bootstrap\` to verify repository detection.
 3. Use \`make bootstrap slug=my-feature\` to create your first branch.
 4. Update the \`setup\` target in the \`Makefile\` for project tooling.
@@ -866,12 +1303,12 @@ This repository is configured with the Parallelus Agent Process.
 ## Language Overlays
 
 Adapters enabled by this deployment: $LANGS.
-Update \`parallelus/engine/agentrc\` and the Makefile snippet if you add or remove adapters.
+Update \`$(bundle_engine_rel)/agentrc\` and the Makefile snippet if you add or remove adapters.
 
 ## Documentation
 
 - [AGENTS.md](AGENTS.md)
-- [parallelus/manuals/](parallelus/manuals/)
+- [$(bundle_manuals_rel)/]($(bundle_manuals_rel)/)
 EOF
 }
 
@@ -1106,11 +1543,52 @@ main() {
     prepare_destination
     if [[ "$MODE" == "overlay" ]]; then
         detect_bundle_namespace
+        set_bundle_root_from_namespace
+        classify_host_state
         info "Namespace detection:"
         print_bundle_namespace_detection
+        if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+            info "Host state classification: $HOST_STATE_CLASSIFICATION"
+            info "Locked bundle root: $BUNDLE_ROOT_REL"
+        fi
+    else
+        BUNDLE_ROOT_REL="parallelus"
+        HOST_STATE_CLASSIFICATION="scaffold_new_repo"
     fi
+    resolve_migration_report_path
+
+    if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+        record_migration_step "detect_and_lock_mode" "applied" "state=$HOST_STATE_CLASSIFICATION,bundle_root=$BUNDLE_ROOT_REL,reason=$NAMESPACE_REASON"
+    fi
+
     warn_overlay_overwrites
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+        record_migration_step "install_bundle_payload" "planned" "copy bundle into $BUNDLE_ROOT_REL"
+        run_overlay_upgrade_migrations
+        if [[ ${#LEGACY_LEFTOVERS[@]} -gt 0 ]]; then
+            record_migration_step "legacy_leftovers" "present" "$(join_csv "${LEGACY_LEFTOVERS[@]}")"
+        else
+            record_migration_step "legacy_leftovers" "none" "-"
+        fi
+        if [[ -n "$MIGRATION_REPORT_FILE" ]]; then
+            warn "--dry-run ignores --migration-report file output and prints report JSON to stdout"
+        fi
+        emit_migration_report ""
+        info "Dry-run complete (no files were mutated)"
+        return
+    fi
+
     copy_base_assets
+    if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+        record_migration_step "install_bundle_payload" "applied" "copied bundle into $BUNDLE_ROOT_REL"
+        run_overlay_upgrade_migrations
+        if [[ ${#LEGACY_LEFTOVERS[@]} -gt 0 ]]; then
+            record_migration_step "legacy_leftovers" "present" "$(join_csv "${LEGACY_LEFTOVERS[@]}")"
+        else
+            record_migration_step "legacy_leftovers" "none" "-"
+        fi
+    fi
     install_hooks_into_repo
     annotate_agents_overlay
     update_agentrc
@@ -1121,6 +1599,11 @@ main() {
     apply_language_overlays
     run_verification
     create_initial_commit
+
+    if [[ $OVERLAY_UPGRADE -eq 1 ]]; then
+        emit_migration_report "$MIGRATION_REPORT_FILE"
+    fi
+
     info "Deployment complete"
     if [[ -n "$REMOTE_URL" ]]; then
         echo "Next: git push -u origin $BASE_BRANCH"

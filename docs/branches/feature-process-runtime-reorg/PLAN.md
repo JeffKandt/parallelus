@@ -19,6 +19,7 @@
 - [x] execute `PHASE-03` (docs namespace migration + tracked artifact relocation + acceptance gate + approved senior review)
 - [x] execute `PHASE-04` (engine/manual relocation + hardcoded path rewrite + acceptance gate + approved senior review)
 - [x] execute `PHASE-05` (customization contract implementation + acceptance gate + approved senior review)
+- [x] execute `PHASE-06` (pre-reorg upgrade command + idempotent migration + acceptance gate + approved senior review)
 - [x] harden subagent review/auditor orchestration after `PHASE-02` review-loop incidents (harvest baseline rewrites, cleanup guard, context pinning)
 - [x] enforce retrospective/head freshness and CI-auditor timeout abort handling as default guardrails (not prompt-specific reminders)
 - [x] harden session handling for stateless-shell environments (runtime session pointers + turn_end fallback + marker session metadata recovery)
@@ -29,5 +30,5 @@
 - [x] temporarily bypass retrospective audits in preflight (`AGENTS_REQUIRE_RETRO=0`) and backlog reactivation work once signal quality improves
 
 ## Next Actions
-- hold here after `PHASE-05` completion and wait for maintainer direction before starting `PHASE-06`
-- if authorized to continue, execute only `PHASE-06` pre-reorg migration scope with fresh phase-specific gate evidence
+- hold here after `PHASE-06` completion and wait for maintainer direction before starting `PHASE-07`
+- if authorized to continue, execute only `PHASE-07` cleanup/decommission scope with fresh phase-specific gate evidence

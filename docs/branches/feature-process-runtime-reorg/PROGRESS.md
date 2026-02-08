@@ -1849,3 +1849,78 @@
 **Next Actions**
 - commit and push the temporary bypass + backlog update
 - re-enable retros once the backlog item’s signal-quality criteria are implemented
+
+## 2026-02-08 00:50:57 UTC
+**Objectives**
+- continue layout reorg execution on `feature/process-runtime-reorg` by implementing only `PHASE-06` from `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+- determine active notebook layout + next incomplete phase before edits
+- complete phase-scoped validations, commit/push, and run the required Senior Architect review loop
+
+**Work Performed**
+- reviewed startup guardrails and project extension notes:
+  - `AGENTS.md`
+  - `PROJECT_AGENTS.md`
+  - `parallelus/engine/custom/README.md`
+- ran `eval "$(make start_session)"` and captured session `20251062-20260208004119-e59c98`
+- captured bootstrap snapshot:
+  - `REPO_MODE=remote-connected`
+  - `CURRENT_BRANCH=feature/process-runtime-reorg`
+  - `BASE_REMOTE=origin`
+  - `ORPHANED_NOTEBOOKS=` (none)
+  - branch snapshot table rows:
+    - `feature/multi-agentic-tool-guidance` (`remote & local`) action `decide: merge/archive/delete`
+    - `feature/process-runtime-reorg` (`remote & local`) action `decide: merge/archive/delete`
+- read phase + notebook sources:
+  - `docs/deployment-upgrade-and-layout-EXECUTION-PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+  - `docs/branches/feature-process-runtime-reorg/PROGRESS.md`
+- confirmed notebook layout state:
+  - canonical exists: `docs/branches/feature-process-runtime-reorg/{PLAN,PROGRESS}.md`
+  - legacy duplicates absent: `docs/plans/feature-process-runtime-reorg.md` and `docs/progress/feature-process-runtime-reorg.md` not present (no cleanup required)
+- determined next incomplete phase: `PHASE-06`
+- implemented `PHASE-06` pre-reorg migration command scope:
+  - extended `parallelus/engine/bin/deploy_agents_process.sh` with:
+    - `--dry-run` (overlay-upgrade only, no mutation, prints JSON report)
+    - `--migration-report <path>` override and default report output under `.parallelus/upgrade-reports/`
+    - host-state classification (`legacy_deployment`, `mixed_or_interrupted`, `reorg_deployment`, `conflict_namespace`)
+    - locked bundle-root usage (`parallelus/` or `vendor/parallelus/`) across asset copy/install paths
+    - idempotent, non-destructive migration steps for:
+      - `docs/agents/**` -> `<bundle-root>/manuals/**`
+      - `docs/plans/*.md` + `docs/progress/*.md` -> `docs/branches/<slug>/{PLAN,PROGRESS}.md`
+      - `docs/reviews/**` + `docs/self-improvement/**` -> `docs/parallelus/**`
+      - `sessions/**` -> `.parallelus/sessions/**`
+      - `.agents/**` -> `<bundle-root>/engine/**` (non-overwriting compatibility copy)
+    - sentinel rewrite at `<bundle-root>/.parallelus-bundle.json`
+    - structural post-migration verification + legacy-leftover reporting
+    - machine-readable migration report generation for troubleshooting/auditability
+  - updated deployment guide:
+    - `parallelus/manuals/deployment.md` documents new phase-06 upgrade/dry-run/report behavior
+  - added targeted phase tests:
+    - `parallelus/engine/tests/test_upgrade_migration.py`
+    - covers legacy, mixed/interrupted, already-reorged rerun safety, and dry-run no-mutation/report output
+- updated branch plan checklist/next-actions for `PHASE-06` completion:
+  - `docs/branches/feature-process-runtime-reorg/PLAN.md`
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/deploy_agents_process.sh`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py`
+  - outcome: pass (`20 passed in 7.45s`)
+
+**Phase Gate Check (`PHASE-06`)**
+- Gate: `Migration works from: legacy pre-reorg repo state` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_migrates_legacy_layout_and_writes_report`
+- Gate: `Migration works from: mixed/interrupted state` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_classifies_mixed_interrupted_state`
+- Gate: `Migration works from: already-reorged state (idempotent no-op or safe update)` — **Yes (pre-review)**
+  - evidence: `test_overlay_upgrade_rerun_on_reorg_repo_is_safe`
+- Gate: `Re-running migration does not duplicate/corrupt artifacts.` — **Yes (pre-review)**
+  - evidence: rerun assertions in `test_overlay_upgrade_rerun_on_reorg_repo_is_safe` + non-destructive copy strategy (`--ignore-existing`) in deploy helper migration steps
+
+**Residual Risks**
+- migration keeps legacy paths in place by design (no destructive delete); explicit cleanup/decommission remains deferred to `PHASE-07`
+- `--overlay-upgrade` still requires a clean target working tree; reruns require committing/stashing post-upgrade changes first
+
+**Next Actions**
+- commit and push `PHASE-06` implementation + tests/docs/notebook updates
+- run required Senior Architect review loop on current `HEAD` and iterate until approved with explicit `PHASE-06` gate wording/evidence

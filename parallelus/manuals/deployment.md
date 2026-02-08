@@ -15,6 +15,9 @@ parallelus/engine/bin/deploy_agents_process.sh --name my-swift-app --lang swift 
 
 # Overlay onto an existing repository (must be clean unless --force)
 parallelus/engine/bin/deploy_agents_process.sh --mode overlay --lang python .
+
+# Pre-reorg upgrade with migration report + no-op simulation
+parallelus/engine/bin/deploy_agents_process.sh --overlay-upgrade --dry-run .
 ```
 
 Key flags:
@@ -25,9 +28,18 @@ Key flags:
 - `--force` – allow scaffolding into a non-empty directory or overlaying onto a dirty worktree. Use with care.
 - `--overlay-no-backup` – overlay only; skip creating `.bak` files and rely on git history when you already have clean recovery points.
 - `--overlay-upgrade` – convenience flag for clean upgrades: implies overlay mode, asserts the target working tree is clean, sets `--overlay-no-backup`, and auto-consents to the overwrite warning.
+- `--dry-run` – `--overlay-upgrade` only; runs namespace detection + migration planning and prints a machine-readable JSON report without mutating files.
+- `--migration-report PATH` – `--overlay-upgrade` only; write the migration report JSON to a custom path (defaults to `.parallelus/upgrade-reports/upgrade-<timestamp>.json`).
 - `--remote URL` – configure the `origin` remote after initialization.
 
 The script copies the canonical assets (`AGENTS.md`, `parallelus/engine/`, `parallelus/manuals/`), scaffolds `docs/PLAN.md`, `docs/PROGRESS.md`, and the `docs/parallelus/self-improvement/` folders, wires the Makefile snippet, updates `parallelus/engine/agentrc`, and (for scaffold mode) creates an initial commit. If the target Makefile references optional helper scripts (for example `remember_later` / `capsule_prompt`), the corresponding `scripts/` files are copied when missing. During overlay deployments, any existing `parallelus/manuals/project/` content is preserved so project-specific narratives stay intact; copy new template material in manually if you want to adopt the updates. Overlay mode emits a notice in `AGENTS.md` only when backups are generated; when you opt out of backups (`--overlay-no-backup` or `--overlay-upgrade`), no notice is added. Likewise, overlays refresh only `docs/parallelus/reviews/README.md` so historical project reviews remain untouched.
+
+For `--overlay-upgrade`, the helper also runs the pre-reorg migration algorithm:
+- classifies host state (`legacy`, `mixed`, `reorg`, `conflict`)
+- locks the bundle namespace (`parallelus/` or `vendor/parallelus/`)
+- migrates legacy tracked docs/session paths in a non-destructive, idempotent way
+- refreshes the bundle sentinel (`<bundle-root>/.parallelus-bundle.json`)
+- emits a machine-readable migration report.
 
 ### AGENTS.md Customization Policy (Recommended)
 
