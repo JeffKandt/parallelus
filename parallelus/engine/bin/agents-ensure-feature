@@ -37,6 +37,8 @@ if [[ -z "$repo_root" ]]; then
 fi
 
 cd "$repo_root"
+current_branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+engine_rel="${ENGINE_ROOT#$repo_root/}"
 
 custom_hook_runner="$ENGINE_ROOT/bin/agents-custom-hook"
 run_custom_hook() {
@@ -85,6 +87,30 @@ if [[ "$repo_mode" == "remote-connected" ]]; then
 else
   if ! git show-ref --quiet "refs/heads/$base_branch"; then
     base_branch=$(git rev-parse --abbrev-ref HEAD)
+  fi
+fi
+
+resolve_branch_commit() {
+  local branch_ref="$1"
+  local commit
+  if commit=$(git rev-parse --verify "$branch_ref" 2>/dev/null); then
+    printf '%s\n' "$commit"
+    return 0
+  fi
+  if commit=$(git rev-parse --verify "refs/remotes/${BASE_REMOTE}/$branch_ref" 2>/dev/null); then
+    printf '%s\n' "$commit"
+    return 0
+  fi
+  return 1
+}
+
+if [[ -n "$engine_rel" ]]; then
+  base_commit="$(resolve_branch_commit "$base_branch" || true)"
+  if [[ -n "$base_commit" ]] && ! git cat-file -e "${base_commit}:${engine_rel}/bin/agents-detect" 2>/dev/null; then
+    if [[ -n "$current_branch_name" && "$current_branch_name" != "HEAD" ]]; then
+      echo "agents-ensure-feature: base branch '$base_branch' does not contain ${engine_rel}; using '$current_branch_name' as bootstrap base" >&2
+      base_branch="$current_branch_name"
+    fi
   fi
 fi
 

@@ -1977,6 +1977,41 @@
 - refresh marker/failure/report for current `HEAD` in serialized order (`retro-marker` -> `collect_failures.py` -> `retro_audit_local.py`)
 - relaunch Senior Architect review loop and iterate until `Decision: approved`
 
+## 2026-02-08 01:16:01 UTC
+**Objectives**
+- address the follow-up High finding from the first `PHASE-06` rerun review (`164a05b`) and close the remaining vendor-root bootstrap gap
+
+**Work Performed**
+- reran Senior Architect review on `164a05b` and harvested updated artifact:
+  - `docs/parallelus/reviews/feature-process-runtime-reorg-2026-02-08.md`
+  - decision remained `changes_requested`
+  - reproduced failure: vendor-root bootstrap could switch to base `main` lacking the upgraded bundle tree, causing marker write failure during `make bootstrap`
+- implemented branch-base fallback hardening in `parallelus/engine/bin/agents-ensure-feature`:
+  - resolve current engine root relative path (`engine_rel`) from the executing script
+  - verify candidate base branch commit contains `${engine_rel}/bin/agents-detect`
+  - if missing, fall back to current branch as bootstrap base with explicit warning
+  - this keeps bootstrap on a branch that actually contains the active bundle namespace (`parallelus/` or `vendor/parallelus/`)
+
+**Validation Evidence**
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/agents-ensure-feature`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py -k vendor_namespace_upgrade_keeps_bootstrap_entrypoints_working`
+  - outcome: pass (`1 passed`)
+- `PATH="$PWD/.venv/bin:$PATH" bash -n parallelus/engine/bin/deploy_agents_process.sh parallelus/engine/bin/agents-ensure-feature parallelus/engine/bin/agents-session-start parallelus/engine/bin/agents-turn-end parallelus/engine/bin/agents-session-logging-active parallelus/engine/bin/install-hooks parallelus/engine/bin/agents-merge`
+  - outcome: pass
+- `PATH="$PWD/.venv/bin:$PATH" pytest -q parallelus/engine/tests/test_upgrade_migration.py parallelus/engine/tests/test_bundle_namespace_detection.py parallelus/engine/tests/test_session_paths.py`
+  - outcome: pass (`21 passed in 9.17s`)
+
+**Residual Risks**
+- previous medium/low follow-ups still open:
+  - `python3` + `PyYAML` dependency in `review-preflight` path
+  - sentinel runtime validation parity with schema constraints
+
+**Next Actions**
+- commit/push base-branch fallback fix
+- refresh marker/failure/report for the new `HEAD`
+- relaunch Senior Architect review until `Decision: approved`
+
 ## 2026-02-08 00:52:12 UTC
 **Summary**
 - PHASE-06 checkpoint before senior review
